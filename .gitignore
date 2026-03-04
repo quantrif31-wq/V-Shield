@@ -1,0 +1,25 @@
+# ===== Python =====
+__pycache__/
+*.pyc
+venv/
+lpr_final/
+
+# ===== YOLO / Dataset =====
+AI_Project/Vietnam License Plate.v2i.yolov8/
+runs/
+
+# ===== Model files (nếu không muốn push .pt) =====
+*.pt
+
+# ===== Build files =====
+build/
+dist/
+*.exe
+*.pkg
+
+# ===== ASP.NET =====
+bin/
+obj/
+
+# ===== VSCode =====
+.vscode/
