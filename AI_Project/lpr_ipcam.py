@@ -126,9 +126,24 @@ ocr = PaddleOCR(
 
 def validate_plate(text):
     text = text.replace(" ", "").replace("-", "")
-    pattern_car = r'^\d{2}[A-Z]\d{4,5}$'
-    pattern_bike = r'^\d{2}[A-Z]\d?\d{4,5}$'
-    return re.match(pattern_car, text) or re.match(pattern_bike, text)
+
+    pattern = r'^(\d{2})([A-Z]{1,2})(\d{5})$'
+    match = re.match(pattern, text)
+
+    if not match:
+        return False, None
+
+    province = match.group(1)
+    series = match.group(2)
+    number = match.group(3)
+
+    # Ví dụ: nếu series có 2 chữ -> thường là ô tô mới
+    if len(series) == 2:
+        vehicle_type = "car"
+    else:
+        vehicle_type = "bike_or_car"
+
+    return True, vehicle_type
 
 # ================== ENHANCE ==================
 
