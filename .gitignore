@@ -9,7 +9,7 @@ AI_Project/Vietnam License Plate.v2i.yolov8/
 runs/
 
 # ===== Model files (nếu không muốn push .pt) =====
-*.pt
+
 
 # ===== Build files =====
 build/
