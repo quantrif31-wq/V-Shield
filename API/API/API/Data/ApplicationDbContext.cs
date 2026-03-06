@@ -1,0 +1,139 @@
+﻿using System;
+using System.Collections.Generic;
+using API.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace API.Data;
+
+public partial class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext()
+    {
+    }
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+
+    public virtual DbSet<AccessLog> AccessLogs { get; set; }
+
+    public virtual DbSet<Camera> Cameras { get; set; }
+
+    public virtual DbSet<Department> Departments { get; set; }
+
+    public virtual DbSet<Employee> Employees { get; set; }
+
+    public virtual DbSet<ExceptionReason> ExceptionReasons { get; set; }
+
+    public virtual DbSet<Gate> Gates { get; set; }
+
+    public virtual DbSet<GuestProfile> GuestProfiles { get; set; }
+
+    public virtual DbSet<Position> Positions { get; set; }
+
+    public virtual DbSet<PreRegistration> PreRegistrations { get; set; }
+
+    public virtual DbSet<Vehicle> Vehicles { get; set; }
+
+    public virtual DbSet<VehicleType> VehicleTypes { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=AccessControlDB;Trusted_Connection=True;");
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AccessLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK__Access_L__5E548648F597543A");
+
+            entity.Property(e => e.IsBypass).HasDefaultValue(false);
+            entity.Property(e => e.Timestamp).HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Camera).WithMany(p => p.AccessLogs).HasConstraintName("FK_AccessLog_Camera");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.AccessLogs).HasConstraintName("FK_AccessLog_Employee");
+
+            entity.HasOne(d => d.EntryLog).WithMany(p => p.InverseEntryLog).HasConstraintName("FK_AccessLog_EntryLog");
+
+            entity.HasOne(d => d.ExceptionReason).WithMany(p => p.AccessLogs).HasConstraintName("FK_AccessLog_ExceptionReason");
+
+            entity.HasOne(d => d.Gate).WithMany(p => p.AccessLogs).HasConstraintName("FK_AccessLog_Gate");
+
+            entity.HasOne(d => d.Registration).WithMany(p => p.AccessLogs).HasConstraintName("FK_AccessLog_PreRegistration");
+        });
+
+        modelBuilder.Entity<Camera>(entity =>
+        {
+            entity.HasKey(e => e.CameraId).HasName("PK__Camera__F971E0C89B981B26");
+
+            entity.HasOne(d => d.Gate).WithMany(p => p.Cameras).HasConstraintName("FK_Camera_Gate");
+        });
+
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(e => e.DepartmentId).HasName("PK__Departme__B2079BED22FBEE13");
+        });
+
+        modelBuilder.Entity<Employee>(entity =>
+        {
+            entity.HasKey(e => e.EmployeeId).HasName("PK__Employee__7AD04F1101CCCAF2");
+
+            entity.Property(e => e.Status).HasDefaultValue(true);
+
+            entity.HasOne(d => d.Department).WithMany(p => p.Employees).HasConstraintName("FK_Employee_Department");
+
+            entity.HasOne(d => d.Position).WithMany(p => p.Employees).HasConstraintName("FK_Employee_Position");
+        });
+
+        modelBuilder.Entity<ExceptionReason>(entity =>
+        {
+            entity.HasKey(e => e.ReasonId).HasName("PK__Exceptio__A4F8C0E71D19C4D0");
+        });
+
+        modelBuilder.Entity<Gate>(entity =>
+        {
+            entity.HasKey(e => e.GateId).HasName("PK__Gate__9582C65020BEEB76");
+        });
+
+        modelBuilder.Entity<GuestProfile>(entity =>
+        {
+            entity.HasKey(e => e.GuestId).HasName("PK__GuestPro__0C423C12B547B8BB");
+        });
+
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.HasKey(e => e.PositionId).HasName("PK__Position__60BB9A79F338CF82");
+        });
+
+        modelBuilder.Entity<PreRegistration>(entity =>
+        {
+            entity.HasKey(e => e.RegistrationId).HasName("PK__Pre_Regi__6EF58810D0B7AD86");
+
+            entity.Property(e => e.Status).HasDefaultValue("PENDING");
+
+            entity.HasOne(d => d.Guest).WithMany(p => p.PreRegistrations).HasConstraintName("FK_PreReg_Guest");
+
+            entity.HasOne(d => d.HostEmployee).WithMany(p => p.PreRegistrations).HasConstraintName("FK_PreReg_Employee");
+        });
+
+        modelBuilder.Entity<Vehicle>(entity =>
+        {
+            entity.HasKey(e => e.VehicleId).HasName("PK__Vehicle__476B54920FBE48B7");
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.Vehicles).HasConstraintName("FK_Vehicle_Employee");
+
+            entity.HasOne(d => d.VehicleType).WithMany(p => p.Vehicles).HasConstraintName("FK_Vehicle_Type");
+        });
+
+        modelBuilder.Entity<VehicleType>(entity =>
+        {
+            entity.HasKey(e => e.VehicleTypeId).HasName("PK__VehicleT__9F449643A4120859");
+        });
+
+        OnModelCreatingPartial(modelBuilder);
+    }
+
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+}
