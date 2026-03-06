@@ -21,6 +21,7 @@ cap = None
 
 frame = None
 frame_lock = threading.Lock()
+state_lock = threading.Lock()
 
 # face state
 session_active = False
@@ -38,7 +39,8 @@ result_state = {
     "session_confirmed": False,
     "confirm_count": 0,
     "distance": None,
-    "last_seen": None
+    "last_seen": None,
+    "face_box": None
 }
 
 # ================= LOAD FACE =================
@@ -53,6 +55,33 @@ if not encodings:
 known_encoding = encodings[0]
 
 print("Face model loaded")
+
+
+# ================= RESET STATE =================
+def reset_state():
+    global session_active
+    global session_confirmed
+    global confirm_count
+    global last_seen_time
+    global last_encode_time
+
+    session_active = False
+    session_confirmed = False
+    confirm_count = 0
+    last_seen_time = 0
+    last_encode_time = 0
+
+    distance_buffer.clear()
+
+    with state_lock:
+        result_state.update({
+            "session_active": False,
+            "session_confirmed": False,
+            "confirm_count": 0,
+            "distance": None,
+            "last_seen": None,
+            "face_box": None
+        })
 
 
 # ================= CAMERA THREAD =================
@@ -70,13 +99,20 @@ def camera_thread(ip_url):
         running = False
         return
 
+    print("Camera thread started")
+
     while running:
 
         ret, f = cap.read()
 
-        if ret:
-            with frame_lock:
-                frame = f
+        if not ret:
+            time.sleep(0.1)
+            continue
+
+        with frame_lock:
+            frame = f
+
+    print("Camera thread stopped")
 
 
 # ================= FACE PROCESS THREAD =================
@@ -87,23 +123,29 @@ def face_processing():
     global confirm_count
     global last_seen_time
     global last_encode_time
-    global result_state
+
+    print("Face processing thread started")
 
     while running:
 
+        if not running:
+            break
+
         if frame is None:
-            time.sleep(0.01)
+            time.sleep(0.02)
             continue
 
         with frame_lock:
             local_frame = frame.copy()
 
-        # resize
         h, w = local_frame.shape[:2]
+
+        if w == 0:
+            continue
+
         scale = FRAME_WIDTH / w
         local_frame = cv2.resize(local_frame, (FRAME_WIDTH, int(h * scale)))
 
-        # rotate
         if ROTATE_MODE == 90:
             local_frame = cv2.rotate(local_frame, cv2.ROTATE_90_CLOCKWISE)
         elif ROTATE_MODE == -90:
@@ -117,7 +159,20 @@ def face_processing():
 
         current_time = time.time()
 
+        face_box = None
+
         if face_locations:
+
+            top, right, bottom, left = face_locations[0]
+
+            face_box = {
+                "top": int(top),
+                "right": int(right),
+                "bottom": int(bottom),
+                "left": int(left),
+                "width": int(right - left),
+                "height": int(bottom - top)
+            }
 
             if current_time - last_encode_time > ENCODE_INTERVAL:
 
@@ -135,10 +190,11 @@ def face_processing():
                     avg_distance = sum(distance_buffer) / len(distance_buffer)
 
                     if not session_active:
+                        print("New person detected")
                         session_active = True
                         session_confirmed = False
                         confirm_count = 0
-                        print("New person detected")
+                        distance_buffer.clear()
 
                     last_seen_time = current_time
 
@@ -153,35 +209,27 @@ def face_processing():
 
                     last_encode_time = current_time
 
-                    result_state = {
-                        "camera_running": True,
-                        "session_active": session_active,
-                        "session_confirmed": session_confirmed,
-                        "confirm_count": confirm_count,
-                        "distance": float(avg_distance),
-                        "last_seen": last_seen_time
-                    }
+                    with state_lock:
+                        result_state.update({
+                            "camera_running": True,
+                            "session_active": session_active,
+                            "session_confirmed": session_confirmed,
+                            "confirm_count": confirm_count,
+                            "distance": float(avg_distance),
+                            "last_seen": last_seen_time,
+                            "face_box": face_box
+                        })
 
         # face lost
         if session_active and current_time - last_seen_time > LOST_TIMEOUT:
 
             print("Person left")
 
-            session_active = False
-            session_confirmed = False
-            confirm_count = 0
-            distance_buffer.clear()
-
-            result_state = {
-                "camera_running": True,
-                "session_active": False,
-                "session_confirmed": False,
-                "confirm_count": 0,
-                "distance": None,
-                "last_seen": None
-            }
+            reset_state()
 
         time.sleep(0.01)
+
+    print("Face processing thread stopped")
 
 
 # ================= API =================
@@ -195,9 +243,19 @@ def root():
 def start_camera(ip_url: str):
 
     global running
+    global cap
 
     if running:
         return {"status": "already_running"}
+
+    test_cap = cv2.VideoCapture(ip_url, cv2.CAP_FFMPEG)
+
+    if not test_cap.isOpened():
+        return {"status": "camera_open_failed"}
+
+    test_cap.release()
+
+    reset_state()
 
     running = True
 
@@ -212,7 +270,8 @@ def start_camera(ip_url: str):
         daemon=True
     ).start()
 
-    result_state["camera_running"] = True
+    with state_lock:
+        result_state["camera_running"] = True
 
     return {"status": "camera_started"}
 
@@ -222,17 +281,29 @@ def stop_camera():
 
     global running
     global cap
+    global frame
+
+    if not running:
+        return {"status": "already_stopped"}
 
     running = False
+
+    time.sleep(0.3)
 
     if cap:
         cap.release()
 
-    result_state["camera_running"] = False
+    frame = None
+
+    reset_state()
+
+    with state_lock:
+        result_state["camera_running"] = False
 
     return {"status": "camera_stopped"}
 
 
 @app.get("/camera/status")
 def camera_status():
-    return result_state
+    with state_lock:
+        return dict(result_state)
