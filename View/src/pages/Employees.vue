@@ -216,14 +216,20 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Phòng ban (ID)</label>
-                                <input v-model.number="modalForm.departmentId" type="number" placeholder="VD: 1"
-                                    min="1" />
+                                <label>Phòng ban</label>
+                                <select v-model="modalForm.departmentId">
+                                    <option :value="null">Chọn phòng ban</option>
+                                    <option v-for="dept in departments" :key="dept.departmentId"
+                                        :value="dept.departmentId">{{ dept.name }}</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label>Chức vụ (ID)</label>
-                                <input v-model.number="modalForm.positionId" type="number" placeholder="VD: 1"
-                                    min="1" />
+                                <label>Chức vụ</label>
+                                <select v-model="modalForm.positionId">
+                                    <option :value="null">Chọn chức vụ</option>
+                                    <option v-for="pos in positions" :key="pos.positionId"
+                                        :value="pos.positionId">{{ pos.name }}</option>
+                                </select>
                             </div>
                         </div>
 
@@ -316,10 +322,13 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { getAll, create, update, deleteEmployee, uploadFace } from '../services/employeeApi'
+import { getDepartments, getPositions } from '../services/lookupApi'
 
 const API_BASE = 'http://localhost:5107'
 
 const employees = ref([])
+const departments = ref([])
+const positions = ref([])
 const loading = ref(true)
 const loadError = ref('')
 const searchQuery = ref('')
@@ -550,7 +559,20 @@ function getAvatarColor(id) {
     return avatarColors[id % avatarColors.length]
 }
 
-onMounted(fetchEmployees)
+onMounted(async () => {
+    // Load lookup data + employees in parallel
+    try {
+        const [deptRes, posRes] = await Promise.all([
+            getDepartments(),
+            getPositions(),
+        ])
+        departments.value = deptRes.data
+        positions.value = posRes.data
+    } catch (e) {
+        console.warn('Could not load lookup data:', e)
+    }
+    fetchEmployees()
+})
 </script>
 
 <style scoped>

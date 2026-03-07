@@ -10,6 +10,7 @@ import AccessLogs from '../pages/AccessLogs.vue'
 import Monitoring from '../pages/Monitoring.vue'
 import Settings from '../pages/Settings.vue'
 import UserManagement from '../pages/UserManagement.vue'
+import DepartmentPosition from '../pages/DepartmentPosition.vue'
 
 const routes = [
     {
@@ -33,6 +34,12 @@ const routes = [
                 path: 'users',
                 name: 'UserManagement',
                 component: UserManagement,
+                meta: { requiresAdmin: true },
+            },
+            {
+                path: 'departments-positions',
+                name: 'DepartmentPosition',
+                component: DepartmentPosition,
                 meta: { requiresAdmin: true },
             },
         ],
