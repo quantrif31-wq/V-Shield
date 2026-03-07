@@ -109,6 +109,7 @@ namespace API
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles(); // Serve files từ wwwroot/
             app.UseCors("AllowVue");
 
             // Authentication PHẢI trước Authorization
