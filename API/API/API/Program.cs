@@ -1,5 +1,6 @@
 using System.Text;
 using API.Data;
+using API.Hubs;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,9 @@ namespace API
 
             // ── Application Services ──────────────────────────────────────────────
             builder.Services.AddScoped<IAuthService, AuthService>();
+
+            // ── SignalR ───────────────────────────────────────────────────────────
+            builder.Services.AddSignalR();
 
             // ── Controllers ───────────────────────────────────────────────────────
             builder.Services.AddControllers();
@@ -117,6 +121,9 @@ namespace API
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // ── SignalR Hub ───────────────────────────────────────────────────────
+            app.MapHub<EmployeeStatsHub>("/hubs/employee-stats");
 
             app.Run();
         }

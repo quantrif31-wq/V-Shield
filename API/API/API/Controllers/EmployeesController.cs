@@ -1,8 +1,10 @@
 using API.Data;
 using API.DTOs;
+using API.Hubs;
 using API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers;
@@ -13,10 +15,12 @@ namespace API.Controllers;
 public class EmployeesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IHubContext<EmployeeStatsHub> _hubContext;
 
-    public EmployeesController(ApplicationDbContext context)
+    public EmployeesController(ApplicationDbContext context, IHubContext<EmployeeStatsHub> hubContext)
     {
         _context = context;
+        _hubContext = hubContext;
     }
 
     /// <summary>Lấy danh sách tất cả nhân viên (chỉ Admin)</summary>
@@ -130,6 +134,17 @@ public class EmployeesController : ControllerBase
         await _context.Entry(employee).Reference(e => e.Department).LoadAsync();
         await _context.Entry(employee).Reference(e => e.Position).LoadAsync();
 
+        // Broadcast real-time update tới clients đang theo dõi
+        int total = await _context.Employees.CountAsync();
+        int active = await _context.Employees.CountAsync(e => e.Status == true);
+        await _hubContext.Clients.Group("stats").SendAsync("ReceiveStatsUpdate", new EmployeeCountChangedEvent
+        {
+            TotalEmployees = total,
+            ActiveEmployees = active,
+            ChangeType = "created",
+            ChangedAt = DateTime.Now
+        });
+
         return CreatedAtAction(nameof(GetById), new { id = employee.EmployeeId }, new EmployeeResponse
         {
             EmployeeId = employee.EmployeeId,
@@ -213,6 +228,17 @@ public class EmployeesController : ControllerBase
 
         _context.Employees.Remove(employee);
         await _context.SaveChangesAsync();
+
+        // Broadcast real-time update tới clients đang theo dõi
+        int total = await _context.Employees.CountAsync();
+        int active = await _context.Employees.CountAsync(e => e.Status == true);
+        await _hubContext.Clients.Group("stats").SendAsync("ReceiveStatsUpdate", new EmployeeCountChangedEvent
+        {
+            TotalEmployees = total,
+            ActiveEmployees = active,
+            ChangeType = "deleted",
+            ChangedAt = DateTime.Now
+        });
 
         return NoContent();
     }
