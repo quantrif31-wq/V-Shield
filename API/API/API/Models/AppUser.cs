@@ -28,4 +28,10 @@ public class AppUser
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Liên kết với Employee (nullable – tài khoản Admin có thể không gắn nhân viên)
+    public int? EmployeeId { get; set; }
+
+    [ForeignKey("EmployeeId")]
+    public virtual Employee? Employee { get; set; }
 }

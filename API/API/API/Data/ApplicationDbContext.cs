@@ -139,6 +139,13 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())");
 
+            // Quan hệ 1-1: một AppUser gắn với tối đa một Employee
+            entity.HasOne(u => u.Employee)
+                  .WithOne(e => e.AppUser)
+                  .HasForeignKey<AppUser>(u => u.EmployeeId)
+                  .OnDelete(DeleteBehavior.SetNull)
+                  .HasConstraintName("FK_AppUser_Employee");
+
             // Seed tài khoản admin mặc định
             entity.HasData(new AppUser
             {

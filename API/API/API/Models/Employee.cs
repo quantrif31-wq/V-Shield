@@ -47,4 +47,8 @@ public partial class Employee
 
     [InverseProperty("Employee")]
     public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+
+    // Navigation ngược: một Employee có thể có một tài khoản AppUser
+    [InverseProperty("Employee")]
+    public virtual AppUser? AppUser { get; set; }
 }
