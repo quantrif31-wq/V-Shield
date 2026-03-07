@@ -235,6 +235,30 @@
                             </select>
                         </div>
 
+                        <!-- Face Image Upload -->
+                        <div class="form-group">
+                            <label>Ảnh khuôn mặt</label>
+                            <div class="face-upload-area" @click="$refs.faceInput.click()"
+                                @dragover.prevent @drop.prevent="handleDrop">
+                                <img v-if="facePreview" :src="facePreview" class="face-preview" />
+                                <div v-else class="face-placeholder">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        style="width: 32px; height: 32px; color: var(--text-muted);">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <circle cx="8.5" cy="8.5" r="1.5" />
+                                        <polyline points="21 15 16 10 5 21" />
+                                    </svg>
+                                    <span>Click hoặc kéo thả ảnh vào đây</span>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);">JPG, PNG, WebP — tối đa 5MB</span>
+                                </div>
+                            </div>
+                            <input ref="faceInput" type="file" accept="image/jpeg,image/png,image/webp" hidden
+                                @change="handleFaceSelect" />
+                            <button v-if="facePreview" type="button" class="btn-remove-face" @click.stop="removeFace">
+                                ✕ Xóa ảnh
+                            </button>
+                        </div>
+
                         <!-- Modal Error -->
                         <div v-if="modalError" class="form-error">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -317,6 +341,10 @@ const modalForm = reactive({
     status: true,
 })
 
+// Face upload in modal
+const faceFile = ref(null)
+const facePreview = ref(null)
+
 // Delete modal
 const showDeleteModal = ref(false)
 const deleteTarget = ref(null)
@@ -368,6 +396,8 @@ function openCreateModal() {
     isEditing.value = false
     editingId.value = null
     modalError.value = ''
+    faceFile.value = null
+    facePreview.value = null
     Object.assign(modalForm, {
         fullName: '',
         phone: '',
@@ -383,6 +413,8 @@ function openEditModal(emp) {
     isEditing.value = true
     editingId.value = emp.employeeId
     modalError.value = ''
+    faceFile.value = null
+    facePreview.value = emp.faceImageUrl ? (API_BASE + emp.faceImageUrl) : null
     Object.assign(modalForm, {
         fullName: emp.fullName,
         phone: emp.phone || '',
@@ -397,6 +429,8 @@ function openEditModal(emp) {
 function closeModal() {
     showModal.value = false
     modalError.value = ''
+    faceFile.value = null
+    facePreview.value = null
 }
 
 async function handleSubmit() {
@@ -411,15 +445,23 @@ async function handleSubmit() {
             positionId: modalForm.positionId || null,
         }
 
+        let employeeId = editingId.value
+
         if (isEditing.value) {
             data.status = modalForm.status
             await update(editingId.value, data)
-            showToast('Cập nhật nhân viên thành công')
         } else {
             data.status = true
-            await create(data)
-            showToast('Thêm nhân viên thành công')
+            const res = await create(data)
+            employeeId = res.data.employeeId
         }
+
+        // Upload ảnh khuôn mặt nếu có chọn file mới
+        if (faceFile.value && employeeId) {
+            await uploadFace(employeeId, faceFile.value)
+        }
+
+        showToast(isEditing.value ? 'Cập nhật nhân viên thành công' : 'Thêm nhân viên thành công')
         closeModal()
         await fetchEmployees()
     } catch (err) {
@@ -429,7 +471,29 @@ async function handleSubmit() {
     }
 }
 
-// Face upload
+// Face select in modal
+function handleFaceSelect(event) {
+    const file = event.target.files[0]
+    if (!file) return
+    event.target.value = ''
+    faceFile.value = file
+    facePreview.value = URL.createObjectURL(file)
+}
+
+function handleDrop(event) {
+    const file = event.dataTransfer.files[0]
+    if (file && file.type.startsWith('image/')) {
+        faceFile.value = file
+        facePreview.value = URL.createObjectURL(file)
+    }
+}
+
+function removeFace() {
+    faceFile.value = null
+    facePreview.value = null
+}
+
+// Face upload from table row
 async function handleFaceUpload(employeeId, event) {
     const file = event.target.files[0]
     if (!file) return
@@ -552,6 +616,58 @@ onMounted(fetchEmployees)
     text-align: center;
     color: var(--text-muted);
     padding: 40px !important;
+}
+
+/* Face upload in modal */
+.face-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: var(--bg-input);
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.face-upload-area:hover {
+    border-color: var(--accent-primary);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.face-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.face-preview {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: var(--border-radius-sm);
+    object-fit: cover;
+    border: 2px solid var(--border-color);
+}
+
+.btn-remove-face {
+    display: block;
+    margin-top: 8px;
+    background: none;
+    color: var(--accent-danger);
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: opacity var(--transition-fast);
+}
+
+.btn-remove-face:hover {
+    opacity: 0.7;
 }
 
 .form-error {
