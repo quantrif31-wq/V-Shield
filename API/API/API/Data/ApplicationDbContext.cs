@@ -38,9 +38,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=AccessControlDB;Trusted_Connection=True;");
+    public virtual DbSet<AppUser> AppUsers { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -130,6 +129,28 @@ public partial class ApplicationDbContext : DbContext
         modelBuilder.Entity<VehicleType>(entity =>
         {
             entity.HasKey(e => e.VehicleTypeId).HasName("PK__VehicleT__9F449643A4120859");
+        });
+
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.Role).HasDefaultValue("Staff");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())");
+
+            // Seed tài khoản admin mặc định
+            entity.HasData(new AppUser
+            {
+                UserId = 1,
+                Username = "admin",
+                // BCrypt hash của "Admin@123"
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                FullName = "Quản trị viên",
+                Role = "Admin",
+                IsActive = true,
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            });
         });
 
         OnModelCreatingPartial(modelBuilder);
