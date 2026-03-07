@@ -1,65 +1,131 @@
 <template>
 
-<div class="container">
+<div class="console">
 
-  <h2>AI Face Recognition</h2>
+<header class="topbar">
 
-  <div class="controls">
-
-    <input
-      v-model="cameraIp"
-      placeholder="http://ip:8080/video"
-    />
-
-    <button
-      :class="{active:running}"
-      @click="start"
-    >
-      ▶ Start Camera
-    </button>
-
-    <button
-      class="stop"
-      @click="stop"
-    >
-      ⏹ Stop Camera
-    </button>
-
+  <div class="title">
+    V-Shield AI Security Console
   </div>
+
+  <div class="system-status">
+    <span class="led" :class="{on:running}"></span>
+    {{ running ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
+  </div>
+
+</header>
+
+
+<div class="layout">
+
+<!-- CONTROL PANEL -->
+
+<div class="control">
+
+  <h3>Camera Control</h3>
+
+  <input
+  v-model="cameraIp"
+  placeholder="Camera Stream URL"
+  />
+
+  <button class="btn start" @click="start">
+    ▶ START CAMERA
+  </button>
+
+  <button class="btn stop" @click="stop">
+    ■ STOP CAMERA
+  </button>
+
+  <button class="btn shutdown" @click="shutdown">
+    ⚡ SHUTDOWN AI
+  </button>
+
+</div>
+
+
+<!-- CAMERA -->
+
+<div class="camera-panel">
 
   <div class="video-wrapper">
 
-    <!-- MJPEG STREAM -->
     <img
-      ref="video"
-      class="video"
+    ref="video"
+    class="video"
     />
 
-    <!-- FACE BOX -->
     <canvas ref="canvas"></canvas>
 
+    <div class="overlay">
+
+      <div>AI FACE DETECTION</div>
+
+      <div>Distance : {{status.distance}}</div>
+
+      <div v-if="status.session_confirmed" class="confirm">
+        ✔ IDENTIFIED
+      </div>
+
+    </div>
+
   </div>
 
-  <div class="info">
+</div>
 
-    <p>Camera running: {{status.camera_running}}</p>
-    <p>Session active: {{status.session_active}}</p>
-    <p>Confirmed: {{status.session_confirmed}}</p>
-    <p>Distance: {{status.distance}}</p>
 
+<!-- STATUS -->
+
+<div class="status">
+
+<h3>Detection Status</h3>
+
+<div class="status-box">
+
+  <div class="item">
+    <span>Camera</span>
+    <b :class="status.camera_running?'ok':'bad'">
+      {{status.camera_running ? "ONLINE":"OFFLINE"}}
+    </b>
   </div>
+
+  <div class="item">
+    <span>Session</span>
+    <b :class="status.session_active?'ok':'bad'">
+      {{status.session_active}}
+    </b>
+  </div>
+
+  <div class="item">
+    <span>Confirmed</span>
+    <b :class="status.session_confirmed?'ok':'bad'">
+      {{status.session_confirmed}}
+    </b>
+  </div>
+
+  <div class="item">
+    <span>Distance</span>
+    <b>{{status.distance}}</b>
+  </div>
+
+</div>
+
+</div>
+
+</div>
 
 </div>
 
 </template>
 
 
+
 <script setup>
 
-import { ref, onMounted, onBeforeUnmount } from "vue"
-import { startCamera, stopCamera, getStatus } from "../services/faceApi"
+import {ref,onMounted,onBeforeUnmount} from "vue"
+import {startCamera,stopCamera,getStatus,shutdownAI} from "../services/faceApi"
 
-const cameraIp = ref("http://11.22.88.63:8080/video")
+const cameraIp = ref("http://55.247.111.137:8080/video")
 
 const status = ref({})
 
@@ -72,162 +138,169 @@ let poller = null
 const running = ref(false)
 
 
-/* START CAMERA */
 
 async function start(){
 
-  if(running.value) return
+if(running.value) return
 
-  try{
+try{
 
-    await startCamera(cameraIp.value)
+await startCamera(cameraIp.value)
 
-    video.value.src = cameraIp.value
+video.value.src = cameraIp.value
 
-    running.value = true
+running.value = true
 
-    startPolling()
+startPolling()
 
-  }catch(e){
+}catch(e){
 
-    console.error("Start camera failed",e)
+console.log("start failed",e)
 
-  }
+}
 
 }
 
 
-/* STOP CAMERA */
 
 async function stop(){
 
-  try{
+try{
+await stopCamera()
+}catch(e){}
 
-    await stopCamera()
+running.value=false
 
-  }catch(e){
-    console.log(e)
-  }
+video.value.src=""
 
-  running.value = false
+stopPolling()
 
-  video.value.src = ""
-
-  stopPolling()
-
-  clearCanvas()
+clearCanvas()
 
 }
 
 
-/* POLL API */
+
+async function shutdown(){
+
+if(!confirm("Shutdown AI server ?")) return
+
+try{
+
+await shutdownAI()
+
+}catch(e){}
+
+running.value=false
+
+video.value.src=""
+
+stopPolling()
+
+clearCanvas()
+
+}
+
+
 
 function startPolling(){
 
-  if(poller) return
+if(poller) return
 
-  poller = setInterval(updateStatus,200)
+poller=setInterval(updateStatus,200)
 
 }
+
+
 
 function stopPolling(){
 
-  clearInterval(poller)
+clearInterval(poller)
 
-  poller = null
+poller=null
 
 }
 
 
-/* UPDATE STATUS */
 
 async function updateStatus(){
 
-  try{
+try{
 
-    const res = await getStatus()
+const res = await getStatus()
 
-    status.value = res.data
+status.value = res.data
 
-    drawFace()
+drawFace()
 
-  }catch(e){
+}catch(e){
 
-    console.log("API offline")
+running.value=false
 
-  }
+}
 
 }
 
 
-/* DRAW FACE BOX */
 
 function drawFace(){
 
-  if(!ctx) return
+if(!ctx) return
 
-  clearCanvas()
+clearCanvas()
 
-  const face = status.value.face_box
-  if(!face) return
+const face = status.value.face_box
 
-  const videoWidth = video.value.clientWidth
-  const videoHeight = video.value.clientHeight
+if(!face) return
 
-  const canvasWidth = canvas.value.width
-  const canvasHeight = canvas.value.height
+const scaleX = canvas.value.width / 480
+const scaleY = canvas.value.height / 480
 
-  const scaleX = canvasWidth / 480
-  const scaleY = canvasHeight / 480
+ctx.strokeStyle="#00ff9c"
+ctx.lineWidth=3
 
-  ctx.strokeStyle = "#00ff00"
-  ctx.lineWidth = 3
-
-  ctx.strokeRect(
-    face.left * scaleX,
-    face.top * scaleY,
-    face.width * scaleX,
-    face.height * scaleY
-  )
+ctx.strokeRect(
+face.left * scaleX,
+face.top * scaleY,
+face.width * scaleX,
+face.height * scaleY
+)
 
 }
 
 
-/* CLEAR CANVAS */
 
 function clearCanvas(){
 
-  ctx.clearRect(
-    0,
-    0,
-    canvas.value.width,
-    canvas.value.height
-  )
+ctx.clearRect(
+0,
+0,
+canvas.value.width,
+canvas.value.height
+)
 
 }
 
 
-/* INIT */
 
 onMounted(()=>{
 
-  ctx = canvas.value.getContext("2d")
+ctx = canvas.value.getContext("2d")
 
-  video.value.onload = ()=>{
+video.value.onload = ()=>{
 
-    canvas.value.width = video.value.clientWidth
-    canvas.value.height = video.value.clientHeight
+canvas.value.width = video.value.clientWidth
+canvas.value.height = video.value.clientHeight
 
-  }
+}
 
 })
 
 
-/* CLEANUP */
 
 onBeforeUnmount(()=>{
 
-  stopPolling()
+stopPolling()
 
 })
 
@@ -238,121 +311,271 @@ onBeforeUnmount(()=>{
 <style>
 
 body{
-background:#081b33;
+margin:0;
+background:#041424;
 color:white;
-font-family:Arial;
+font-family:Segoe UI;
 }
 
-.container{
-width:720px;
-margin:auto;
-text-align:center;
-padding-top:20px;
+
+
+/* TOP BAR */
+
+.topbar{
+
+display:flex;
+
+justify-content:space-between;
+
+align-items:center;
+
+padding:20px 40px;
+
+background:#0b223f;
+
+border-bottom:2px solid #0af;
+
 }
 
-h2{
-margin-bottom:20px;
+.title{
+
+font-size:22px;
+
+font-weight:bold;
+
+letter-spacing:2px;
+
 }
 
-.controls{
-margin-bottom:20px;
+
+
+/* LED */
+
+.system-status{
+
+display:flex;
+
+align-items:center;
+
+gap:10px;
+
+font-size:14px;
+
 }
 
-input{
+.led{
 
-width:340px;
+width:12px;
+height:12px;
+
+border-radius:50%;
+
+background:#666;
+
+}
+
+.led.on{
+
+background:#00ff9c;
+
+box-shadow:0 0 12px #00ff9c;
+
+}
+
+
+
+/* LAYOUT */
+
+.layout{
+
+display:grid;
+
+grid-template-columns:260px 720px 260px;
+
+gap:30px;
+
+justify-content:center;
+
+padding:30px;
+
+}
+
+
+
+/* CONTROL */
+
+.control{
+
+background:#0c2747;
+
+padding:20px;
+
+border-radius:8px;
+
+}
+
+.control input{
+
+width:100%;
+
 padding:10px;
-border-radius:6px;
+
+margin-bottom:15px;
+
 border:none;
-margin-right:10px;
+
+border-radius:6px;
 
 }
 
-button{
 
-padding:10px 18px;
+
+.btn{
+
+width:100%;
+
+padding:12px;
+
+margin-bottom:10px;
+
 border:none;
+
 border-radius:6px;
-margin-right:10px;
+
+font-weight:bold;
+
 cursor:pointer;
 
-background:#2196f3;
-color:white;
-
-transition:all 0.2s;
+transition:0.2s;
 
 }
 
-button:hover{
-
-transform:scale(1.05);
-background:#1e88e5;
-
+.btn:hover{
+transform:scale(1.05)
 }
 
-button:active{
+.start{background:#27ae60}
+.stop{background:#e74c3c}
+.shutdown{background:#f39c12}
 
-transform:scale(0.95);
-background:#1565c0;
 
-}
 
-button.active{
-
-background:#2ecc71;
-
-}
-
-button.stop{
-
-background:#e74c3c;
-
-}
-
-button.stop:hover{
-
-background:#c0392b;
-
-}
+/* VIDEO */
 
 .video-wrapper{
 
 position:relative;
-width:640px;
-height:480px;
-margin:auto;
 
-border:3px solid #0af;
+width:720px;
+height:480px;
+
+border:3px solid #00bfff;
+
 border-radius:8px;
+
 overflow:hidden;
+
+box-shadow:0 0 20px #00bfff;
 
 }
 
 .video{
 
-width:640px;
-height:480px;
-background:black;
+width:100%;
+height:100%;
+
+object-fit:cover;
 
 }
+
+
 
 canvas{
 
 position:absolute;
-left:0;
+
 top:0;
-width:640px;
-height:480px;
+left:0;
+
+width:100%;
+height:100%;
 
 pointer-events:none;
 
 }
 
-.info{
 
-margin-top:20px;
-font-size:14px;
+
+/* OVERLAY */
+
+.overlay{
+
+position:absolute;
+
+top:10px;
+left:10px;
+
+background:rgba(0,0,0,0.5);
+
+padding:8px 12px;
+
+border-radius:6px;
+
+font-size:13px;
+
+border:1px solid #00bfff;
 
 }
+
+.confirm{
+
+color:#00ff9c;
+
+font-weight:bold;
+
+}
+
+
+
+/* STATUS */
+
+.status{
+
+background:#0c2747;
+
+padding:20px;
+
+border-radius:8px;
+
+}
+
+.status-box{
+
+margin-top:15px;
+
+display:flex;
+
+flex-direction:column;
+
+gap:10px;
+
+}
+
+.item{
+
+display:flex;
+
+justify-content:space-between;
+
+padding:10px;
+
+background:#081b33;
+
+border-radius:6px;
+
+}
+
+.ok{color:#00ff9c}
+.bad{color:#ff5a5a}
 
 </style>

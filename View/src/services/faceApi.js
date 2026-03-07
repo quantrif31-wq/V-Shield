@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const api = axios.create({
-    baseURL: "https://localhost:7103/api/FaceID"
+    baseURL: "https://localhost:5107/api/FaceID"
 })
 
 export const startCamera = (ip) => {
@@ -15,3 +15,5 @@ export const stopCamera = () => {
 export const getStatus = () => {
     return api.get(`/status`)
 }
+export const shutdownAI = ()=>
+  api.post("/shutdown")

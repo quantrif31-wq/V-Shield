@@ -11,8 +11,12 @@ namespace API.Controllers
     {
         private static readonly HttpClient client = new HttpClient();
 
+        private static Process? pythonProcess;
+
         string pythonApi = "http://127.0.0.1:8000";
         string pythonFolder = @"C:\DoAnTotNghiep\V-Shield\AI_Project\face_recognition";
+
+        // =========================
 
         async Task EnsurePythonRunning()
         {
@@ -29,8 +33,13 @@ namespace API.Controllers
             await Task.Delay(3000);
         }
 
+        // =========================
+
         void StartPythonServer()
         {
+            if (pythonProcess != null && !pythonProcess.HasExited)
+                return;
+
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
@@ -40,9 +49,27 @@ namespace API.Controllers
                 UseShellExecute = false
             };
 
-            Process.Start(psi);
+            pythonProcess = Process.Start(psi);
         }
 
+        // =========================
+
+        void StopPythonServer()
+        {
+            try
+            {
+                if (pythonProcess != null && !pythonProcess.HasExited)
+                {
+                    pythonProcess.Kill(true);
+                    pythonProcess.Dispose();
+                    pythonProcess = null;
+                }
+            }
+            catch { }
+        }
+
+        // =========================
+        // API STATUS
         // =========================
 
         [HttpGet("status")]
@@ -57,6 +84,8 @@ namespace API.Controllers
         }
 
         // =========================
+        // START CAMERA
+        // =========================
 
         [HttpPost("start")]
         public async Task<IActionResult> StartCamera(string ip)
@@ -70,6 +99,8 @@ namespace API.Controllers
         }
 
         // =========================
+        // STOP CAMERA
+        // =========================
 
         [HttpPost("stop")]
         public async Task<IActionResult> StopCamera()
@@ -80,6 +111,21 @@ namespace API.Controllers
             var data = await res.Content.ReadAsStringAsync();
 
             return Content(data, "application/json");
+        }
+
+        // =========================
+        // SHUTDOWN PYTHON SERVER
+        // =========================
+
+        [HttpPost("shutdown")]
+        public IActionResult ShutdownPython()
+        {
+            StopPythonServer();
+
+            return Ok(new
+            {
+                message = "Python server stopped"
+            });
         }
     }
 }

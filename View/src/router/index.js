@@ -12,6 +12,8 @@ import Settings from '../pages/Settings.vue'
 import UserManagement from '../pages/UserManagement.vue'
 import DepartmentPosition from '../pages/DepartmentPosition.vue'
 
+import FaceID from '../components/FaceCamera.vue'
+
 const routes = [
     {
         path: '/login',
@@ -30,6 +32,7 @@ const routes = [
             { path: 'access-logs', name: 'AccessLogs', component: AccessLogs },
             { path: 'monitoring', name: 'Monitoring', component: Monitoring },
             { path: 'settings', name: 'Settings', component: Settings },
+            { path: 'FaceID', name: 'FaceID', component: FaceID },
             {
                 path: 'users',
                 name: 'UserManagement',

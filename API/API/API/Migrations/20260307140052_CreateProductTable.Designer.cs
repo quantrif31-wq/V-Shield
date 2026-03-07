@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260307054948_AddEmployeeIdToAppUser")]
-    partial class AddEmployeeIdToAppUser
+    [Migration("20260307140052_CreateProductTable")]
+    partial class CreateProductTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -164,7 +164,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$kImJo6dE5vLrHN6h8z305O42ZNHldnoCW7pWRbBWp2kGbBwvNuH6u",
+                            PasswordHash = "$2a$11$iKXVaIB3i904GUQvwc5eNu2gab3bnwDYrWX6rOTD5vABAMZ094DHK",
                             Role = "Admin",
                             Username = "admin"
                         });
