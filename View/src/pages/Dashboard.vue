@@ -147,24 +147,28 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { getSummary } from '../services/statisticsApi'
+
+const totalEmployees = ref('...')
+const activeEmployees = ref('...')
 
 const stats = ref([
     {
         label: 'Tổng nhân viên',
-        value: '248',
-        change: '↑ +12 tháng này',
+        value: totalEmployees,
+        change: 'Cập nhật realtime',
         trend: 'up',
         color: 'blue',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'
     },
     {
-        label: 'Phương tiện đăng ký',
-        value: '156',
-        change: '↑ +8 tháng này',
+        label: 'Nhân viên đang HĐ',
+        value: activeEmployees,
+        change: 'Trạng thái hoạt động',
         trend: 'up',
         color: 'green',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>'
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
     },
     {
         label: 'Lượt vào hôm nay',
@@ -183,6 +187,43 @@ const stats = ref([
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
     },
 ])
+
+let eventSource = null;
+
+onMounted(async () => {
+    try {
+        // Init fake data or current data
+        const summary = await getSummary()
+        totalEmployees.value = summary.totalEmployees.toString()
+        activeEmployees.value = summary.activeEmployees.toString()
+
+        // Connect to SSE stream
+        eventSource = new EventSource('http://localhost:5107/api/Statistics/employees/stream')
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data)
+                totalEmployees.value = data.totalEmployees.toString()
+                activeEmployees.value = data.activeEmployees.toString()
+            } catch (err) {
+                console.error("Lỗi parse SSE:", err)
+            }
+        }
+        eventSource.onerror = (error) => {
+            console.error("SSE Error:", error)
+            eventSource.close()
+        }
+    } catch (error) {
+        console.error("Lỗi fetch summary:", error)
+        totalEmployees.value = 'Lỗi'
+        activeEmployees.value = 'Lỗi'
+    }
+})
+
+onUnmounted(() => {
+    if (eventSource) {
+        eventSource.close()
+    }
+})
 
 const weekData = ref([
     { label: 'T2', checkIn: 180, checkOut: 165, inPercent: 90, outPercent: 82 },

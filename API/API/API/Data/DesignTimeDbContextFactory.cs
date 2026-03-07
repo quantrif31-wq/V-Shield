@@ -16,7 +16,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Applicatio
 
         // Connection string dùng khi chạy EF CLI tools
         optionsBuilder.UseSqlServer(
-            "Server=HUNGTE\\MSSQLSERVER01;Database=AccessControlDB;Trusted_Connection=True;TrustServerCertificate=True;"
+            "Server=(localdb)\\MSSQLLocalDB;Database=AccessControlDB;Trusted_Connection=True;TrustServerCertificate=True;"
         );
 
         return new ApplicationDbContext(optionsBuilder.Options);

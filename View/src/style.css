@@ -309,6 +309,11 @@ img {
 .stat-icon.cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-info); }
 .stat-icon.red { background: rgba(239, 68, 68, 0.15); color: var(--accent-danger); }
 
+.stat-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
 .stat-info h3 {
   font-size: 1.75rem;
   font-weight: 700;
