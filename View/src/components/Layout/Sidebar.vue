@@ -35,7 +35,7 @@
             <div class="nav-section" style="margin-top: 20px;">
                 <span v-if="!collapsed" class="nav-label">HỆ THỐNG</span>
             </div>
-            <router-link v-for="item in systemItems" :key="item.path" :to="item.path" class="nav-item"
+            <router-link v-for="item in systemItems.filter(i => !i.adminOnly || authState.user?.role === 'Admin')" :key="item.path" :to="item.path" class="nav-item"
                 :class="{ active: $route.path === item.path }">
                 <span class="nav-icon" v-html="item.icon"></span>
                 <transition name="fade">
@@ -54,6 +54,8 @@
 </template>
 
 <script setup>
+import { authState } from '../../stores/auth'
+
 defineProps({
     collapsed: Boolean
 })
@@ -91,6 +93,12 @@ const menuItems = [
 ]
 
 const systemItems = [
+    {
+        path: '/users',
+        label: 'Quản lý tài khoản',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+        adminOnly: true,
+    },
     {
         path: '/settings',
         label: 'Cài đặt',

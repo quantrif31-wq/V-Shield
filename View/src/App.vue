@@ -1,9 +1,3 @@
 <template>
-  <FaceCamera/>
+  <router-view />
 </template>
-
-<script setup>
-
-import FaceCamera from "./components/FaceCamera.vue"
-
-</script>

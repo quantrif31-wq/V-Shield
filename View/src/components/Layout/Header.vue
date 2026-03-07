@@ -38,17 +38,40 @@
             </button>
 
             <!-- User Profile -->
-            <div class="header-user" @click="showUserMenu = !showUserMenu">
-                <div class="user-avatar">A</div>
-                <div class="user-info">
-                    <span class="user-name">Admin</span>
-                    <span class="user-role">Quản trị viên</span>
-                </div>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="width: 16px; height: 16px;">
-                    <path d="M6 9l6 6 6-6" />
-                </svg>
+        <div class="header-user" @click="showUserMenu = !showUserMenu">
+            <div class="user-avatar">{{ userInitial }}</div>
+            <div class="user-info">
+                <span class="user-name">{{ authState.user?.fullName || authState.user?.username || 'User' }}</span>
+                <span class="user-role">{{ roleLabel }}</span>
             </div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="width: 16px; height: 16px;">
+                <path d="M6 9l6 6 6-6" />
+            </svg>
+        </div>
+
+        <!-- User Dropdown -->
+        <transition name="dropdown">
+            <div v-if="showUserMenu" class="dropdown user-dropdown">
+                <div class="dropdown-user-info">
+                    <div class="user-avatar" style="width:40px;height:40px;font-size:1rem;">{{ userInitial }}</div>
+                    <div>
+                        <p style="font-weight:600;">{{ authState.user?.fullName || authState.user?.username }}</p>
+                        <p style="font-size:0.8rem;color:var(--text-muted);">{{ roleLabel }}</p>
+                    </div>
+                </div>
+                <div style="border-top:1px solid var(--border-color);padding:8px;">
+                    <button class="dropdown-item" @click="handleLogout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </transition>
 
             <!-- Notification Dropdown -->
             <transition name="dropdown">
@@ -76,9 +99,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { authState, logout } from '../../stores/auth'
+
+const router = useRouter()
 
 defineEmits(['toggle-sidebar'])
+
+const userInitial = computed(() => {
+    const name = authState.user?.fullName || authState.user?.username || 'U'
+    return name.charAt(0).toUpperCase()
+})
+
+const roleLabel = computed(() => {
+    const map = { Admin: 'Quản trị viên', Staff: 'Nhân viên', BaoVe: 'Bảo vệ' }
+    return map[authState.user?.role] || authState.user?.role || ''
+})
+
+function handleLogout() {
+    logout()
+    router.push('/login')
+}
 
 const showNotifications = ref(false)
 const showUserMenu = ref(false)
@@ -415,6 +457,37 @@ const notifications = ref([
     color: var(--text-muted);
     margin-top: 4px;
     display: block;
+}
+
+/* User Dropdown */
+.user-dropdown {
+    min-width: 240px;
+}
+
+.dropdown-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-radius: var(--border-radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.dropdown-item:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-danger);
 }
 
 /* Dropdown transition */
