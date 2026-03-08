@@ -12,7 +12,9 @@ import Settings from '../pages/Settings.vue'
 import UserManagement from '../pages/UserManagement.vue'
 import DepartmentPosition from '../pages/DepartmentPosition.vue'
 
+
 import FaceID from '../components/FaceCamera.vue'
+import bienso from '../components/BienSoSecurity.vue'
 
 const routes = [
     {
@@ -33,6 +35,7 @@ const routes = [
             { path: 'monitoring', name: 'Monitoring', component: Monitoring },
             { path: 'settings', name: 'Settings', component: Settings },
             { path: 'FaceID', name: 'FaceID', component: FaceID },
+            { path: 'bienso', name: 'bienso', component: bienso },
             {
                 path: 'users',
                 name: 'UserManagement',
