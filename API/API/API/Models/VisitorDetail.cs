@@ -17,6 +17,7 @@ public class VisitorDetail
 
     [StringLength(20)]
     public string? IdCardNumber { get; set; }
+    public string? ExpectedFaceImage { get; set; }
 
     [ForeignKey("RegistrationId")]
     [InverseProperty("VisitorDetails")]

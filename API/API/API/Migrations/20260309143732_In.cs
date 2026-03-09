@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace API.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class In : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -180,7 +180,6 @@ namespace API.Migrations
                     ExpectedTimeIn = table.Column<DateTime>(type: "datetime", nullable: false),
                     ExpectedTimeOut = table.Column<DateTime>(type: "datetime", nullable: false),
                     Status = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true, defaultValue: "PENDING"),
-                    LicensePlateImageBase64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     NumberOfVisitors = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
                     CreatedAt = table.Column<DateTime>(type: "datetime", nullable: false, defaultValueSql: "(getdate())")
                 },
@@ -311,7 +310,8 @@ namespace API.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     RegistrationId = table.Column<int>(type: "int", nullable: false),
                     FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    IdCardNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
+                    IdCardNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    ExpectedFaceImage = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -327,7 +327,7 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$cgLI.2qOWJkbJ/DvA.UVeOWdNWgLL96lCIEJkHZlsG8F6MJheNU3u", "Admin", "admin" });
+                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$IJ7903PA6uSbU6B7UymWqesSHPYMDDtgkDP.DO0Q469053Zk77usu", "Admin", "admin" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Access_Log_CameraId",

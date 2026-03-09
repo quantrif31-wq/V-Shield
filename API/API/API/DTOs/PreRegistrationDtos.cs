@@ -14,7 +14,6 @@ public class CreateLinkRequestDto
     [Required]
     public int HostEmployeeId { get; set; }
 
-    /// <summary>Link hết hạn sau N giờ (default 24h)</summary>
     [Range(1, 168)] // tối đa 7 ngày
     public int ExpiryHours { get; set; } = 24;
 }
@@ -22,28 +21,16 @@ public class CreateLinkRequestDto
 /// <summary>Guest submit form đăng ký</summary>
 public class SubmitRegistrationDto
 {
-    // ── Thông tin người đăng ký chính ────────────────────
+    // ── Thông tin người đăng ký chính (chỉ là đầu mối liên hệ) ──
     [Required, StringLength(150)]
     public string FullName { get; set; } = null!;
 
     [StringLength(20)]
     public string? Phone { get; set; }
 
-    /// <summary>
-    /// Ảnh mặt dạng base64 — lưu vào GuestProfile.FaceImageUrl
-    /// Format: "data:image/jpeg;base64,/9j/4AAQ..."
-    /// </summary>
-    public string? FaceImageBase64 { get; set; }
-
-    // ── Thông tin chuyến thăm ─────────────────────────────
+    // ── Thông tin xe ──────────────────────────────────────
     [Required, StringLength(20)]
     public string ExpectedLicensePlate { get; set; } = null!;
-
-    /// <summary>
-    /// Ảnh biển số dạng base64 — lưu vào PreRegistration
-    /// Format: "data:image/jpeg;base64,/9j/4AAQ..."
-    /// </summary>
-    public string? LicensePlateImageBase64 { get; set; }
 
     [Required]
     public DateTime ExpectedTimeIn { get; set; }
@@ -51,13 +38,14 @@ public class SubmitRegistrationDto
     [Required]
     public DateTime ExpectedTimeOut { get; set; }
 
-    // ── Đoàn khách ───────────────────────────────────────
+    // ── Danh sách người ngồi trên xe ─────────────────────
     [Range(1, 50)]
     public int NumberOfVisitors { get; set; } = 1;
 
     public List<VisitorInfoDto> Visitors { get; set; } = new();
 }
 
+/// <summary>Thông tin từng người trong đoàn</summary>
 public class VisitorInfoDto
 {
     [Required, StringLength(100)]
@@ -65,6 +53,9 @@ public class VisitorInfoDto
 
     [StringLength(20)]
     public string? IdCardNumber { get; set; }
+
+    /// <summary>Ảnh mặt đăng ký trước — dùng để so sánh khi quét</summary>
+    public string? ExpectedFaceImage { get; set; }
 }
 
 public class UpdateStatusDto
@@ -107,14 +98,9 @@ public class RegistrationListItemDto
     public DateTime CreatedAt { get; set; }
 }
 
+/// <summary>Chi tiết đơn đăng ký — bao gồm danh sách visitor và access logs</summary>
 public class RegistrationDetailDto : RegistrationListItemDto
 {
-    /// <summary>Ảnh mặt — lấy từ GuestProfile.FaceImageUrl</summary>
-    public string? FaceImageUrl { get; set; }
-
-    /// <summary>Ảnh biển số — lấy từ PreRegistration</summary>
-    public string? LicensePlateImageBase64 { get; set; }
-
     public List<VisitorInfoDto> Visitors { get; set; } = new();
     public List<AccessLogDto> AccessLogs { get; set; } = new();
 }
@@ -123,7 +109,7 @@ public class AccessLogDto
 {
     public int LogId { get; set; }
     public DateTime? Timestamp { get; set; }
-    public string Direction { get; set; } = null!; // "IN" hoặc "OUT"
+    public string Direction { get; set; } = null!; // "IN" / "OUT"
     public string? CapturedLicensePlate { get; set; }
     public string? ResultStatus { get; set; }
     public string? Note { get; set; }

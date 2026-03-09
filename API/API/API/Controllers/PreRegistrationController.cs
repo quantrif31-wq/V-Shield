@@ -59,15 +59,6 @@ public class PreRegistrationController : ControllerBase
         if (dto.ExpectedTimeOut <= dto.ExpectedTimeIn)
             return BadRequest(new { Message = "Thời gian ra phải sau thời gian vào" });
 
-        // 3. Validate ảnh base64
-        if (!string.IsNullOrEmpty(dto.FaceImageBase64)
-            && !IsValidBase64Image(dto.FaceImageBase64))
-            return BadRequest(new { Message = "Ảnh mặt không hợp lệ. Cần format: data:image/jpeg;base64,..." });
-
-        if (!string.IsNullOrEmpty(dto.LicensePlateImageBase64)
-            && !IsValidBase64Image(dto.LicensePlateImageBase64))
-            return BadRequest(new { Message = "Ảnh biển số không hợp lệ. Cần format: data:image/jpeg;base64,..." });
-
         // 4. Tìm hoặc tạo GuestProfile theo SĐT
         GuestProfile guest;
 
@@ -90,10 +81,6 @@ public class PreRegistrationController : ControllerBase
         if (string.IsNullOrEmpty(guest.DefaultLicensePlate))
             guest.DefaultLicensePlate = dto.ExpectedLicensePlate;
 
-        // Ảnh mặt: cập nhật nếu có ảnh mới
-        if (!string.IsNullOrEmpty(dto.FaceImageBase64))
-            guest.FaceImageUrl = dto.FaceImageBase64;
-
         if (guest.GuestId == 0)
             _context.GuestProfiles.Add(guest);
 
@@ -105,7 +92,6 @@ public class PreRegistrationController : ControllerBase
             GuestId = guest.GuestId,
             HostEmployeeId = link.HostEmployeeId,
             ExpectedLicensePlate = dto.ExpectedLicensePlate,
-            LicensePlateImageBase64 = dto.LicensePlateImageBase64,
             ExpectedTimeIn = dto.ExpectedTimeIn,
             ExpectedTimeOut = dto.ExpectedTimeOut,
             NumberOfVisitors = dto.NumberOfVisitors,
@@ -123,7 +109,8 @@ public class PreRegistrationController : ControllerBase
             {
                 RegistrationId = preReg.RegistrationId,
                 FullName = v.FullName,
-                IdCardNumber = v.IdCardNumber
+                IdCardNumber = v.IdCardNumber,
+                ExpectedFaceImage = v.ExpectedFaceImage
             });
 
             _context.VisitorDetails.AddRange(visitors);
@@ -223,16 +210,11 @@ public class PreRegistrationController : ControllerBase
             HostEmployeeName = reg.HostEmployee!.FullName,
             CreatedAt = reg.CreatedAt,
 
-            // Ảnh mặt từ GuestProfile — dùng chung cho mọi lần đăng ký
-            FaceImageUrl = reg.Guest.FaceImageUrl,
-
-            // Ảnh biển số từ PreRegistration — riêng cho lần này
-            LicensePlateImageBase64 = reg.LicensePlateImageBase64,
-
             Visitors = reg.VisitorDetails.Select(v => new VisitorInfoDto
             {
                 FullName = v.FullName,
-                IdCardNumber = v.IdCardNumber
+                IdCardNumber = v.IdCardNumber,
+                ExpectedFaceImage = v.ExpectedFaceImage  // Thêm dòng này
             }).ToList(),
 
             AccessLogs = reg.AccessLogs
@@ -265,18 +247,5 @@ public class PreRegistrationController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { Message = $"Đã cập nhật trạng thái thành '{dto.Status}'" });
-    }
-
-    private static bool IsValidBase64Image(string base64)
-    {
-        if (!base64.StartsWith("data:image/")) return false;
-        try
-        {
-            var comma = base64.IndexOf(',');
-            if (comma < 0) return false;
-            Convert.FromBase64String(base64[(comma + 1)..]);
-            return true;
-        }
-        catch { return false; }
     }
 }

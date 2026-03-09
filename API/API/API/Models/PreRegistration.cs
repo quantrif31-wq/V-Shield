@@ -39,8 +39,6 @@ public partial class PreRegistration
     [ForeignKey("HostEmployeeId")]
     [InverseProperty("PreRegistrations")]
     public virtual Employee? HostEmployee { get; set; }
-    [Column(TypeName = "nvarchar(max)")]
-    public string? LicensePlateImageBase64 { get; set; }
 
     public int NumberOfVisitors { get; set; } = 1;
 
