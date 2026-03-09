@@ -43,27 +43,41 @@
   <!-- CONTROLS -->
   <div class="controls">
 
-    <input
-      v-model="cameraIp"
-      placeholder="Camera MJPEG URL"
-      class="ip-input"
-    />
+  <input
+    v-model="cameraIp"
+    placeholder="Camera MJPEG URL"
+    class="ip-input"
+  />
 
-    <button
-      class="btn start"
-      @click="startCameraClick"
-    >
-      Start Camera
-    </button>
+  <button
+    class="btn ai-on"
+    @click="startAI"
+  >
+    Start AI
+  </button>
 
-    <button
-      class="btn stop"
-      @click="stopCameraClick"
-    >
-      Stop
-    </button>
+  <button
+    class="btn ai-off"
+    @click="stopAI"
+  >
+    Stop AI
+  </button>
 
-  </div>
+  <button
+    class="btn start"
+    @click="startCameraClick"
+  >
+    Start Camera
+  </button>
+
+  <button
+    class="btn stop"
+    @click="stopCameraClick"
+  >
+    Stop Camera
+  </button>
+
+</div>
 
 </div>
 
@@ -72,7 +86,11 @@
 
 <script>
 
-import { startCamera, getPlate } from "../services/biensoApi"
+import { startCamera, 
+  stopCamera,
+  getPlate,
+  getStatus,
+  shutdownAI} from "../services/biensoApi"
 
 export default {
 
@@ -128,7 +146,52 @@ export default {
       }
 
     },
+async startAI() {
 
+  try {
+
+    const res = await getStatus()
+
+    console.log("AI Started:", res)
+
+    alert("AI Server Started")
+
+  }
+  catch (err) {
+
+    console.error(err)
+
+    alert("Cannot start AI")
+
+  }
+
+},
+
+async stopAI() {
+
+  try {
+
+    const res = await shutdownAI()
+
+    console.log("AI stopped:", res)
+
+    this.cameraRunning = false
+    this.plate = ""
+
+    clearInterval(this.pollTimer)
+
+    alert("AI Server Stopped")
+
+  }
+  catch (err) {
+
+    console.error(err)
+
+    alert("Cannot stop AI")
+
+  }
+
+},
 
     async stopCameraClick() {
 
@@ -332,5 +395,11 @@ background:#28a745;
 .stop{
 background:#dc3545;
 }
+.ai-on{
+background:#007bff;
+}
 
+.ai-off{
+background:#6c757d;
+}
 </style>

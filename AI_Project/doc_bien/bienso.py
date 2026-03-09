@@ -107,6 +107,9 @@ session_confirmed = False
 confirmed_plate = None
 last_seen_time = 0
 
+running = False
+camera_thread = None
+ocr_thread = None
 
 # ================== REQUEST MODEL ==================
 
@@ -321,7 +324,7 @@ def camera_loop():
     global session_active,session_votes,session_confirmed,confirmed_plate,last_seen_time
     global ocr_running,ocr_result,last_box_center
 
-    while True:
+    while running:
 
         ret,img=cap.read()
 
@@ -443,20 +446,27 @@ def camera_loop():
 # ================== API ==================
 
 @app.post("/start_camera")
-def start_camera(data:CameraInput):
+def start_camera(data: CameraInput):
 
-    global cap
+    global cap, running, camera_thread, ocr_thread
 
-    cap=cv2.VideoCapture(data.ip)
+    if running:
+        return {"status": "camera already running"}
+
+    cap = cv2.VideoCapture(data.ip, cv2.CAP_FFMPEG)
 
     if not cap.isOpened():
+        return {"status": "error", "message": "cannot open camera"}
 
-        return {"status":"error","message":"cannot open camera"}
+    running = True
 
-    threading.Thread(target=ocr_worker,daemon=True).start()
-    threading.Thread(target=camera_loop,daemon=True).start()
+    ocr_thread = threading.Thread(target=ocr_worker, daemon=True)
+    ocr_thread.start()
 
-    return {"status":"camera started"}
+    camera_thread = threading.Thread(target=camera_loop, daemon=True)
+    camera_thread.start()
+
+    return {"status": "camera started"}
 
 
 @app.get("/plate")
@@ -496,3 +506,20 @@ def get_plate():
 @app.get("/status")
 def status():
     return {"status": "running"}
+
+@app.post("/stop_camera")
+def stop_camera():
+
+    global cap, running, camera_thread, ocr_thread
+
+    running = False
+
+    time.sleep(0.5)
+
+    if cap is not None:
+        cap.release()
+        cap = None
+
+    cv2.destroyAllWindows()
+
+    return {"status": "camera stopped"}
