@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace API.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateProductTable : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -179,7 +179,10 @@ namespace API.Migrations
                     ExpectedLicensePlate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     ExpectedTimeIn = table.Column<DateTime>(type: "datetime", nullable: false),
                     ExpectedTimeOut = table.Column<DateTime>(type: "datetime", nullable: false),
-                    Status = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true, defaultValue: "PENDING")
+                    Status = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true, defaultValue: "PENDING"),
+                    LicensePlateImageBase64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    NumberOfVisitors = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    CreatedAt = table.Column<DateTime>(type: "datetime", nullable: false, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
                 {
@@ -194,6 +197,29 @@ namespace API.Migrations
                         column: x => x.GuestId,
                         principalTable: "GuestProfile",
                         principalColumn: "GuestId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Registration_Links",
+                columns: table => new
+                {
+                    LinkId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Token = table.Column<string>(type: "varchar(32)", unicode: false, maxLength: 32, nullable: false),
+                    HostEmployeeId = table.Column<int>(type: "int", nullable: false),
+                    ExpiredAt = table.Column<DateTime>(type: "datetime", nullable: false),
+                    IsUsed = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Registration_Links", x => x.LinkId);
+                    table.ForeignKey(
+                        name: "FK_RegistrationLink_Employee",
+                        column: x => x.HostEmployeeId,
+                        principalTable: "Employee",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -277,10 +303,31 @@ namespace API.Migrations
                         principalColumn: "RegistrationId");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Visitor_Details",
+                columns: table => new
+                {
+                    VisitorDetailId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RegistrationId = table.Column<int>(type: "int", nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IdCardNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Visitor_Details", x => x.VisitorDetailId);
+                    table.ForeignKey(
+                        name: "FK_VisitorDetail_PreRegistration",
+                        column: x => x.RegistrationId,
+                        principalTable: "Pre_Registration",
+                        principalColumn: "RegistrationId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.InsertData(
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$iKXVaIB3i904GUQvwc5eNu2gab3bnwDYrWX6rOTD5vABAMZ094DHK", "Admin", "admin" });
+                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$cgLI.2qOWJkbJ/DvA.UVeOWdNWgLL96lCIEJkHZlsG8F6MJheNU3u", "Admin", "admin" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Access_Log_CameraId",
@@ -357,6 +404,17 @@ namespace API.Migrations
                 column: "HostEmployeeId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Registration_Links_HostEmployeeId",
+                table: "Registration_Links",
+                column: "HostEmployeeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Registration_Links_Token",
+                table: "Registration_Links",
+                column: "Token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Vehicle_EmployeeId",
                 table: "Vehicle",
                 column: "EmployeeId");
@@ -371,6 +429,11 @@ namespace API.Migrations
                 table: "Vehicle",
                 column: "LicensePlate",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Visitor_Details_RegistrationId",
+                table: "Visitor_Details",
+                column: "RegistrationId");
         }
 
         /// <inheritdoc />
@@ -383,7 +446,13 @@ namespace API.Migrations
                 name: "AppUsers");
 
             migrationBuilder.DropTable(
+                name: "Registration_Links");
+
+            migrationBuilder.DropTable(
                 name: "Vehicle");
+
+            migrationBuilder.DropTable(
+                name: "Visitor_Details");
 
             migrationBuilder.DropTable(
                 name: "Camera");
@@ -392,10 +461,10 @@ namespace API.Migrations
                 name: "Exception_Reason");
 
             migrationBuilder.DropTable(
-                name: "Pre_Registration");
+                name: "VehicleType");
 
             migrationBuilder.DropTable(
-                name: "VehicleType");
+                name: "Pre_Registration");
 
             migrationBuilder.DropTable(
                 name: "Gate");

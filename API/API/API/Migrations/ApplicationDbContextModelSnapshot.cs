@@ -161,7 +161,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$iKXVaIB3i904GUQvwc5eNu2gab3bnwDYrWX6rOTD5vABAMZ094DHK",
+                            PasswordHash = "$2a$11$cgLI.2qOWJkbJ/DvA.UVeOWdNWgLL96lCIEJkHZlsG8F6MJheNU3u",
                             Role = "Admin",
                             Username = "admin"
                         });
@@ -372,6 +372,11 @@ namespace API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("(getdate())");
+
                     b.Property<string>("ExpectedLicensePlate")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -388,6 +393,14 @@ namespace API.Migrations
                     b.Property<int?>("HostEmployeeId")
                         .HasColumnType("int");
 
+                    b.Property<string>("LicensePlateImageBase64")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NumberOfVisitors")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
@@ -403,6 +416,46 @@ namespace API.Migrations
                     b.HasIndex("HostEmployeeId");
 
                     b.ToTable("Pre_Registration");
+                });
+
+            modelBuilder.Entity("API.Models.RegistrationLink", b =>
+                {
+                    b.Property<int>("LinkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LinkId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<DateTime>("ExpiredAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("HostEmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("LinkId");
+
+                    b.HasIndex("HostEmployeeId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("Registration_Links");
                 });
 
             modelBuilder.Entity("API.Models.Vehicle", b =>
@@ -458,6 +511,33 @@ namespace API.Migrations
                         .HasName("PK__VehicleT__9F449643A4120859");
 
                     b.ToTable("VehicleType");
+                });
+
+            modelBuilder.Entity("API.Models.VisitorDetail", b =>
+                {
+                    b.Property<int>("VisitorDetailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VisitorDetailId"));
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IdCardNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("RegistrationId")
+                        .HasColumnType("int");
+
+                    b.HasKey("VisitorDetailId");
+
+                    b.HasIndex("RegistrationId");
+
+                    b.ToTable("Visitor_Details");
                 });
 
             modelBuilder.Entity("API.Models.AccessLog", b =>
@@ -560,6 +640,18 @@ namespace API.Migrations
                     b.Navigation("HostEmployee");
                 });
 
+            modelBuilder.Entity("API.Models.RegistrationLink", b =>
+                {
+                    b.HasOne("API.Models.Employee", "HostEmployee")
+                        .WithMany()
+                        .HasForeignKey("HostEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_RegistrationLink_Employee");
+
+                    b.Navigation("HostEmployee");
+                });
+
             modelBuilder.Entity("API.Models.Vehicle", b =>
                 {
                     b.HasOne("API.Models.Employee", "Employee")
@@ -575,6 +667,18 @@ namespace API.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("VehicleType");
+                });
+
+            modelBuilder.Entity("API.Models.VisitorDetail", b =>
+                {
+                    b.HasOne("API.Models.PreRegistration", "Registration")
+                        .WithMany("VisitorDetails")
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_VisitorDetail_PreRegistration");
+
+                    b.Navigation("Registration");
                 });
 
             modelBuilder.Entity("API.Models.AccessLog", b =>
@@ -628,6 +732,8 @@ namespace API.Migrations
             modelBuilder.Entity("API.Models.PreRegistration", b =>
                 {
                     b.Navigation("AccessLogs");
+
+                    b.Navigation("VisitorDetails");
                 });
 
             modelBuilder.Entity("API.Models.VehicleType", b =>

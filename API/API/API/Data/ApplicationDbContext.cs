@@ -39,6 +39,9 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<VehicleType> VehicleTypes { get; set; }
 
     public virtual DbSet<AppUser> AppUsers { get; set; }
+    // Thêm vào ApplicationDbContext.cs
+    public virtual DbSet<RegistrationLink> RegistrationLinks { get; set; }
+    public virtual DbSet<VisitorDetail> VisitorDetails { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -115,6 +118,38 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Guest).WithMany(p => p.PreRegistrations).HasConstraintName("FK_PreReg_Guest");
 
             entity.HasOne(d => d.HostEmployee).WithMany(p => p.PreRegistrations).HasConstraintName("FK_PreReg_Employee");
+            entity.HasMany(e => e.VisitorDetails)
+          .WithOne(v => v.Registration)
+          .HasForeignKey(v => v.RegistrationId)
+          .OnDelete(DeleteBehavior.Cascade)
+          .HasConstraintName("FK_VisitorDetail_PreRegistration");
+            entity.Property(e => e.NumberOfVisitors).HasDefaultValue(1);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+        });
+        modelBuilder.Entity<RegistrationLink>(entity =>
+{
+    entity.HasKey(e => e.LinkId);
+    entity.HasIndex(e => e.Token).IsUnique();
+    entity.Property(e => e.IsUsed).HasDefaultValue(false);
+    entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+
+    entity.HasOne(e => e.HostEmployee)
+          .WithMany()
+          .HasForeignKey(e => e.HostEmployeeId)
+          .OnDelete(DeleteBehavior.Restrict)
+          .HasConstraintName("FK_RegistrationLink_Employee");
+});
+
+        // THÊM: config VisitorDetail
+        modelBuilder.Entity<VisitorDetail>(entity =>
+        {
+            entity.HasKey(e => e.VisitorDetailId);
+
+            entity.HasOne(e => e.Registration)
+                  .WithMany(r => r.VisitorDetails)
+                  .HasForeignKey(e => e.RegistrationId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_VisitorDetail_PreRegistration");
         });
 
         modelBuilder.Entity<Vehicle>(entity =>

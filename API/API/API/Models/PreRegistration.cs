@@ -39,4 +39,17 @@ public partial class PreRegistration
     [ForeignKey("HostEmployeeId")]
     [InverseProperty("PreRegistrations")]
     public virtual Employee? HostEmployee { get; set; }
+    [Column(TypeName = "nvarchar(max)")]
+    public string? LicensePlateImageBase64 { get; set; }
+
+    public int NumberOfVisitors { get; set; } = 1;
+
+    [Column(TypeName = "datetime")]
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    // ── Navigation mới ───────────────────────────────────────
+
+    [InverseProperty("Registration")]
+    public virtual ICollection<VisitorDetail> VisitorDetails { get; set; } = new List<VisitorDetail>();
 }
+
