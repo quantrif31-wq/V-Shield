@@ -76,7 +76,7 @@ if device == "cuda":
 
 print("Loading OCR...")
 ocr = PaddleOCR(
-    use_angle_cls=True,
+    use_angle_cls=False,
     lang="en",
     show_log=False,
     use_gpu=(device == "cuda")
@@ -227,7 +227,7 @@ def enhance_plate(crop):
 
     gray=cv2.cvtColor(crop,cv2.COLOR_BGR2GRAY)
 
-    gray=cv2.resize(gray,(0,0),fx=2,fy=2)
+    gray = cv2.resize(gray, (320, 160))
 
     return cv2.cvtColor(gray,cv2.COLOR_GRAY2BGR)
 
@@ -269,27 +269,27 @@ def extract_text_from_ocr(result):
 
 def smart_rotate_ocr(crop):
 
-    rotations=[
-        crop,
-        cv2.rotate(crop,cv2.ROTATE_90_CLOCKWISE),
-        cv2.rotate(crop,cv2.ROTATE_180),
-        cv2.rotate(crop,cv2.ROTATE_90_COUNTERCLOCKWISE)
-    ]
+    crop = deskew_plate(crop)
 
-    best=""
+    rotations = [
+        crop,
+        cv2.rotate(crop, cv2.ROTATE_90_CLOCKWISE),
+        cv2.rotate(crop, cv2.ROTATE_180),
+        cv2.rotate(crop, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    ]
 
     for img in rotations:
 
-        processed=enhance_plate(img)
+        processed = enhance_plate(img)
 
-        result=ocr.ocr(processed)
+        result = ocr.ocr(processed)
 
-        text,conf=extract_text_from_ocr(result)
+        text, conf = extract_text_from_ocr(result)
 
-        if text and validate_plate(text) and conf>0.7:
-            best=text
+        if text and validate_plate(text) and conf > 0.7:
+            return text
 
-    return best
+    return ""
 
 
 def ocr_worker():
@@ -389,9 +389,9 @@ def camera_loop():
                 y2p = min(img.shape[0], y2 + PADDING)
 
                 crop = img[y1p:y2p, x1p:x2p]
-                cv2.imwrite("debug_plate.jpg", crop)
+                #cv2.imwrite("debug_plate.jpg", crop)
 
-                ocr_queue.put(crop.copy())
+                
 
                 if crop.size>0:
 
