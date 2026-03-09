@@ -161,7 +161,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$cgLI.2qOWJkbJ/DvA.UVeOWdNWgLL96lCIEJkHZlsG8F6MJheNU3u",
+                            PasswordHash = "$2a$11$IJ7903PA6uSbU6B7UymWqesSHPYMDDtgkDP.DO0Q469053Zk77usu",
                             Role = "Admin",
                             Username = "admin"
                         });
@@ -393,9 +393,6 @@ namespace API.Migrations
                     b.Property<int?>("HostEmployeeId")
                         .HasColumnType("int");
 
-                    b.Property<string>("LicensePlateImageBase64")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("NumberOfVisitors")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -520,6 +517,9 @@ namespace API.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VisitorDetailId"));
+
+                    b.Property<string>("ExpectedFaceImage")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
