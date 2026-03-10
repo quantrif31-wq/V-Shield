@@ -6,14 +6,16 @@
                 <h1 class="page-title">Quản lý Phương tiện</h1>
                 <p class="page-subtitle">Đăng ký và quản lý phương tiện ra/vào công ty</p>
             </div>
-            <button class="btn btn-primary" @click="openModal()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="width: 18px; height: 18px;">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Đăng ký phương tiện
-            </button>
+            <div class="header-actions">
+                <button class="btn btn-primary" @click="openModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width: 16px; height: 16px;">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Đăng ký phương tiện
+                </button>
+            </div>
         </div>
 
         <!-- Stats -->

@@ -6,14 +6,16 @@
                 <h1 class="page-title">Quản lý Nhân viên</h1>
                 <p class="page-subtitle">Quản lý thông tin nhân viên và quyền ra/vào</p>
             </div>
-            <button class="btn btn-primary" @click="openCreateModal">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    style="width: 18px; height: 18px;">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Thêm nhân viên
-            </button>
+            <div class="header-actions">
+                <button class="btn btn-primary" @click="openCreateModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width: 16px; height: 16px;">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Thêm nhân viên
+                </button>
+            </div>
         </div>
 
         <!-- Stats -->
@@ -60,46 +62,43 @@
         </div>
 
         <!-- Filters -->
-        <div class="card" style="margin-bottom: 20px; padding: 16px 20px;">
-            <div class="filter-group">
-                <div class="search-bar" style="max-width: 300px;">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="width: 18px; height: 18px;">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="M21 21l-4.35-4.35" />
-                    </svg>
-                    <input v-model="searchQuery" type="text" placeholder="Tìm nhân viên..." @input="debouncedFetch" />
-                </div>
-                <select v-model="filterStatus" class="filter-select" @change="fetchEmployees">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="true">Đang hoạt động</option>
-                    <option value="false">Ngừng hoạt động</option>
-                </select>
-                <div style="margin-left: auto; color: var(--text-secondary); font-size: 0.85rem;">
-                    {{ employees.length }} nhân viên
+        <div class="card">
+            <div class="card-header">
+                <div class="filter-group">
+                    <div class="search-bar" style="max-width: 300px;">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            style="width: 18px; height: 18px;">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                        <input v-model="searchQuery" type="text" placeholder="Tìm nhân viên..."
+                            @input="debouncedFetch" />
+                    </div>
+                    <select v-model="filterStatus" class="filter-select" @change="fetchEmployees">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="true">Đang hoạt động</option>
+                        <option value="false">Ngừng hoạt động</option>
+                    </select>
+                    <div style="margin-left: auto; color: var(--text-secondary); font-size: 0.85rem;">
+                        {{ employees.length }} nhân viên
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Loading -->
-        <div v-if="loading" class="card" style="padding: 0;">
-            <div class="loading-state">
+            <!-- Loading -->
+            <div v-if="loading" class="loading-state">
                 <div class="spinner-lg"></div>
                 <p>Đang tải dữ liệu...</p>
             </div>
-        </div>
 
-        <!-- Error -->
-        <div v-else-if="loadError" class="card" style="padding: 0;">
-            <div class="error-state">
+            <!-- Error -->
+            <div v-else-if="loadError" class="error-state">
                 <p>{{ loadError }}</p>
                 <button class="btn btn-primary btn-sm" @click="fetchEmployees">Thử lại</button>
             </div>
-        </div>
 
-        <!-- Table -->
-        <div v-else class="card" style="padding: 0;">
-            <div class="table-container">
+            <!-- Table -->
+            <div v-else class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -227,8 +226,8 @@
                                 <label>Chức vụ</label>
                                 <select v-model="modalForm.positionId">
                                     <option :value="null">Chọn chức vụ</option>
-                                    <option v-for="pos in positions" :key="pos.positionId"
-                                        :value="pos.positionId">{{ pos.name }}</option>
+                                    <option v-for="pos in positions" :key="pos.positionId" :value="pos.positionId">{{
+                                        pos.name }}</option>
                                 </select>
                             </div>
                         </div>
@@ -244,8 +243,8 @@
                         <!-- Face Image Upload -->
                         <div class="form-group">
                             <label>Ảnh khuôn mặt</label>
-                            <div class="face-upload-area" @click="$refs.faceInput.click()"
-                                @dragover.prevent @drop.prevent="handleDrop">
+                            <div class="face-upload-area" @click="$refs.faceInput.click()" @dragover.prevent
+                                @drop.prevent="handleDrop">
                                 <img v-if="facePreview" :src="facePreview" class="face-preview" />
                                 <div v-else class="face-placeholder">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -255,7 +254,8 @@
                                         <polyline points="21 15 16 10 5 21" />
                                     </svg>
                                     <span>Click hoặc kéo thả ảnh vào đây</span>
-                                    <span style="font-size: 0.75rem; color: var(--text-muted);">JPG, PNG, WebP — tối đa 5MB</span>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);">JPG, PNG, WebP — tối đa
+                                        5MB</span>
                                 </div>
                             </div>
                             <input ref="faceInput" type="file" accept="image/jpeg,image/png,image/webp" hidden

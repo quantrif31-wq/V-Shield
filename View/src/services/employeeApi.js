@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-    baseURL: 'https://localhost:5107/api/Employees'
+    baseURL: 'http://localhost:5107/api/Employees'
 })
 
 // Tự động gắn JWT token

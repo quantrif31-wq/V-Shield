@@ -12,27 +12,30 @@
         <div class="two-col">
             <!-- Departments -->
             <div class="card">
-                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
-                    <h3 style="font-size:1rem;font-weight:600;color:var(--text-primary);">
+                <div class="card-header">
+                    <h3 class="card-title" style="display: flex; align-items: center; gap: 6px;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:6px;">
+                            style="width: 18px; height: 18px;">
                             <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                             <polyline points="9 22 9 12 15 12 15 22" />
                         </svg>
                         Phòng ban
                     </h3>
-                    <button class="btn btn-primary btn-sm" @click="openDeptModal()">+ Thêm</button>
+                    <div class="header-actions">
+                        <button class="btn btn-primary btn-sm" style="padding: 5px 23px;" @click="openDeptModal()">+
+                            Thêm</button>
+                    </div>
                 </div>
 
                 <div v-if="deptLoading" class="loading-sm">Đang tải...</div>
                 <div v-else>
-                    <table class="data-table compact">
+                    <table class="data-table compact" style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th style="width: 80px;">ID</th>
                                 <th>Tên phòng ban</th>
-                                <th>Số NV</th>
-                                <th style="width:90px;text-align:center;">Thao tác</th>
+                                <th style="width: 100px;">Số NV</th>
+                                <th style="width: 100px; text-align: center;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -72,27 +75,30 @@
 
             <!-- Positions -->
             <div class="card">
-                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
-                    <h3 style="font-size:1rem;font-weight:600;color:var(--text-primary);">
+                <div class="card-header">
+                    <h3 class="card-title" style="display: flex; align-items: center; gap: 6px;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:6px;">
+                            style="width: 18px; height: 18px;">
                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
                         </svg>
                         Chức vụ
                     </h3>
-                    <button class="btn btn-primary btn-sm" @click="openPosModal()">+ Thêm</button>
+                    <div class="header-actions">
+                        <button class="btn btn-primary btn-sm" style="padding: 5px 23px;" @click="openPosModal()">+
+                            Thêm</button>
+                    </div>
                 </div>
 
                 <div v-if="posLoading" class="loading-sm">Đang tải...</div>
                 <div v-else>
-                    <table class="data-table compact">
+                    <table class="data-table compact" style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th style="width: 80px;">ID</th>
                                 <th>Tên chức vụ</th>
-                                <th>Số NV</th>
-                                <th style="width:90px;text-align:center;">Thao tác</th>
+                                <th style="width: 100px;">Số NV</th>
+                                <th style="width: 100px; text-align: center;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -428,7 +434,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .toast {
@@ -443,12 +451,34 @@ onMounted(() => {
     box-shadow: var(--shadow-lg);
 }
 
-.toast.success { background: var(--accent-success); color: #fff; }
-.toast.error { background: var(--accent-danger); color: #fff; }
+.toast.success {
+    background: var(--accent-success);
+    color: #fff;
+}
 
-.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(16px); }
+.toast.error {
+    background: var(--accent-danger);
+    color: #fff;
+}
 
-.modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
+.toast-enter-active,
+.toast-leave-active {
+    transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+    opacity: 0;
+    transform: translateY(16px);
+}
+
+.modal-enter-active,
+.modal-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+    opacity: 0;
+}
 </style>

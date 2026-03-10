@@ -215,13 +215,20 @@
 
                 <!-- Save Button -->
                 <div class="settings-footer">
-                    <button class="btn btn-secondary">Hủy bỏ</button>
-                    <button class="btn btn-primary" @click="saveSettings">
+                    <button class="btn btn-secondary action-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             style="width: 16px; height: 16px;">
-                            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                            <polyline points="17 21 17 13 7 13 7 21" />
-                            <polyline points="7 3 7 8 15 8" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Hủy bỏ
+                    </button>
+                    <button class="btn btn-primary action-btn" @click="saveSettings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            style="width: 16px; height: 16px;">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                            <polyline stroke-linecap="round" stroke-linejoin="round" points="17 21 17 13 7 13 7 21" />
+                            <polyline stroke-linecap="round" stroke-linejoin="round" points="7 3 7 8 15 8" />
                         </svg>
                         Lưu cài đặt
                     </button>
@@ -476,13 +483,24 @@ const saveSettings = () => {
 .settings-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: 16px;
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid var(--border-color);
 }
 
+.action-btn {
+    padding: 10px 16px;
+    justify-content: center;
+    flex: 0 1 auto;
+    min-width: 120px;
+}
+
 @media (max-width: 768px) {
+    .settings-footer {
+        justify-content: center;
+    }
+
     .settings-layout {
         grid-template-columns: 1fr;
     }

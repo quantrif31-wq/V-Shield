@@ -97,9 +97,10 @@ namespace API
                 options.AddPolicy("AllowVue", policy =>
                 {
                     policy
-                        .WithOrigins("http://localhost:5173")
+                        .WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175")
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
             });
 
@@ -112,7 +113,7 @@ namespace API
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
             app.UseStaticFiles(); // Serve files từ wwwroot/
             app.UseCors("AllowVue");
 

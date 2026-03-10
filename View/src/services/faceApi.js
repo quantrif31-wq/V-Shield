@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const api = axios.create({
-    baseURL: "https://localhost:5107/api/FaceID"
+    baseURL: "http://localhost:5107/api/FaceID"
 })
 
 export const startCamera = (ip) => {
