@@ -2,80 +2,49 @@
 
 <div class="security-container">
 
-  <h1 class="title">Gate Camera Monitor</h1>
+<h1 class="title">Gate Camera Monitor</h1>
 
-  <!-- CAMERA -->
-  <div class="video-wrapper">
+<select v-model="selectedCamera" @change="connectCamera">
 
-    <img
-      v-if="cameraRunning"
-      :src="streamUrl"
-      class="video"
-      ref="video"
-    />
+<option value="">Select Camera</option>
 
-    <canvas
-      ref="canvas"
-      class="overlay"
-    ></canvas>
+<option
+v-for="cam in cameras"
+:key="cam.cameraIP"
+:value="cam.cameraIP"
+>
+{{ cam.cameraIP }}
+</option>
 
-    <div v-if="!cameraRunning" class="video-off">
-      Camera Offline
-    </div>
+</select>
 
-  </div>
+<div class="video-wrapper">
 
-  <!-- PLATE -->
-  <div class="plate-panel">
+<img
+v-if="cameraRunning"
+:src="streamUrl"
+class="video"
+ref="video"
+/>
 
-    <div class="plate-label">Detected Plate</div>
+<canvas
+ref="canvas"
+class="overlay"
+></canvas>
 
-    <div class="plate-number">
-      {{ plate || "-----" }}
-    </div>
+<div v-if="!cameraRunning" class="video-off">
+Camera Offline
+</div>
 
-    <div class="fps">
-      FPS: {{ fps }}
-    </div>
+</div>
 
-  </div>
+<div class="plate-panel">
 
-  <!-- CONTROLS -->
-  <div class="controls">
+<div class="plate-label">Detected Plate</div>
 
-  <input
-    v-model="cameraIp"
-    placeholder="Camera MJPEG URL"
-    class="ip-input"
-  />
-
-  <button
-    class="btn ai-on"
-    @click="startAI"
-  >
-    Start AI
-  </button>
-
-  <button
-    class="btn ai-off"
-    @click="stopAI"
-  >
-    Stop AI
-  </button>
-
-  <button
-    class="btn start"
-    @click="startCameraClick"
-  >
-    Start Camera
-  </button>
-
-  <button
-    class="btn stop"
-    @click="stopCameraClick"
-  >
-    Stop Camera
-  </button>
+<div class="plate-number">
+{{ plate || "-----" }}
+</div>
 
 </div>
 
@@ -86,210 +55,145 @@
 
 <script>
 
-import { startCamera, 
-  stopCamera,
-  getPlate,
-  getStatus,
-  shutdownAI} from "../services/biensoApi"
+import { getCameras,getPlate } from "../services/biensoApi"
 
-export default {
+export default{
 
-  name: "SecurityPlateMonitor",
+name:"SecurityPlateMonitor",
 
-  data() {
-    return {
+data(){
 
-      cameraIp: "",
-      plate: "",
-      fps: 0,
+return{
 
-      cameraRunning: false,
+cameras:[],
+selectedCamera:"",
 
-      streamUrl: "",
+streamUrl:"",
+cameraRunning:false,
 
-      pollTimer: null
+plate:"",
 
-    }
-  },
+pollTimer:null
 
-  methods: {
-
-    async startCameraClick() {
-
-      if (!this.cameraIp) {
-
-        alert("Enter camera URL")
-        return
-
-      }
-
-      try {
-
-        const res = await startCamera(this.cameraIp)
-
-        console.log("Camera started:", res)
-
-        this.cameraRunning = true
-
-        // open camera stream directly
-        this.streamUrl = this.cameraIp
-
-        this.startPolling()
-
-      }
-      catch (err) {
-
-        console.error(err)
-
-        alert("Cannot start camera")
-
-      }
-
-    },
-async startAI() {
-
-  try {
-
-    const res = await getStatus()
-
-    console.log("AI Started:", res)
-
-    alert("AI Server Started")
-
-  }
-  catch (err) {
-
-    console.error(err)
-
-    alert("Cannot start AI")
-
-  }
+}
 
 },
 
-async stopAI() {
+async mounted(){
 
-  try {
-
-    const res = await shutdownAI()
-
-    console.log("AI stopped:", res)
-
-    this.cameraRunning = false
-    this.plate = ""
-
-    clearInterval(this.pollTimer)
-
-    alert("AI Server Stopped")
-
-  }
-  catch (err) {
-
-    console.error(err)
-
-    alert("Cannot stop AI")
-
-  }
+await this.loadCameras()
 
 },
 
-    async stopCameraClick() {
+methods:{
 
-      this.cameraRunning = false
+async loadCameras(){
 
-      this.plate = ""
+try{
 
-      clearInterval(this.pollTimer)
+const data = await getCameras()
 
-      const canvas = this.$refs.canvas
-      const ctx = canvas.getContext("2d")
+console.log("CAMERAS:",data)
 
-      ctx.clearRect(0,0,canvas.width,canvas.height)
+this.cameras = data
 
-    },
+}
+catch(e){
 
+console.error("Load camera error",e)
 
-    startPolling() {
+}
 
-      if (this.pollTimer)
-        clearInterval(this.pollTimer)
+},
 
-      this.pollTimer = setInterval(async () => {
+connectCamera(){
 
-        try {
+if(!this.selectedCamera) return
 
-          const res = await getPlate()
+this.streamUrl = this.selectedCamera
 
-          if (!res) return
+this.cameraRunning = true
 
-          if (res.plate)
-            this.plate = res.plate
+this.startPolling()
 
-          this.fps = res.fps
+},
 
-          this.drawBox(res.box)
+startPolling(){
 
-        }
-        catch (err) {
+if(this.pollTimer)
+clearInterval(this.pollTimer)
 
-          console.log("Polling error")
+this.pollTimer = setInterval(async()=>{
 
-        }
+try{
 
-      }, 700)
+const res = await getPlate(this.selectedCamera)
 
-    },
+if(!res) return
 
+this.plate = res.plateNumber
 
-    drawBox(box) {
+this.drawBox(res)
 
-      const canvas = this.$refs.canvas
-      const ctx = canvas.getContext("2d")
+}
+catch(e){
 
-      const img = this.$refs.video
+console.log("poll error")
 
-      if (!img) return
+}
 
-      canvas.width = img.clientWidth
-      canvas.height = img.clientHeight
+},500)
 
-      ctx.clearRect(0,0,canvas.width,canvas.height)
+},
 
-      if (!box) return
+drawBox(res){
 
-      const scaleX = canvas.width / 640
-      const scaleY = canvas.height / 360
+const canvas = this.$refs.canvas
+const ctx = canvas.getContext("2d")
+const img = this.$refs.video
 
-      const x = box.x1 * scaleX
-      const y = box.y1 * scaleY
-      const w = (box.x2 - box.x1) * scaleX
-      const h = (box.y2 - box.y1) * scaleY
+if(!img) return
 
-      ctx.strokeStyle = "#00ff00"
-      ctx.lineWidth = 3
+canvas.width = img.clientWidth
+canvas.height = img.clientHeight
 
-      ctx.strokeRect(x,y,w,h)
+ctx.clearRect(0,0,canvas.width,canvas.height)
 
-      ctx.font = "20px Arial"
-      ctx.fillStyle = "#00ff00"
+if(!res) return
 
-      if (this.plate)
-        ctx.fillText(this.plate, x, y - 10)
+const scaleX = canvas.width / 640
+const scaleY = canvas.height / 360
 
-    }
+const x = res.x1 * scaleX
+const y = res.y1 * scaleY
+const w = (res.x2 - res.x1) * scaleX
+const h = (res.y2 - res.y1) * scaleY
 
-  },
+ctx.strokeStyle="#00ff00"
+ctx.lineWidth=3
+ctx.strokeRect(x,y,w,h)
 
-  beforeUnmount() {
+if(this.plate){
 
-    clearInterval(this.pollTimer)
+ctx.font="20px Arial"
+ctx.fillStyle="#00ff00"
+ctx.fillText(this.plate,x,y-10)
 
-  }
+}
+
+}
+
+},
+
+beforeUnmount(){
+
+clearInterval(this.pollTimer)
+
+}
 
 }
 
 </script>
-
 
 
 <style scoped>
@@ -297,25 +201,18 @@ async stopAI() {
 .security-container{
 width:900px;
 margin:auto;
-font-family:Arial;
 text-align:center;
+font-family:Arial;
 }
-
-.title{
-margin-bottom:20px;
-}
-
 
 .video-wrapper{
 width:800px;
 height:450px;
+background:black;
 margin:auto;
-background:#000;
-border-radius:6px;
-overflow:hidden;
 position:relative;
+margin-top:20px;
 }
-
 
 .video{
 width:100%;
@@ -323,83 +220,32 @@ height:100%;
 object-fit:cover;
 }
 
-
 .overlay{
 position:absolute;
-left:0;
 top:0;
+left:0;
 width:100%;
 height:100%;
 pointer-events:none;
 }
 
-
 .video-off{
 color:white;
 display:flex;
-align-items:center;
 justify-content:center;
+align-items:center;
 height:100%;
 font-size:20px;
 }
-
 
 .plate-panel{
 margin-top:20px;
 }
 
-.plate-label{
-font-size:18px;
-color:#666;
-}
-
 .plate-number{
-font-size:42px;
-font-weight:bold;
+font-size:40px;
 color:#00aa00;
-margin-top:5px;
-letter-spacing:3px;
+font-weight:bold;
 }
 
-.fps{
-color:#888;
-margin-top:5px;
-}
-
-
-.controls{
-margin-top:25px;
-}
-
-.ip-input{
-width:320px;
-padding:8px;
-margin-right:10px;
-border:1px solid #ccc;
-border-radius:4px;
-}
-
-.btn{
-padding:10px 20px;
-margin:5px;
-cursor:pointer;
-border:none;
-color:white;
-border-radius:4px;
-}
-
-.start{
-background:#28a745;
-}
-
-.stop{
-background:#dc3545;
-}
-.ai-on{
-background:#007bff;
-}
-
-.ai-off{
-background:#6c757d;
-}
 </style>

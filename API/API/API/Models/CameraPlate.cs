@@ -1,9 +1,11 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace API.Models
 {
     public class CameraPlate
     {
+        [Key]
         public string CameraIP { get; set; } = null!;
 
         public string? PlateNumber { get; set; }

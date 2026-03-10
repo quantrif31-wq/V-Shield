@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
-using System.Text;
+using Microsoft.EntityFrameworkCore;
+using API.Models;
+using API.Data;
 
 namespace API.Controllers
 {
@@ -8,246 +9,100 @@ namespace API.Controllers
     [ApiController]
     public class BienSoController : ControllerBase
     {
-        private static readonly HttpClient client = new HttpClient()
+        private readonly ApplicationDbContext _context;
+
+        public BienSoController(ApplicationDbContext context)
         {
-            Timeout = TimeSpan.FromSeconds(5)
-        };
-
-        private static Process? pythonProcess;
-        private static readonly object lockObj = new object();
-
-        private readonly string pythonApi = "http://127.0.0.1:8001";
-        private readonly string pythonFolder = @"C:\DoAnTotNghiep\V-Shield\AI_Project\doc_bien";
-
-        // =========================
-        // CHECK PYTHON RUNNING
-        // =========================
-
-        async Task<bool> IsPythonRunning()
-        {
-            try
-            {
-                var res = await client.GetAsync($"{pythonApi}/status");
-                return res.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
+            _context = context;
         }
 
         // =========================
-        // ENSURE PYTHON RUNNING
+        // LẤY DANH SÁCH CAMERA
         // =========================
 
-        async Task EnsurePythonRunning()
+        [HttpGet("cameras")]
+        public async Task<IActionResult> GetCameras()
         {
-            if (await IsPythonRunning())
-                return;
-
-            lock (lockObj)
-            {
-                StartPythonServer();
-            }
-
-            for (int i = 0; i < 10; i++)
-            {
-                await Task.Delay(1000);
-
-                if (await IsPythonRunning())
-                    return;
-            }
-
-            throw new Exception("Python server failed to start");
-        }
-
-        // =========================
-        // SAFE CHECK PROCESS
-        // =========================
-
-        bool IsProcessAlive()
-        {
-            try
-            {
-                if (pythonProcess == null)
-                    return false;
-
-                return !pythonProcess.HasExited;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        // =========================
-        // START PYTHON
-        // =========================
-
-        void StartPythonServer()
-        {
-            try
-            {
-                if (IsProcessAlive())
-                    return;
-
-                ProcessStartInfo psi = new ProcessStartInfo
+            var cameras = await _context.CameraPlates
+                .Select(x => new
                 {
-                    FileName = "cmd.exe",
-                    WorkingDirectory = pythonFolder,
-                    Arguments = "/c venv\\Scripts\\activate && uvicorn bienso:app --host 127.0.0.1 --port 8001",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
+                    CameraIP = x.CameraIP
+                })
+                .ToListAsync();
 
-                pythonProcess = new Process();
-                pythonProcess.StartInfo = psi;
-
-                pythonProcess.OutputDataReceived += (s, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Console.WriteLine("[PYTHON] " + e.Data);
-                };
-
-                pythonProcess.ErrorDataReceived += (s, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                        Console.WriteLine("[PYTHON ERROR] " + e.Data);
-                };
-
-                pythonProcess.Start();
-
-                pythonProcess.BeginOutputReadLine();
-                pythonProcess.BeginErrorReadLine();
-
-                Console.WriteLine("Python server started");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Start python error: " + ex.Message);
-            }
+            return Ok(cameras);
         }
 
         // =========================
-        // STOP PYTHON
+        // LẤY TẤT CẢ BIỂN SỐ REALTIME
         // =========================
 
-        void StopPythonServer()
+        [HttpGet("plates")]
+        public async Task<IActionResult> GetPlates()
         {
-            try
-            {
-                if (IsProcessAlive())
+            var plates = await _context.CameraPlates
+                .OrderByDescending(x => x.LastUpdate)
+                .Select(p => new
                 {
-                    pythonProcess!.Kill(true);
-                    pythonProcess.Dispose();
-                    pythonProcess = null;
-                }
-            }
-            catch { }
+                    p.CameraIP,
+                    p.PlateNumber,
+                    p.X1,
+                    p.Y1,
+                    p.X2,
+                    p.Y2,
+                    p.LastUpdate
+                })
+                .ToListAsync();
+
+            return Ok(plates);
         }
 
         // =========================
-        // STATUS
-        // =========================
-
-        [HttpGet("status")]
-        public async Task<IActionResult> Status()
-        {
-            await EnsurePythonRunning();
-
-            var res = await client.GetAsync($"{pythonApi}/status");
-
-            var data = await res.Content.ReadAsStringAsync();
-
-            return Content(data, "application/json");
-        }
-
-        // =========================
-        // START CAMERA
-        // =========================
-
-        [HttpPost("start")]
-        public async Task<IActionResult> StartCamera([FromQuery] string ip)
-        {
-            await EnsurePythonRunning();
-
-            var content = new StringContent(
-                $"{{\"ip\":\"{ip}\"}}",
-                Encoding.UTF8,
-                "application/json"
-            );
-
-            var res = await client.PostAsync($"{pythonApi}/start_camera", content);
-
-            var data = await res.Content.ReadAsStringAsync();
-
-            return Content(data, "application/json");
-        }
-
-        // =========================
-        // STOP CAMERA
-        // =========================
-
-        [HttpPost("stop")]
-        public async Task<IActionResult> StopCamera()
-        {
-            // nếu python không chạy thì không làm gì
-            if (!IsProcessAlive())
-            {
-                return Ok(new
-                {
-                    message = "Python server is not running"
-                });
-            }
-
-            try
-            {
-                var res = await client.PostAsync($"{pythonApi}/stop_camera", null);
-
-                var data = await res.Content.ReadAsStringAsync();
-
-                return Content(data, "application/json");
-            }
-            catch
-            {
-                return StatusCode(500, new
-                {
-                    message = "Failed to stop camera"
-                });
-            }
-        }
-
-        // =========================
-        // GET PLATE
+        // LẤY BIỂN SỐ THEO CAMERA
         // =========================
 
         [HttpGet("plate")]
-        public async Task<IActionResult> GetPlate()
+        public async Task<IActionResult> GetPlate(string ip)
         {
-            await EnsurePythonRunning();
+            var plate = await _context.CameraPlates
+                .FirstOrDefaultAsync(x => x.CameraIP == ip);
 
-            var res = await client.GetAsync($"{pythonApi}/plate");
+            if (plate == null)
+                return NotFound();
 
-            var data = await res.Content.ReadAsStringAsync();
-
-            return Content(data, "application/json");
+            return Ok(plate);
         }
 
         // =========================
-        // SHUTDOWN PYTHON
+        // CAMERA + PLATE (dashboard)
         // =========================
 
-        [HttpPost("shutdown")]
-        public IActionResult ShutdownPython()
+        [HttpGet("camera-plates")]
+        public async Task<IActionResult> GetCameraPlates()
         {
-            StopPythonServer();
+            var data = await _context.Cameras
+                .Select(c => new
+                {
+                    c.CameraId,
+                    c.CameraName,
+                    c.CameraType,
 
-            return Ok(new
-            {
-                message = "Python server stopped"
-            });
+                    Plate = _context.CameraPlates
+                        .Where(p => p.CameraIP == c.CameraName)
+                        .Select(p => new
+                        {
+                            p.PlateNumber,
+                            p.X1,
+                            p.Y1,
+                            p.X2,
+                            p.Y2,
+                            p.LastUpdate
+                        })
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return Ok(data);
         }
     }
 }

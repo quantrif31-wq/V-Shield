@@ -161,7 +161,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$IJ7903PA6uSbU6B7UymWqesSHPYMDDtgkDP.DO0Q469053Zk77usu",
+                            PasswordHash = "$2a$11$c1lzzN7wUL4vrn8JSUqisuzNW.kTF19km9jLbEuLfvfp/keYUG9Zq",
                             Role = "Admin",
                             Username = "admin"
                         });
@@ -194,6 +194,34 @@ namespace API.Migrations
                     b.HasIndex("GateId");
 
                     b.ToTable("Camera");
+                });
+
+            modelBuilder.Entity("API.Models.CameraPlate", b =>
+                {
+                    b.Property<string>("CameraIP")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("LastUpdate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PlateNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("X1")
+                        .HasColumnType("int");
+
+                    b.Property<int>("X2")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y1")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Y2")
+                        .HasColumnType("int");
+
+                    b.HasKey("CameraIP");
+
+                    b.ToTable("CameraPlates");
                 });
 
             modelBuilder.Entity("API.Models.Department", b =>

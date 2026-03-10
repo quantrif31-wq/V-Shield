@@ -38,6 +38,7 @@ from collections import Counter
 import logging
 import threading
 from queue import Queue
+import pyodbc
 # ================== SILENT ==================
 os.environ["FLAGS_log_level"] = "3"
 os.environ["GLOG_minloglevel"] = "3"
@@ -53,6 +54,10 @@ if not ip_input:
 IP_STREAM = ip_input
 
 # ================== CONFIG ==================
+# ================== DATABASE ==================
+DB_CONN_STR = r"DRIVER={ODBC Driver 17 for SQL Server};SERVER=(localdb)\MSSQLLocalDB;DATABASE=AccessControlDB;Trusted_Connection=yes;TrustServerCertificate=yes"
+
+CAMERA_IP = IP_STREAM
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
 else:
@@ -77,7 +82,17 @@ last_box_center = None
 ocr_queue = Queue(maxsize=1)
 ocr_result = None
 ocr_running = False
+# ================== DATABASE ==================
 
+def get_db_connection():
+    try:
+        conn = pyodbc.connect(DB_CONN_STR, autocommit=True)
+        return conn
+    except Exception as e:
+        print("DB connection error:", e)
+        return None
+
+db_conn = get_db_connection()
 # ===== Session State Machine =====
 session_active = False
 session_votes = Counter()
@@ -144,7 +159,38 @@ def validate_plate(text):
         vehicle_type = "bike_or_car"
 
     return True, vehicle_type
+# ================== DB UPSERT ==================
 
+def update_camera_plate(camera_ip, plate, x1, y1, x2, y2):
+    global db_conn
+
+    if db_conn is None:
+        return
+
+    try:
+        # FIX numpy types
+        x1 = int(x1)
+        y1 = int(y1)
+        x2 = int(x2)
+        y2 = int(y2)
+
+        cursor = db_conn.cursor()
+
+        cursor.execute("""
+        IF EXISTS (SELECT 1 FROM CameraPlates WHERE CameraIP = ?)
+            UPDATE CameraPlates
+            SET PlateNumber = ?, X1=?, Y1=?, X2=?, Y2=?, LastUpdate = GETDATE()
+            WHERE CameraIP = ?
+        ELSE
+            INSERT INTO CameraPlates(CameraIP, PlateNumber, X1, Y1, X2, Y2, LastUpdate)
+            VALUES (?, ?, ?, ?, ?, ?, GETDATE())
+        """,
+        camera_ip,
+        plate, x1, y1, x2, y2, camera_ip,
+        camera_ip, plate, x1, y1, x2, y2)
+
+    except Exception as e:
+        print("DB write error:", e)
 # ================== ENHANCE ==================
 
 def auto_brightness_contrast(image):
@@ -312,6 +358,9 @@ try:
         # ================= SESSION LOGIC =================
         if last_box is not None:
             x1, y1, x2, y2 = last_box
+            # ===== UPDATE DB REALTIME BOX =====
+            current_plate = confirmed_plate if session_confirmed else None
+            update_camera_plate(CAMERA_IP, current_plate, x1, y1, x2, y2)
             moving_fast, globals()['last_box_center'] = is_box_moving_fast(
                 last_box, globals()['last_box_center']
             )
@@ -365,6 +414,7 @@ try:
         if session_active:
             if time.time() - last_seen_time > WAIT_TIMEOUT:
                 print("Vehicle exited")
+                update_camera_plate(CAMERA_IP, None, 0, 0, 0, 0)
                 session_active = False
                 session_votes.clear()
                 session_confirmed = False
