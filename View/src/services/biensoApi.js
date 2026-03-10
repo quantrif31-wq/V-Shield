@@ -12,6 +12,15 @@ export async function getStatus() {
   const res = await API.get("/status");
   return res.data;
 }
+// ========================
+// TẮT AI SERVER
+// ========================
+export async function shutdownAI() {
+
+  const res = await API.post("/shutdown");
+
+  return res.data;
+}
 
 // ========================
 // START CAMERA

@@ -193,13 +193,30 @@ namespace API.Controllers
         [HttpPost("stop")]
         public async Task<IActionResult> StopCamera()
         {
-            await EnsurePythonRunning();
+            // nếu python không chạy thì không làm gì
+            if (!IsProcessAlive())
+            {
+                return Ok(new
+                {
+                    message = "Python server is not running"
+                });
+            }
 
-            var res = await client.PostAsync($"{pythonApi}/stop_camera", null);
+            try
+            {
+                var res = await client.PostAsync($"{pythonApi}/stop_camera", null);
 
-            var data = await res.Content.ReadAsStringAsync();
+                var data = await res.Content.ReadAsStringAsync();
 
-            return Content(data, "application/json");
+                return Content(data, "application/json");
+            }
+            catch
+            {
+                return StatusCode(500, new
+                {
+                    message = "Failed to stop camera"
+                });
+            }
         }
 
         // =========================
