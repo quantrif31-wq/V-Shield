@@ -324,7 +324,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { getAll, create, update, deleteEmployee, uploadFace } from '../services/employeeApi'
 import { getDepartments, getPositions } from '../services/lookupApi'
 
-const API_BASE = 'http://localhost:5107'
+const API_BASE = 'https://localhost:7107'
 
 const employees = ref([])
 const departments = ref([])

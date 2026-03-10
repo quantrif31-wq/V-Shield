@@ -198,7 +198,7 @@ onMounted(async () => {
         activeEmployees.value = summary.activeEmployees.toString()
 
         // Connect to SSE stream
-        eventSource = new EventSource('http://localhost:5107/api/Statistics/employees/stream')
+        eventSource = new EventSource('https://localhost:7107/api/Statistics/employees/stream')
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data)
