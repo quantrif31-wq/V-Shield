@@ -1,5 +1,5 @@
 # ===== Core AI =====
-paddlepaddle-gpu==2.6.2
+paddlepaddle==2.6.2
 paddleocr==2.7.3
 
 ultralytics==8.0.226
@@ -9,18 +9,18 @@ torchvision==0.16.2
 # ===== Computer Vision =====
 opencv-python==4.6.0.66
 numpy>=1.24,<2.0
-scipy==1.11.4
-scikit-image==0.21.0
-shapely==2.0.3
+scipy==1.15.3
+scikit-image==0.25.2
+shapely==2.1.2
 
 # ===== Data =====
-pandas==2.1.4
-matplotlib==3.7.3
+pandas==2.3.3
+matplotlib==3.10.8
 
 # ===== Utilities =====
-Pillow==10.2.0
-requests==2.32.3
-tqdm==4.66.1
-PyYAML==6.0.1
+Pillow==12.1.1
+requests==2.32.5
+tqdm==4.67.3
+PyYAML==6.0.3
 visualdl==2.5.3
-pyodbc==5.0.1
+pyodbc==5.3.0
