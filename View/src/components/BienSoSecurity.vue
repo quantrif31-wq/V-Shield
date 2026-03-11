@@ -217,7 +217,11 @@ margin-top:20px;
 .video{
 width:100%;
 height:100%;
-object-fit:cover;
+object-fit:contain;
+
+/* xoay lại camera */
+transform: rotate(-90deg);
+transform-origin:center;
 }
 
 .overlay{
@@ -227,8 +231,11 @@ left:0;
 width:100%;
 height:100%;
 pointer-events:none;
-}
 
+/* xoay canvas giống video */
+transform: rotate(-90deg);
+transform-origin:center;
+}
 .video-off{
 color:white;
 display:flex;

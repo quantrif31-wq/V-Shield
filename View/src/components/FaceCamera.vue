@@ -4,14 +4,14 @@
 
 <header class="topbar">
 
-  <div class="title">
-    V-Shield AI Security Console
-  </div>
+<div class="title">
+V-Shield AI Security Console
+</div>
 
-  <div class="system-status">
-    <span class="led" :class="{on:running}"></span>
-    {{ running ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
-  </div>
+<div class="system-status">
+<span class="led" :class="{on:running}"></span>
+{{ running ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
+</div>
 
 </header>
 
@@ -19,94 +19,98 @@
 <div class="layout">
 
 <!-- CONTROL PANEL -->
-
 <div class="control">
 
-  <h3>Camera Control</h3>
+<h3>Camera Control</h3>
 
-  <input
-  v-model="cameraIp"
-  placeholder="Camera Stream URL"
-  />
+<input
+v-model="cameraIp"
+placeholder="Camera Stream URL"
+/>
 
-  <button class="btn start" @click="start">
-    ▶ START CAMERA
-  </button>
+<button class="btn start" @click="start">
+▶ START CAMERA
+</button>
 
-  <button class="btn stop" @click="stop">
-    ■ STOP CAMERA
-  </button>
+<button class="btn stop" @click="stop">
+■ STOP CAMERA
+</button>
 
-  <button class="btn shutdown" @click="shutdown">
-    ⚡ SHUTDOWN AI
-  </button>
+<button class="btn shutdown" @click="shutdown">
+⚡ SHUTDOWN AI
+</button>
 
 </div>
 
 
 <!-- CAMERA -->
-
 <div class="camera-panel">
 
-  <div class="video-wrapper">
+<div
+class="video-wrapper"
+:style="{ '--camColor': detectColor }"
+>
 
-    <img
-    ref="video"
-    class="video"
-    />
+<img
+ref="video"
+class="video"
+/>
 
-    <canvas ref="canvas"></canvas>
+<canvas ref="canvas"></canvas>
 
-    <div class="overlay">
+<div class="overlay">
 
-      <div>AI FACE DETECTION</div>
+<div :style="{color:detectColor}">
+AI FACE DETECTION
+</div>
 
-      <div>Distance : {{status.distance}}</div>
+<div>Status : {{detectLabel}}</div>
 
-      <div v-if="status.session_confirmed" class="confirm">
-        ✔ IDENTIFIED
-      </div>
+<div>Distance : {{status.distance}}</div>
 
-    </div>
+<div v-if="status.session_confirmed" class="confirm">
+✔ IDENTIFIED
+</div>
 
-  </div>
+</div>
+
+</div>
 
 </div>
 
 
 <!-- STATUS -->
-
 <div class="status">
 
 <h3>Detection Status</h3>
 
 <div class="status-box">
 
-  <div class="item">
-    <span>Camera</span>
-    <b :class="status.camera_running?'ok':'bad'">
-      {{status.camera_running ? "ONLINE":"OFFLINE"}}
-    </b>
-  </div>
+<div class="item">
+<span>Camera</span>
+<b :class="status.camera_running?'ok':'bad'">
+{{status.camera_running ? "ONLINE":"OFFLINE"}}
+</b>
+</div>
 
-  <div class="item">
-    <span>Session</span>
-    <b :class="status.session_active?'ok':'bad'">
-      {{status.session_active}}
-    </b>
-  </div>
+<div class="item">
+<span>Session</span>
+<b :class="status.session_active?'ok':'bad'">
+{{status.session_active}}
+</b>
+</div>
 
-  <div class="item">
-    <span>Confirmed</span>
-    <b :class="status.session_confirmed?'ok':'bad'">
-      {{status.session_confirmed}}
-    </b>
-  </div>
+<div class="item">
+<span>Confirmed</span>
+<b :class="status.session_confirmed?'ok':'bad'">
+{{status.session_confirmed}}
+</b>
+</div>
 
-  <div class="item">
-    <span>Distance</span>
-    <b>{{status.distance}}</b>
-  </div>
+<div class="item">
+<span>Distance</span>
+<b>{{status.distance}}</b>
+</div>
 
 </div>
 
@@ -118,11 +122,9 @@
 
 </template>
 
-
-
 <script setup>
 
-import {ref,onMounted,onBeforeUnmount} from "vue"
+import {ref,onMounted,onBeforeUnmount,computed} from "vue"
 import {startCamera,stopCamera,getStatus,shutdownAI} from "../services/faceApi"
 
 const cameraIp = ref("http://55.247.111.137:8080/video")
@@ -138,6 +140,41 @@ let poller = null
 const running = ref(false)
 
 
+/* ================= COLOR LOGIC ================= */
+
+const detectColor = computed(()=>{
+
+if(!status.value.session_active)
+return "#00bfff"   // idle
+
+if(status.value.session_confirmed)
+return "#00ff9c"   // confirmed
+
+if(status.value.face_match)
+return "#33ccff"   // verifying
+
+return "#ffd500"   // unknown
+
+})
+
+
+const detectLabel = computed(()=>{
+
+if(!status.value.session_active)
+return "IDLE"
+
+if(status.value.session_confirmed)
+return "IDENTIFIED"
+
+if(status.value.face_match)
+return "VERIFYING"
+
+return "UNKNOWN"
+
+})
+
+
+/* ================= CAMERA CONTROL ================= */
 
 async function start(){
 
@@ -162,7 +199,6 @@ console.log("start failed",e)
 }
 
 
-
 async function stop(){
 
 try{
@@ -178,7 +214,6 @@ stopPolling()
 clearCanvas()
 
 }
-
 
 
 async function shutdown(){
@@ -202,6 +237,7 @@ clearCanvas()
 }
 
 
+/* ================= POLLING ================= */
 
 function startPolling(){
 
@@ -211,8 +247,6 @@ poller=setInterval(updateStatus,200)
 
 }
 
-
-
 function stopPolling(){
 
 clearInterval(poller)
@@ -220,7 +254,6 @@ clearInterval(poller)
 poller=null
 
 }
-
 
 
 async function updateStatus(){
@@ -242,6 +275,7 @@ running.value=false
 }
 
 
+/* ================= DRAW FACE ================= */
 
 function drawFace(){
 
@@ -256,7 +290,7 @@ if(!face) return
 const scaleX = canvas.value.width / 480
 const scaleY = canvas.value.height / 480
 
-ctx.strokeStyle="#00ff9c"
+ctx.strokeStyle = detectColor.value
 ctx.lineWidth=3
 
 ctx.strokeRect(
@@ -267,7 +301,6 @@ face.height * scaleY
 )
 
 }
-
 
 
 function clearCanvas(){
@@ -282,6 +315,7 @@ canvas.value.height
 }
 
 
+/* ================= INIT ================= */
 
 onMounted(()=>{
 
@@ -296,8 +330,6 @@ canvas.value.height = video.value.clientHeight
 
 })
 
-
-
 onBeforeUnmount(()=>{
 
 stopPolling()
@@ -305,7 +337,6 @@ stopPolling()
 })
 
 </script>
-
 
 
 <style>
@@ -318,35 +349,26 @@ font-family:Segoe UI;
 }
 
 
-
 /* TOP BAR */
 
 .topbar{
 
 display:flex;
-
 justify-content:space-between;
-
 align-items:center;
 
 padding:20px 40px;
 
 background:#0b223f;
-
 border-bottom:2px solid #0af;
 
 }
 
 .title{
-
 font-size:22px;
-
 font-weight:bold;
-
 letter-spacing:2px;
-
 }
-
 
 
 /* LED */
@@ -354,11 +376,8 @@ letter-spacing:2px;
 .system-status{
 
 display:flex;
-
 align-items:center;
-
 gap:10px;
-
 font-size:14px;
 
 }
@@ -377,11 +396,9 @@ background:#666;
 .led.on{
 
 background:#00ff9c;
-
 box-shadow:0 0 12px #00ff9c;
 
 }
-
 
 
 /* LAYOUT */
@@ -401,15 +418,12 @@ padding:30px;
 }
 
 
-
 /* CONTROL */
 
 .control{
 
 background:#0c2747;
-
 padding:20px;
-
 border-radius:8px;
 
 }
@@ -417,29 +431,25 @@ border-radius:8px;
 .control input{
 
 width:100%;
-
 padding:10px;
-
 margin-bottom:15px;
 
 border:none;
-
 border-radius:6px;
 
 }
 
 
+/* BUTTON */
 
 .btn{
 
 width:100%;
-
 padding:12px;
 
 margin-bottom:10px;
 
 border:none;
-
 border-radius:6px;
 
 font-weight:bold;
@@ -459,7 +469,6 @@ transform:scale(1.05)
 .shutdown{background:#f39c12}
 
 
-
 /* VIDEO */
 
 .video-wrapper{
@@ -469,43 +478,49 @@ position:relative;
 width:720px;
 height:480px;
 
-border:3px solid #00bfff;
+border:3px solid var(--camColor);
 
 border-radius:8px;
 
 overflow:hidden;
 
-box-shadow:0 0 20px #00bfff;
+box-shadow:0 0 20px var(--camColor);
+
+background:black;
 
 }
 
 .video{
 
+position:absolute;
+
 width:100%;
 height:100%;
 
-object-fit:cover;
+object-fit:contain;
+
+transform: rotate(-90deg);
 
 }
-
-
 
 canvas{
 
 position:absolute;
-
-top:0;
-left:0;
 
 width:100%;
 height:100%;
 
 pointer-events:none;
 
+transform: rotate(-90deg);
+
 }
 
-
-
+.video,
+canvas{
+transform: rotate(-90deg) scale(1.5);
+transform-origin:center;
+}
 /* OVERLAY */
 
 .overlay{
@@ -530,11 +545,9 @@ border:1px solid #00bfff;
 .confirm{
 
 color:#00ff9c;
-
 font-weight:bold;
 
 }
-
 
 
 /* STATUS */
@@ -542,9 +555,7 @@ font-weight:bold;
 .status{
 
 background:#0c2747;
-
 padding:20px;
-
 border-radius:8px;
 
 }
@@ -554,9 +565,7 @@ border-radius:8px;
 margin-top:15px;
 
 display:flex;
-
 flex-direction:column;
-
 gap:10px;
 
 }
@@ -564,7 +573,6 @@ gap:10px;
 .item{
 
 display:flex;
-
 justify-content:space-between;
 
 padding:10px;

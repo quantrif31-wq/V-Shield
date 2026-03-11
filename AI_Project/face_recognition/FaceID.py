@@ -4,12 +4,12 @@ import cv2
 import time
 import threading
 from collections import deque
-
+import numpy as np
 app = FastAPI()
 
 # ================= CONFIG =================
-THRESHOLD = 0.4
-CONFIRM_FRAMES = 3
+THRESHOLD = 0.35
+CONFIRM_FRAMES = 5
 LOST_TIMEOUT = 2.0
 ENCODE_INTERVAL = 0.7
 FRAME_WIDTH = 480
@@ -37,6 +37,7 @@ result_state = {
     "camera_running": False,
     "session_active": False,
     "session_confirmed": False,
+    "face_match": False,
     "confirm_count": 0,
     "distance": None,
     "last_seen": None,
@@ -46,13 +47,14 @@ result_state = {
 # ================= LOAD FACE =================
 print("Loading face model...")
 
-known_image = face_recognition.load_image_file("me.jpg")
-encodings = face_recognition.face_encodings(known_image)
+import pickle
 
-if not encodings:
-    raise Exception("No face found in me.jpg")
+print("Loading face model...")
 
-known_encoding = encodings[0]
+with open("face_model.pkl", "rb") as f:
+    known_encodings = pickle.load(f)
+
+print("Loaded", len(known_encodings), "face embeddings")
 
 print("Face model loaded")
 
@@ -180,46 +182,51 @@ def face_processing():
 
                 if enc:
 
-                    distance = face_recognition.face_distance(
-                        [known_encoding],
-                        enc[0]
-                    )[0]
+                    distances = face_recognition.face_distance(
+                    known_encodings,
+                    enc[0]
+                )
 
-                    distance_buffer.append(distance)
+                distance = float(np.mean(sorted(distances)[:5]))
 
-                    avg_distance = sum(distance_buffer) / len(distance_buffer)
+                is_match = distance < THRESHOLD
 
-                    if not session_active:
-                        print("New person detected")
-                        session_active = True
-                        session_confirmed = False
-                        confirm_count = 0
-                        distance_buffer.clear()
+                if not session_active:
+                    print("Face detected")
+                    session_active = True
+                    session_confirmed = False
+                    confirm_count = 0
+                    distance_buffer.clear()
 
-                    last_seen_time = current_time
+                distance_buffer.append(distance)
+                avg_distance = sum(distance_buffer) / len(distance_buffer)
 
-                    if avg_distance < THRESHOLD:
-                        confirm_count += 1
-                    else:
-                        confirm_count = 0
+                last_seen_time = current_time
 
-                    if confirm_count >= CONFIRM_FRAMES and not session_confirmed:
-                        session_confirmed = True
-                        print("Identity confirmed")
+                # logic xác nhận
+                if is_match:
+                    confirm_count += 1
+                else:
+                    confirm_count = 0
+                    session_confirmed = False
 
-                    last_encode_time = current_time
+                if confirm_count >= CONFIRM_FRAMES and not session_confirmed:
+                    session_confirmed = True
+                    print("Identity confirmed")
 
-                    with state_lock:
-                        result_state.update({
-                            "camera_running": True,
-                            "session_active": session_active,
-                            "session_confirmed": session_confirmed,
-                            "confirm_count": confirm_count,
-                            "distance": float(avg_distance),
-                            "last_seen": last_seen_time,
-                            "face_box": face_box
-                        })
+                last_encode_time = current_time
 
+                with state_lock:
+                    result_state.update({
+                        "camera_running": True,
+                        "session_active": session_active,
+                        "session_confirmed": session_confirmed,
+                        "face_match": is_match,
+                        "confirm_count": confirm_count,
+                        "distance": float(avg_distance),
+                        "last_seen": last_seen_time,
+                        "face_box": face_box
+                    })
         # face lost
         if session_active and current_time - last_seen_time > LOST_TIMEOUT:
 
