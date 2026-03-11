@@ -344,7 +344,7 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$xA8r3WgPk1tPT/AGwpYhXeFJzds/NoPoWLJtMyNiaD9OXl3mXDqki", "Admin", "admin" });
+                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$PrhXqO.4Z0Cj8lccCWYCq.4QcZfTJnxeUc.TfOwRcOBV7tQfW3p4S", "Admin", "admin" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Access_Log_CameraId",
