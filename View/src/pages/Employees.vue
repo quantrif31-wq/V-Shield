@@ -1,286 +1,220 @@
 <template>
     <div class="page-container animate-in">
-        <!-- Header -->
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Quản lý Nhân viên</h1>
-                <p class="page-subtitle">Quản lý thông tin nhân viên và quyền ra/vào</p>
+        <!-- Minimalist Header -->
+        <header class="page-header bento-header">
+            <div class="greeting">
+                <h1 class="page-title">Quản lý Nhân sự</h1>
+                <p class="page-subtitle">Danh sách nhân viên, thông tin và quyền hạn</p>
             </div>
             <div class="header-actions">
                 <button class="btn btn-primary" @click="openCreateModal">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="width: 16px; height: 16px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                     Thêm nhân viên
                 </button>
             </div>
-        </div>
+        </header>
 
-        <!-- Stats -->
-        <div class="stats-grid">
-            <div class="stat-card blue">
-                <div class="stat-icon blue">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
-                        <path d="M16 3.13a4 4 0 010 7.75" />
-                    </svg>
+        <!-- Stats Overview Row -->
+        <div class="bento-grid-mini">
+            <div class="bento-card stat-card">
+                <div class="stat-icon-wrapper blue">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>
                 </div>
-                <div class="stat-info">
-                    <h3>{{ employees.length }}</h3>
-                    <p>Tổng nhân viên</p>
+                <div class="stat-details">
+                    <div class="stat-val">{{ employees.length }}</div>
+                    <div class="stat-lbl">Tổng số</div>
                 </div>
             </div>
-            <div class="stat-card green">
-                <div class="stat-icon green">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-                        <polyline points="22 4 12 14.01 9 11.01" />
-                    </svg>
+            <div class="bento-card stat-card">
+                <div class="stat-icon-wrapper green">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
                 </div>
-                <div class="stat-info">
-                    <h3>{{ activeCount }}</h3>
-                    <p>Đang hoạt động</p>
+                <div class="stat-details">
+                    <div class="stat-val green">{{ activeCount }}</div>
+                    <div class="stat-lbl">Hoạt động</div>
                 </div>
             </div>
-            <div class="stat-card red">
-                <div class="stat-icon red">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="15" y1="9" x2="9" y2="15" />
-                        <line x1="9" y1="9" x2="15" y2="15" />
-                    </svg>
+            <div class="bento-card stat-card">
+                <div class="stat-icon-wrapper red">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
                 </div>
-                <div class="stat-info">
-                    <h3>{{ inactiveCount }}</h3>
-                    <p>Ngừng hoạt động</p>
+                <div class="stat-details">
+                    <div class="stat-val red">{{ inactiveCount }}</div>
+                    <div class="stat-lbl">Ngừng HĐ</div>
                 </div>
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card">
-            <div class="card-header">
-                <div class="filter-group">
-                    <div class="search-bar" style="max-width: 300px;">
-                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            style="width: 18px; height: 18px;">
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="M21 21l-4.35-4.35" />
-                        </svg>
-                        <input v-model="searchQuery" type="text" placeholder="Tìm nhân viên..."
-                            @input="debouncedFetch" />
-                    </div>
-                    <select v-model="filterStatus" class="filter-select" @change="fetchEmployees">
+        <!-- Main Content Box -->
+        <div class="bento-card table-section">
+            <div class="table-toolbar">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <input v-model="searchQuery" type="text" placeholder="Tìm kiếm tên, SĐT, Email..." @input="debouncedFetch" />
+                </div>
+                <div class="filter-box">
+                    <select v-model="filterStatus" class="minimal-select" @change="fetchEmployees">
                         <option value="">Tất cả trạng thái</option>
                         <option value="true">Đang hoạt động</option>
                         <option value="false">Ngừng hoạt động</option>
                     </select>
-                    <div style="margin-left: auto; color: var(--text-secondary); font-size: 0.85rem;">
-                        {{ employees.length }} nhân viên
-                    </div>
                 </div>
             </div>
 
-            <!-- Loading -->
-            <div v-if="loading" class="loading-state">
+            <!-- States -->
+            <div v-if="loading" class="empty-layout">
                 <div class="spinner-lg"></div>
-                <p>Đang tải dữ liệu...</p>
+                <p>Đang tải hệ thống...</p>
             </div>
-
-            <!-- Error -->
-            <div v-else-if="loadError" class="error-state">
+            <div v-else-if="loadError" class="empty-layout error-layout">
                 <p>{{ loadError }}</p>
-                <button class="btn btn-primary btn-sm" @click="fetchEmployees">Thử lại</button>
+                <button class="btn btn-secondary btn-sm" @click="fetchEmployees">Thử lại</button>
             </div>
-
-            <!-- Table -->
-            <div v-else class="table-container">
-                <table class="data-table">
+            
+            <!-- Sleek Table -->
+            <div v-else class="sleek-table-container">
+                <table class="sleek-table">
                     <thead>
                         <tr>
                             <th>Nhân viên</th>
-                            <th>SĐT</th>
-                            <th>Email</th>
-                            <th>Phòng ban</th>
-                            <th>Chức vụ</th>
+                            <th>Liên hệ</th>
+                            <th>Phòng ban / Chức vụ</th>
                             <th>Trạng thái</th>
-                            <th style="width: 140px; text-align: center;">Thao tác</th>
+                            <th class="text-right">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="emp in employees" :key="emp.employeeId">
+                        <tr v-for="emp in employees" :key="emp.employeeId" class="table-row">
                             <td>
-                                <div class="avatar-group">
-                                    <div class="avatar" v-if="!emp.faceImageUrl"
-                                        :style="{ background: getAvatarColor(emp.employeeId) }">
+                                <div class="user-cell">
+                                    <div class="avatar" v-if="!emp.faceImageUrl" :style="{ background: getAvatarColor(emp.employeeId) }">
                                         {{ getInitials(emp.fullName) }}
                                     </div>
-                                    <img v-else :src="API_BASE + emp.faceImageUrl" class="avatar-img"
-                                        @error="$event.target.style.display = 'none'" />
-                                    <div class="avatar-info">
-                                        <span class="avatar-name">{{ emp.fullName }}</span>
-                                        <span class="avatar-sub">ID: {{ emp.employeeId }}</span>
+                                    <img v-else :src="API_BASE + emp.faceImageUrl" class="avatar-img" @error="$event.target.style.display = 'none'" />
+                                    <div class="user-info">
+                                        <span class="user-name">{{ emp.fullName }}</span>
+                                        <span class="user-id">ID: {{ emp.employeeId }}</span>
                                     </div>
                                 </div>
                             </td>
-                            <td>{{ emp.phone || '—' }}</td>
-                            <td>{{ emp.email || '—' }}</td>
-                            <td>{{ emp.departmentName || '—' }}</td>
-                            <td>{{ emp.positionName || '—' }}</td>
                             <td>
-                                <span class="badge" :class="emp.status ? 'active' : 'inactive'">
-                                    <span class="badge-dot"></span>
-                                    {{ emp.status ? 'Hoạt động' : 'Ngừng' }}
-                                </span>
+                                <div class="contact-cell">
+                                    <span class="contact-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>{{ emp.phone || '—' }}</span>
+                                    <span class="contact-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>{{ emp.email || '—' }}</span>
+                                </div>
                             </td>
                             <td>
-                                <div class="action-buttons">
-                                    <button class="btn-icon" @click="openEditModal(emp)" title="Chỉnh sửa">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            style="width: 16px; height: 16px;">
-                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
+                                <div class="role-cell">
+                                    <span class="dept">{{ emp.departmentName || 'Chưa xếp phòng' }}</span>
+                                    <span class="pos">{{ emp.positionName || '—' }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-pill" :class="emp.status ? 'active' : 'inactive'">
+                                    <span class="pill-dot"></span>
+                                    {{ emp.status ? 'Hoạt động' : 'Đã khóa' }}
+                                </span>
+                            </td>
+                            <td class="text-right">
+                                <div class="action-menu">
+                                    <button class="icon-btn" @click="openEditModal(emp)" title="Sửa">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                     </button>
-                                    <label class="btn-icon" :title="'Upload ảnh'" style="cursor: pointer;">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            style="width: 16px; height: 16px;">
-                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                            <circle cx="8.5" cy="8.5" r="1.5" />
-                                            <polyline points="21 15 16 10 5 21" />
-                                        </svg>
-                                        <input type="file" accept="image/*" hidden
-                                            @change="handleFaceUpload(emp.employeeId, $event)" />
+                                    <label class="icon-btn" title="Cập nhật FaceID" style="cursor: pointer;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                                        <input type="file" accept="image/*" hidden @change="handleFaceUpload(emp.employeeId, $event)" />
                                     </label>
-                                    <button class="btn-icon danger" @click="confirmDelete(emp)" title="Xóa">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            style="width: 16px; height: 16px;">
-                                            <polyline points="3 6 5 6 21 6" />
-                                            <path
-                                                d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                                            <line x1="10" y1="11" x2="10" y2="17" />
-                                            <line x1="14" y1="11" x2="14" y2="17" />
-                                        </svg>
+                                    <button class="icon-btn danger" @click="confirmDelete(emp)" title="Xóa">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                         <tr v-if="employees.length === 0">
-                            <td colspan="7" class="empty-state">Không tìm thấy nhân viên nào</td>
+                            <td colspan="5" class="empty-state">Không có nhân viên nào phù hợp</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Toast notification -->
-        <transition name="toast">
-            <div v-if="toast" class="toast" :class="toast.type">
-                {{ toast.message }}
-            </div>
-        </transition>
-
-        <!-- Create/Edit Modal -->
+        <!-- Create/Edit Modal Override -->
         <transition name="modal">
-            <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-                <div class="modal">
-                    <div class="modal-header">
-                        <h3 class="modal-title">{{ isEditing ? 'Chỉnh sửa nhân viên' : 'Thêm nhân viên mới' }}</h3>
-                        <button class="modal-close" @click="closeModal">✕</button>
+            <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
+                <div class="modern-modal">
+                    <div class="modal-top">
+                        <h3>{{ isEditing ? 'Cập nhật Thông tin' : 'Thêm Nhân sự' }}</h3>
+                        <button class="icon-close" @click="closeModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                     </div>
-
-                    <form @submit.prevent="handleSubmit">
-                        <div class="form-group">
-                            <label>Họ và tên *</label>
-                            <input v-model="modalForm.fullName" type="text" placeholder="Nhập họ tên" required
-                                maxlength="150" />
+                    
+                    <form @submit.prevent="handleSubmit" class="modal-body">
+                        <div class="input-pane">
+                            <label>Họ và tên <span class="req">*</span></label>
+                            <input v-model="modalForm.fullName" type="text" class="sleek-input" required placeholder="VD: Nguyễn Văn A" />
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
+                        <div class="grid-2">
+                            <div class="input-pane">
+                                <label>Điện thoại</label>
+                                <input v-model="modalForm.phone" type="tel" class="sleek-input" placeholder="09xx xxx xxx" />
+                            </div>
+                            <div class="input-pane">
                                 <label>Email</label>
-                                <input v-model="modalForm.email" type="email" placeholder="email@company.com"
-                                    maxlength="100" />
-                            </div>
-                            <div class="form-group">
-                                <label>Số điện thoại</label>
-                                <input v-model="modalForm.phone" type="text" placeholder="0912 345 678"
-                                    maxlength="20" />
+                                <input v-model="modalForm.email" type="email" class="sleek-input" placeholder="mail@example.com" />
                             </div>
                         </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
+                        <div class="grid-2">
+                            <div class="input-pane">
                                 <label>Phòng ban</label>
-                                <select v-model="modalForm.departmentId">
-                                    <option :value="null">Chọn phòng ban</option>
-                                    <option v-for="dept in departments" :key="dept.departmentId"
-                                        :value="dept.departmentId">{{ dept.name }}</option>
+                                <select v-model="modalForm.departmentId" class="sleek-select">
+                                    <option :value="null">-- Chọn phòng ban --</option>
+                                    <option v-for="d in departments" :key="d.departmentId" :value="d.departmentId">{{d.name}}</option>
                                 </select>
                             </div>
-                            <div class="form-group">
+                            <div class="input-pane">
                                 <label>Chức vụ</label>
-                                <select v-model="modalForm.positionId">
-                                    <option :value="null">Chọn chức vụ</option>
-                                    <option v-for="pos in positions" :key="pos.positionId" :value="pos.positionId">{{
-                                        pos.name }}</option>
+                                <select v-model="modalForm.positionId" class="sleek-select">
+                                    <option :value="null">-- Chọn chức vụ --</option>
+                                    <option v-for="p in positions" :key="p.positionId" :value="p.positionId">{{p.name}}</option>
                                 </select>
                             </div>
                         </div>
-
-                        <div class="form-group" v-if="isEditing">
-                            <label>Trạng thái</label>
-                            <select v-model="modalForm.status">
-                                <option :value="true">Đang hoạt động</option>
-                                <option :value="false">Ngừng hoạt động</option>
+                        <div class="input-pane" v-if="isEditing">
+                            <label>Trạng thái truy cập</label>
+                            <select v-model="modalForm.status" class="sleek-select">
+                                <option :value="true">Hoạt động bình thường</option>
+                                <option :value="false">Khóa truy cập</option>
                             </select>
                         </div>
-
-                        <!-- Face Image Upload -->
-                        <div class="form-group">
-                            <label>Ảnh khuôn mặt</label>
-                            <div class="face-upload-area" @click="$refs.faceInput.click()" @dragover.prevent
-                                @drop.prevent="handleDrop">
-                                <img v-if="facePreview" :src="facePreview" class="face-preview" />
-                                <div v-else class="face-placeholder">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                                        style="width: 32px; height: 32px; color: var(--text-muted);">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                                        <circle cx="8.5" cy="8.5" r="1.5" />
-                                        <polyline points="21 15 16 10 5 21" />
-                                    </svg>
-                                    <span>Click hoặc kéo thả ảnh vào đây</span>
-                                    <span style="font-size: 0.75rem; color: var(--text-muted);">JPG, PNG, WebP — tối đa
-                                        5MB</span>
+                        
+                        <!-- Face Upload -->
+                        <div class="input-pane">
+                            <label>Dữ liệu nhận diện (Face ID)</label>
+                            <div class="face-dropzone" @click="$refs.faceInput.click()" @dragover.prevent @drop.prevent="handleDrop">
+                                <img v-if="facePreview" :src="facePreview" class="face-preview-img" />
+                                <div v-else class="dropzone-text">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
+                                    <span>Tải ảnh khuôn mặt lên</span>
+                                    <small>Định dạng JPG/PNG/WebP, Max 5MB</small>
                                 </div>
                             </div>
-                            <input ref="faceInput" type="file" accept="image/jpeg,image/png,image/webp" hidden
-                                @change="handleFaceSelect" />
-                            <button v-if="facePreview" type="button" class="btn-remove-face" @click.stop="removeFace">
-                                ✕ Xóa ảnh
-                            </button>
+                            <input ref="faceInput" type="file" accept="image/*" hidden @change="handleFaceSelect" />
+                            <div class="text-right" v-if="facePreview" style="margin-top: 8px;">
+                                <button type="button" class="btn-text danger" @click.stop="removeFace">Xóa ảnh này</button>
+                            </div>
                         </div>
 
-                        <!-- Modal Error -->
-                        <div v-if="modalError" class="form-error">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                style="width: 16px; height: 16px; flex-shrink: 0;">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="15" y1="9" x2="9" y2="15" />
-                                <line x1="9" y1="9" x2="15" y2="15" />
-                            </svg>
-                            <span>{{ modalError }}</span>
-                        </div>
+                        <div v-if="modalError" class="alert-box error">{{ modalError }}</div>
 
-                        <div class="modal-footer">
+                        <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" @click="closeModal">Hủy</button>
                             <button type="submit" class="btn btn-primary" :disabled="saving">
-                                <span v-if="saving" class="spinner-sm"></span>
-                                {{ isEditing ? 'Lưu thay đổi' : 'Thêm nhân viên' }}
+                                <span v-if="saving" class="spinner-sm"></span> {{ isEditing ? 'Lưu Thông Tin' : 'Tạo Nhân Sự' }}
                             </button>
                         </div>
                     </form>
@@ -288,33 +222,32 @@
             </div>
         </transition>
 
-        <!-- Delete Confirm Modal -->
+        <!-- Delete Confirm Override -->
         <transition name="modal">
-            <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
-                <div class="modal" style="max-width: 420px;">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Xác nhận xóa</h3>
-                        <button class="modal-close" @click="showDeleteModal = false">✕</button>
+            <div v-if="showDeleteModal" class="modal-backdrop" @click.self="showDeleteModal = false">
+                <div class="modern-modal mini">
+                    <div class="modal-top borderless">
+                        <h3>Cảnh báo Xóa</h3>
                     </div>
-                    <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">
-                        Bạn có chắc chắn muốn xóa nhân viên
-                        <strong style="color: var(--text-primary);">{{ deleteTarget?.fullName }}</strong>?
-                    </p>
-                    <p style="color: var(--accent-danger); font-size: 0.85rem;">
-                        Hành động này không thể hoàn tác.
-                    </p>
-                    <div v-if="modalError" class="form-error" style="margin-top: 16px;">
-                        <span>{{ modalError }}</span>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" @click="showDeleteModal = false">Hủy</button>
-                        <button class="btn btn-danger" @click="handleDelete" :disabled="saving">
-                            <span v-if="saving" class="spinner-sm"></span>
-                            Xóa
-                        </button>
+                    <div class="modal-body text-center">
+                        <div class="warning-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                        <p>Bạn sắp xóa dữ liệu của nhân viên <strong>{{ deleteTarget?.fullName }}</strong>.</p>
+                        <p class="text-danger mt-1">Hành động này sẽ xóa toàn bộ lịch sử và FaceID liên quan. Vẫn tiếp tục?</p>
+
+                        <div class="modal-actions centered mt-4">
+                            <button class="btn btn-secondary" @click="showDeleteModal = false">Hủy bỏ</button>
+                            <button class="btn btn-danger" @click="handleDelete" :disabled="saving">
+                                <span v-if="saving" class="spinner-sm"></span> Xác nhận Xóa
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+        </transition>
+
+        <!-- Toast -->
+        <transition name="toast">
+            <div v-if="toast" class="toast-card" :class="toast.type">{{ toast.message }}</div>
         </transition>
     </div>
 </template>
@@ -336,31 +269,19 @@ const loadError = ref('')
 const searchQuery = ref('')
 const filterStatus = ref('')
 
-// Modal state
 const showModal = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 const saving = ref(false)
 const modalError = ref('')
 
-const modalForm = reactive({
-    fullName: '',
-    phone: '',
-    email: '',
-    departmentId: null,
-    positionId: null,
-    status: true,
-})
-
-// Face upload in modal
+const modalForm = reactive({ fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true })
 const faceFile = ref(null)
 const facePreview = ref(null)
 
-// Delete modal
 const showDeleteModal = ref(false)
 const deleteTarget = ref(null)
 
-// Toast
 const toast = ref(null)
 let toastTimer = null
 
@@ -370,18 +291,15 @@ function showToast(message, type = 'success') {
     toastTimer = setTimeout(() => { toast.value = null }, 3000)
 }
 
-// Computed
 const activeCount = computed(() => employees.value.filter(e => e.status).length)
 const inactiveCount = computed(() => employees.value.filter(e => !e.status).length)
 
-// Debounce search
 let searchTimer = null
 function debouncedFetch() {
     if (searchTimer) clearTimeout(searchTimer)
     searchTimer = setTimeout(() => fetchEmployees(), 400)
 }
 
-// Fetch employees
 async function fetchEmployees() {
     loading.value = true
     loadError.value = ''
@@ -392,380 +310,195 @@ async function fetchEmployees() {
         const res = await getAll(params)
         employees.value = res.data
     } catch (err) {
-        if (err.code === 'ERR_NETWORK') {
-            loadError.value = 'Không thể kết nối đến server'
-        } else {
-            loadError.value = 'Không thể tải danh sách nhân viên'
-        }
-    } finally {
-        loading.value = false
-    }
+        loadError.value = 'Không thể kết nối đến máy chủ.'
+    } finally { loading.value = false }
 }
 
-// Modal handlers
 function openCreateModal() {
-    isEditing.value = false
-    editingId.value = null
-    modalError.value = ''
-    faceFile.value = null
-    facePreview.value = null
-    Object.assign(modalForm, {
-        fullName: '',
-        phone: '',
-        email: '',
-        departmentId: null,
-        positionId: null,
-        status: true,
-    })
+    isEditing.value = false; editingId.value = null; modalError.value = ''; faceFile.value = null; facePreview.value = null;
+    Object.assign(modalForm, { fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true })
     showModal.value = true
 }
 
 function openEditModal(emp) {
-    isEditing.value = true
-    editingId.value = emp.employeeId
-    modalError.value = ''
-    faceFile.value = null
+    isEditing.value = true; editingId.value = emp.employeeId; modalError.value = ''; faceFile.value = null;
     facePreview.value = emp.faceImageUrl ? (API_BASE + emp.faceImageUrl) : null
-    Object.assign(modalForm, {
-        fullName: emp.fullName,
-        phone: emp.phone || '',
-        email: emp.email || '',
-        departmentId: emp.departmentId || null,
-        positionId: emp.positionId || null,
-        status: emp.status ?? true,
-    })
+    Object.assign(modalForm, { fullName: emp.fullName, phone: emp.phone || '', email: emp.email || '', departmentId: emp.departmentId || null, positionId: emp.positionId || null, status: emp.status ?? true })
     showModal.value = true
 }
 
-function closeModal() {
-    showModal.value = false
-    modalError.value = ''
-    faceFile.value = null
-    facePreview.value = null
-}
+function closeModal() { showModal.value = false; modalError.value = ''; faceFile.value = null; facePreview.value = null; }
 
 async function handleSubmit() {
-    saving.value = true
-    modalError.value = ''
+    saving.value = true; modalError.value = ''
     try {
-        const data = {
-            fullName: modalForm.fullName,
-            phone: modalForm.phone || null,
-            email: modalForm.email || null,
-            departmentId: modalForm.departmentId || null,
-            positionId: modalForm.positionId || null,
-        }
-
+        const data = { fullName: modalForm.fullName, phone: modalForm.phone || null, email: modalForm.email || null, departmentId: modalForm.departmentId || null, positionId: modalForm.positionId || null }
         let employeeId = editingId.value
-
-        if (isEditing.value) {
-            data.status = modalForm.status
-            await update(editingId.value, data)
-        } else {
-            data.status = true
-            const res = await create(data)
-            employeeId = res.data.employeeId
-        }
-
-        // Upload ảnh khuôn mặt nếu có chọn file mới
-        if (faceFile.value && employeeId) {
-            await uploadFace(employeeId, faceFile.value)
-        }
-
-        showToast(isEditing.value ? 'Cập nhật nhân viên thành công' : 'Thêm nhân viên thành công')
-        closeModal()
-        await fetchEmployees()
-    } catch (err) {
-        modalError.value = err.response?.data?.message || 'Đã xảy ra lỗi, vui lòng thử lại'
-    } finally {
-        saving.value = false
-    }
+        if (isEditing.value) { data.status = modalForm.status; await update(editingId.value, data) } 
+        else { data.status = true; const res = await create(data); employeeId = res.data.employeeId }
+        
+        if (faceFile.value && employeeId) await uploadFace(employeeId, faceFile.value)
+        showToast(isEditing.value ? 'Đã lưu thay đổi' : 'Đã tạo hồ sơ nhân sự')
+        closeModal(); await fetchEmployees()
+    } catch (err) { modalError.value = err.response?.data?.message || 'Có lỗi khi lưu dữ liệu' } 
+    finally { saving.value = false }
 }
 
-// Face select in modal
-function handleFaceSelect(event) {
-    const file = event.target.files[0]
-    if (!file) return
-    event.target.value = ''
-    faceFile.value = file
-    facePreview.value = URL.createObjectURL(file)
+function handleFaceSelect(e) {
+    const f = e.target.files[0]; if (!f) return; e.target.value = ''; faceFile.value = f; facePreview.value = URL.createObjectURL(f);
+}
+function handleDrop(e) {
+    const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) { faceFile.value = f; facePreview.value = URL.createObjectURL(f) }
+}
+function removeFace() { faceFile.value = null; facePreview.value = null }
+
+async function handleFaceUpload(id, e) {
+    const f = e.target.files[0]; if (!f) return; e.target.value = ''
+    try { await uploadFace(id, f); showToast('Cập nhật FaceID thành công!'); await fetchEmployees() } 
+    catch (err) { showToast('Upload FaceID thất bại', 'error') }
 }
 
-function handleDrop(event) {
-    const file = event.dataTransfer.files[0]
-    if (file && file.type.startsWith('image/')) {
-        faceFile.value = file
-        facePreview.value = URL.createObjectURL(file)
-    }
-}
-
-function removeFace() {
-    faceFile.value = null
-    facePreview.value = null
-}
-
-// Face upload from table row
-async function handleFaceUpload(employeeId, event) {
-    const file = event.target.files[0]
-    if (!file) return
-    event.target.value = '' // reset input
-    try {
-        await uploadFace(employeeId, file)
-        showToast('Upload ảnh khuôn mặt thành công')
-        await fetchEmployees()
-    } catch (err) {
-        showToast(err.response?.data?.message || 'Upload ảnh thất bại', 'error')
-    }
-}
-
-// Delete handlers
-function confirmDelete(emp) {
-    deleteTarget.value = emp
-    modalError.value = ''
-    showDeleteModal.value = true
-}
-
+function confirmDelete(emp) { deleteTarget.value = emp; modalError.value = ''; showDeleteModal.value = true }
 async function handleDelete() {
-    saving.value = true
-    modalError.value = ''
-    try {
-        await deleteEmployee(deleteTarget.value.employeeId)
-        showDeleteModal.value = false
-        showToast('Xóa nhân viên thành công')
-        await fetchEmployees()
-    } catch (err) {
-        modalError.value = err.response?.data?.message || 'Không thể xóa nhân viên'
-    } finally {
-        saving.value = false
-    }
+    saving.value = true; modalError.value = ''
+    try { await deleteEmployee(deleteTarget.value.employeeId); showDeleteModal.value = false; showToast('Đã xóa dữ liệu nhân sự'); await fetchEmployees() } 
+    catch (err) { modalError.value = 'Mất kết nối nội bộ' } finally { saving.value = false }
 }
 
-// Helpers
-function getInitials(name) {
-    if (!name) return '?'
-    return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-}
-
-const avatarColors = [
-    'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-    'linear-gradient(135deg, #ec4899, #f43f5e)',
-    'linear-gradient(135deg, #10b981, #06b6d4)',
-    'linear-gradient(135deg, #f59e0b, #ef4444)',
-    'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-    'linear-gradient(135deg, #06b6d4, #3b82f6)',
-    'linear-gradient(135deg, #f43f5e, #f59e0b)',
-    'linear-gradient(135deg, #10b981, #8b5cf6)',
-]
-
-function getAvatarColor(id) {
-    return avatarColors[id % avatarColors.length]
-}
+function getInitials(name) { return name ? name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : '?' }
+const avColors = [ '#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e' ]
+function getAvatarColor(id) { return avColors[id % avColors.length] }
 
 onMounted(async () => {
-    // Check url query for search
-    if (route.query.search) {
-        searchQuery.value = route.query.search
-    }
-
-    // Load lookup data + employees in parallel
-    try {
-        const [deptRes, posRes] = await Promise.all([
-            getDepartments(),
-            getPositions(),
-        ])
-        departments.value = deptRes.data
-        positions.value = posRes.data
-    } catch (e) {
-        console.warn('Could not load lookup data:', e)
-    }
+    if (route.query.search) { searchQuery.value = route.query.search }
+    try { const [dRes, pRes] = await Promise.all([getDepartments(), getPositions()]); departments.value = dRes.data; positions.value = pRes.data } catch {}
     fetchEmployees()
 })
 
-watch(() => route.query.search, (newSearch) => {
-    if (newSearch !== undefined) {
-        searchQuery.value = newSearch
-        fetchEmployees()
-    }
-})
+watch(() => route.query.search, (val) => { if (val !== undefined) { searchQuery.value = val; fetchEmployees() } })
 </script>
 
 <style scoped>
-.action-buttons {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
+/* Page Layout */
+.bento-header { margin-bottom: 24px; padding: 0 4px; display: flex; justify-content: space-between; align-items: center; }
+.bento-header .greeting h1 { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); }
+.bento-header .greeting p { color: var(--text-secondary); font-size: 0.95rem; }
 
-.btn-icon.danger:hover {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--accent-danger);
-    border-color: var(--accent-danger);
-}
+/* Grid Mini */
+.bento-grid-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+.bento-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 24px; }
+.stat-card { display: flex; align-items: center; gap: 16px; transition: transform var(--transition-normal); }
+.stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.stat-icon-wrapper { width: 56px; height: 56px; border-radius: 14px; display: flex; justify-content: center; align-items: center; }
+.stat-icon-wrapper svg { width: 28px; height: 28px; }
+.stat-icon-wrapper.blue { background: rgba(16, 121, 196, 0.1); color: var(--accent-primary); }
+.stat-icon-wrapper.green { background: rgba(16, 185, 129, 0.1); color: var(--accent-success); }
+.stat-icon-wrapper.red { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); }
+.stat-val { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.stat-val.green { color: var(--accent-success); }
+.stat-val.red { color: var(--accent-danger); }
+.stat-lbl { font-size: 0.9rem; color: var(--text-muted); font-weight: 500;}
 
-.avatar-img {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--border-color);
-}
+/* Table Box */
+.table-section { padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 500px; }
+.table-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
+.search-box { position: relative; width: 320px; display: flex; align-items: center; }
+.search-icon { position: absolute; left: 14px; color: var(--text-muted); width: 18px; }
+.search-box input { width: 100%; padding: 10px 14px 10px 42px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; }
+.search-box input:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 2px rgba(16, 121, 196, 0.2); }
+.minimal-select { padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); cursor: pointer; outline: none; }
 
-.loading-state,
-.error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-    gap: 16px;
-    color: var(--text-secondary);
-}
+/* Table Elements */
+.sleek-table-container { flex: 1; overflow-x: auto; }
+.sleek-table { width: 100%; border-collapse: collapse; text-align: left; }
+.sleek-table th { padding: 16px 24px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.1); }
+.sleek-table td { padding: 18px 24px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+.table-row { transition: background var(--transition-fast); }
+.table-row:hover { background: var(--bg-card-hover); cursor: default; }
 
-.spinner-lg {
-    width: 36px;
-    height: 36px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--accent-primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
+.user-cell { display: flex; align-items: center; gap: 14px; }
+.avatar, .avatar-img { width: 44px; height: 44px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; object-fit: cover; }
+.user-info { display: flex; flex-direction: column; }
+.user-name { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
+.user-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
 
-.spinner-sm {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    margin-right: 6px;
-}
+.contact-cell { display: flex; flex-direction: column; gap: 4px; }
+.contact-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+.contact-item svg { width: 14px; color: var(--text-muted); }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
+.role-cell { display: flex; flex-direction: column; gap: 2px; }
+.dept { font-weight: 500; font-size: 0.9rem; color: var(--text-primary); }
+.pos { font-size: 0.8rem; color: var(--accent-primary); }
 
-.empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 40px !important;
-}
+.status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;}
+.status-pill.active { background: rgba(16, 185, 129, 0.1); color: var(--accent-success); }
+.status-pill.inactive { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-/* Face upload in modal */
-.face-upload-area {
-    border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius-sm);
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    background: var(--bg-input);
-    min-height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+.action-menu { display: flex; gap: 8px; justify-content: flex-end; }
+.icon-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+.icon-btn svg { width: 18px; }
+.icon-btn:hover { background: var(--bg-input); color: var(--text-primary); }
+.icon-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); }
 
-.face-upload-area:hover {
-    border-color: var(--accent-primary);
-    background: rgba(59, 130, 246, 0.05);
-}
+/* Spinners & Empties */
+.empty-layout { padding: 60px; text-align: center; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.spinner-lg { width: 36px; height: 36px; border: 3px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.face-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
+/* Modern Modals */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px;}
+.modern-modal { background: var(--bg-card); width: 100%; max-width: 580px; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); overflow: hidden; display: flex; flex-direction: column;}
+.modern-modal.mini { max-width: 420px; }
+.modal-top { display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid var(--border-color); }
+.modal-top.borderless { border: none; padding-bottom: 0; }
+.modal-top h3 { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin: 0;}
+.icon-close { background: none; border: none; color: var(--text-muted); cursor: pointer; width: 24px; transition: color 0.2s; }
+.icon-close:hover { color: var(--accent-danger); }
 
-.face-preview {
-    max-width: 150px;
-    max-height: 150px;
-    border-radius: var(--border-radius-sm);
-    object-fit: cover;
-    border: 2px solid var(--border-color);
-}
+.modal-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.input-pane { display: flex; flex-direction: column; gap: 8px; }
+.input-pane label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
+.req { color: var(--accent-danger); }
 
-.btn-remove-face {
-    display: block;
-    margin-top: 8px;
-    background: none;
-    color: var(--accent-danger);
-    font-size: 0.8rem;
-    cursor: pointer;
-    padding: 4px 0;
-    transition: opacity var(--transition-fast);
-}
+.sleek-input, .sleek-select { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.95rem; }
+.sleek-input:focus, .sleek-select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
 
-.btn-remove-face:hover {
-    opacity: 0.7;
-}
+.face-dropzone { border: 2px dashed var(--border-color); border-radius: 12px; height: 160px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.1); }
+.face-dropzone:hover { border-color: var(--accent-primary); background: rgba(16, 121, 196, 0.05); }
+.dropzone-text { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-muted); }
+.dropzone-text svg { width: 36px; height: 36px; color: var(--text-secondary); }
+.face-preview-img { width: 100%; height: 100%; object-fit: contain; }
 
-.form-error {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: var(--border-radius-sm);
-    color: var(--accent-danger);
-    font-size: 0.85rem;
-    margin-bottom: 16px;
-}
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+.modal-actions.centered { justify-content: center; }
 
-/* Toast */
-.toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    padding: 14px 24px;
-    border-radius: var(--border-radius-sm);
-    font-size: 0.9rem;
-    font-weight: 500;
-    z-index: 9999;
-    box-shadow: var(--shadow-lg);
-}
+/* Notice elements */
+.alert-box { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; }
+.alert-box.error { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); border: 1px solid rgba(239, 68, 68, 0.2); }
 
-.toast.success {
-    background: var(--accent-success);
-    color: #fff;
-}
+.btn-text.danger { background: none; color: var(--accent-danger); border: none; font-size: 0.85rem; cursor: pointer;}
+.warning-icon svg { width: 48px; height: 48px; color: var(--accent-danger); margin-bottom: 16px; }
+.text-danger { color: var(--accent-danger); }
+.mt-4 { margin-top: 24px; }
+.mt-1 { margin-top: 4px; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
 
-.toast.error {
-    background: var(--accent-danger);
-    color: #fff;
-}
+/* Toast Modern */
+.toast-card { position: fixed; bottom: 30px; right: 30px; padding: 16px 24px; border-radius: 12px; background: var(--bg-card); color: var(--text-primary); font-weight: 600; box-shadow: var(--shadow-xl); z-index: 9999; border: 1px solid var(--border-color); }
+.toast-card.success { background: var(--accent-success); color: #fff; border: none;}
+.toast-card.error { background: var(--accent-danger); color: #fff; border: none;}
 
-.toast-enter-active,
-.toast-leave-active {
-    transition: all 0.3s ease;
-}
+.modal-enter-active, .modal-leave-active, .toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
 
-.toast-enter-from,
-.toast-leave-to {
-    opacity: 0;
-    transform: translateY(16px);
-}
-
-/* Modal transitions */
-.modal-enter-active,
-.modal-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-    opacity: 0;
-}
-
-.stat-icon svg {
-    width: 24px;
-    height: 24px;
+@media (max-width: 992px) { .bento-grid-mini { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .table-toolbar { flex-direction: column; gap: 16px; align-items: stretch;}
+    .search-box { width: 100%; }
 }
 </style>

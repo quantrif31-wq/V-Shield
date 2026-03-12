@@ -12,7 +12,7 @@
                 </svg>
             </div>
             <transition name="fade">
-                <span v-if="!collapsed" class="logo-text">V-Shield</span>
+                <span class="logo-text" :class="{ 'sr-only': collapsed }">V-Shield</span>
             </transition>
         </div>
 
@@ -59,7 +59,7 @@
             </transition>
 
             <div class="nav-section">
-                <span v-if="!collapsed" class="nav-label">MENU CHÍNH</span>
+                <span class="nav-label" :class="{ 'sr-only': collapsed }">MENU CHÍNH</span>
             </div>
             <router-link v-for="item in menuItems" :key="item.path" :to="item.path" class="nav-item"
                 :class="{ active: $route.path === item.path }">
@@ -72,8 +72,8 @@
                 </transition>
             </router-link>
 
-            <div class="nav-section" style="margin-top: 20px;">
-                <span v-if="!collapsed" class="nav-label">HỆ THỐNG</span>
+            <div class="nav-section" :style="collapsed ? 'margin-top: 10px;' : 'margin-top: 20px;'">
+                <span class="nav-label" :class="{ 'sr-only': collapsed }">HỆ THỐNG</span>
             </div>
             <router-link v-for="item in systemItems.filter(i => !i.adminOnly || authState.user?.role === 'Admin')"
                 :key="item.path" :to="item.path" class="nav-item" :class="{ active: $route.path === item.path }">
@@ -370,7 +370,7 @@ const systemItems = [
 
 .search-bar input:focus {
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.1);
 }
 
 .search-bar input::placeholder {
@@ -383,6 +383,13 @@ const systemItems = [
     color: var(--text-muted);
     letter-spacing: 0.1em;
     white-space: nowrap;
+    display: block;
+    transition: opacity 0.2s;
+}
+
+.sr-only {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Dropdown */
@@ -434,7 +441,7 @@ const systemItems = [
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(16, 121, 196, 0.1);
     color: var(--accent-primary);
     display: flex;
     align-items: center;
@@ -506,12 +513,12 @@ const systemItems = [
 }
 
 .nav-item:hover {
-    background: rgba(59, 130, 246, 0.08);
+    background: rgba(16, 121, 196, 0.08);
     color: var(--text-primary);
 }
 
 .nav-item.active {
-    background: rgba(59, 130, 246, 0.12);
+    background: rgba(16, 121, 196, 0.12);
     color: var(--accent-primary);
 }
 
@@ -548,7 +555,7 @@ const systemItems = [
 .nav-badge {
     margin-left: auto;
     padding: 2px 8px;
-    background: rgba(59, 130, 246, 0.15);
+    background: rgba(16, 121, 196, 0.15);
     color: var(--accent-primary);
     border-radius: 10px;
     font-size: 0.7rem;

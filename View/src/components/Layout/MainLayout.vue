@@ -1,7 +1,7 @@
 <template>
     <div class="app-layout" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
         <Sidebar :collapsed="sidebarCollapsed" @toggle="sidebarCollapsed = !sidebarCollapsed" />
-        <Header @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
+        <Header :collapsed="sidebarCollapsed" @toggle-sidebar="sidebarCollapsed = !sidebarCollapsed" />
         <main class="main-content">
             <router-view />
         </main>

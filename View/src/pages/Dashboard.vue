@@ -1,228 +1,156 @@
 <template>
-    <div class="page-container animate-in">
-        <!-- Page Header -->
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Dashboard</h1>
-                <p class="page-subtitle">Tổng quan hệ thống quản lý ra/vào</p>
+    <div class="bento-dashboard animate-in">
+        <!-- Bento Header -->
+        <header class="bento-header">
+            <div class="greeting">
+                <h1 class="page-title">Tổng quan Hệ thống</h1>
+                <p class="page-subtitle">Hôm nay là {{ currentDate }}. Hệ thống V-Shield đang hoạt động ổn định.</p>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary btn-sm">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        style="width: 16px; height: 16px;">
+                <button class="btn btn-secondary btn-icon" title="Cài đặt">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                    </svg>
+                </button>
+                <button class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
                         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    Xuất báo cáo
+                    Báo cáo
                 </button>
             </div>
-        </div>
+        </header>
 
-        <!-- Stats -->
-        <div class="stats-grid">
-            <div class="stat-card blue" v-for="stat in stats" :key="stat.label" :class="stat.color">
-                <div class="stat-icon" :class="stat.color">
-                    <span v-html="stat.icon"></span>
+        <!-- Bento Grid Layout -->
+        <div class="bento-grid">
+            <!-- Main Stats (Spans 2 columns) -->
+            <div class="bento-card col-span-2 row-span-1 stats-overview">
+                <div class="stats-header">
+                    <h3>Tổng quan nhân sự</h3>
+                    <span class="live-badge"><span class="pulse-dot"></span> Đang cập nhật</span>
                 </div>
-                <div class="stat-info">
-                    <h3>{{ stat.value }}</h3>
-                    <p>{{ stat.label }}</p>
-                    <span class="stat-change" :class="stat.trend">{{ stat.change }}</span>
+                <div class="stats-content">
+                    <div class="stat-highlight">
+                        <div class="stat-value">{{ totalEmployees }}</div>
+                        <div class="stat-label">Tổng nhân viên</div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-highlight">
+                        <div class="stat-value green">{{ activeEmployees }}</div>
+                        <div class="stat-label">Đang hoạt động</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Main Grid -->
-        <div class="dashboard-grid">
-            <!-- Activity Chart -->
-            <div class="card chart-card">
+            <!-- Focus Quick Action 1 -->
+            <router-link to="/pre-registrations" class="bento-card interactive-card action-primary">
+                <div class="action-icon-large">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                        <path d="M9 14l2 2 4-4"/>
+                    </svg>
+                </div>
+                <h3>Đăng ký khách</h3>
+                <p>Tạo link QR trước cho khách</p>
+                <div class="arrow-indicator">→</div>
+            </router-link>
+
+            <!-- Focus Quick Action 2 -->
+            <router-link to="/monitoring" class="bento-card interactive-card action-secondary">
+                <div class="action-icon-large">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </div>
+                <h3>Live Camera</h3>
+                <p>Giám sát ra vào trực tiếp</p>
+                <div class="arrow-indicator">→</div>
+            </router-link>
+
+            <!-- Chart Activity -->
+            <div class="bento-card col-span-2 row-span-2 activity-chart">
                 <div class="card-header">
-                    <h3 class="card-title">Hoạt động ra/vào trong tuần</h3>
+                    <h3>Lưu lượng ra/vào tuần này</h3>
                     <div class="chart-legend">
-                        <span class="legend-item"><span class="legend-dot in"></span> Vào</span>
-                        <span class="legend-item"><span class="legend-dot out"></span> Ra</span>
+                        <span class="legend-item"><span class="legend-dot in"></span> Vào (187)</span>
+                        <span class="legend-item"><span class="legend-dot out"></span> Ra (142)</span>
                     </div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-bars">
-                        <div v-for="day in weekData" :key="day.label" class="chart-bar-group">
-                            <div class="bar-wrapper">
-                                <div class="bar bar-in" :style="{ height: day.inPercent + '%' }">
-                                    <span class="bar-tooltip">{{ day.checkIn }}</span>
-                                </div>
-                                <div class="bar bar-out" :style="{ height: day.outPercent + '%' }">
-                                    <span class="bar-tooltip">{{ day.checkOut }}</span>
-                                </div>
-                            </div>
-                            <span class="bar-label">{{ day.label }}</span>
+                <!-- Mini Minimalist Chart -->
+                <div class="minimal-chart">
+                    <div v-for="day in weekData" :key="day.label" class="chart-col">
+                        <div class="bar-stack">
+                            <div class="bar in" :style="{ height: day.inPercent + '%' }"><div class="tt">{{day.checkIn}}</div></div>
+                            <div class="bar out" :style="{ height: day.outPercent + '%' }"><div class="tt">{{day.checkOut}}</div></div>
                         </div>
-                    </div>
-                    <div class="chart-y-axis">
-                        <span>200</span>
-                        <span>150</span>
-                        <span>100</span>
-                        <span>50</span>
-                        <span>0</span>
+                        <div class="col-lbl">{{ day.label }}</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Activity -->
-            <div class="card activity-card">
-                <div class="card-header" style="gap: 8px;">
-                    <h3 class="card-title" style="white-space: nowrap; font-size: 1.05rem;">Hoạt động gần đây</h3>
-                    <router-link to="/access-logs" class="btn-link-sm">Xem tất cả</router-link>
+            <!-- Recent Logs list (Spans height) -->
+            <div class="bento-card col-span-2 row-span-2 recent-logs-card">
+                <div class="card-header">
+                    <h3>Hoạt động mới nhất</h3>
+                    <router-link to="/access-logs" class="link-muted">Xem tất cả</router-link>
                 </div>
-                <div class="activity-list">
-                    <div v-for="log in recentLogs" :key="log.id" class="activity-item">
-                        <div class="activity-avatar" :class="log.type">
-                            {{ log.initials }}
-                        </div>
-                        <div class="activity-info">
-                            <p class="activity-name">{{ log.name }}</p>
-                            <span class="activity-detail">{{ log.detail }}</span>
-                        </div>
-                        <div class="activity-meta">
-                            <span class="badge" :class="log.type">
-                                <span class="badge-dot"></span>
-                                {{ log.type === 'check-in' ? 'Vào' : 'Ra' }}
-                            </span>
-                            <span class="activity-time">{{ log.time }}</span>
+                <div class="logs-feed">
+                    <div v-for="log in recentLogs" :key="log.id" class="feed-item">
+                        <div class="feed-marker" :class="log.type"></div>
+                        <div class="feed-time">{{ log.time }}</div>
+                        <div class="feed-content">
+                            <strong>{{ log.name }}</strong>
+                            <span>{{ log.detail }}</span>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <h3 class="section-title">Thao tác nhanh</h3>
-            <div class="actions-grid">
-                <router-link to="/employees" class="action-card">
-                    <div class="action-icon blue">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                            <circle cx="8.5" cy="7" r="4" />
-                            <line x1="20" y1="8" x2="20" y2="14" />
-                            <line x1="23" y1="11" x2="17" y2="11" />
-                        </svg>
-                    </div>
-                    <span>Thêm nhân viên</span>
-                </router-link>
-                <router-link to="/vehicles" class="action-card">
-                    <div class="action-icon green">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="1" y="3" width="15" height="13" rx="2" />
-                            <path d="M16 8h4l3 3v5h-7V8z" />
-                            <circle cx="5.5" cy="18.5" r="2.5" />
-                            <circle cx="18.5" cy="18.5" r="2.5" />
-                        </svg>
-                    </div>
-                    <span>Đăng ký xe</span>
-                </router-link>
-                <router-link to="/monitoring" class="action-card">
-                    <div class="action-icon purple">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                            <circle cx="12" cy="13" r="4" />
-                        </svg>
-                    </div>
-                    <span>Xem camera</span>
-                </router-link>
-                <router-link to="/access-logs" class="action-card">
-                    <div class="action-icon orange">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                        </svg>
-                    </div>
-                    <span>Xem báo cáo</span>
-                </router-link>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { getSummary } from '../services/statisticsApi'
 
+// Date
+const currentDate = computed(() => {
+    const d = new Date()
+    return d.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+})
+
+// Stats
 const totalEmployees = ref('...')
 const activeEmployees = ref('...')
-
-const stats = ref([
-    {
-        label: 'Tổng nhân viên',
-        value: totalEmployees,
-        change: 'Cập nhật realtime',
-        trend: 'up',
-        color: 'blue',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>'
-    },
-    {
-        label: 'Nhân viên đang HĐ',
-        value: activeEmployees,
-        change: 'Trạng thái hoạt động',
-        trend: 'up',
-        color: 'green',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
-    },
-    {
-        label: 'Lượt vào hôm nay',
-        value: '187',
-        change: '↑ +15% so với hôm qua',
-        trend: 'up',
-        color: 'purple',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>'
-    },
-    {
-        label: 'Lượt ra hôm nay',
-        value: '142',
-        change: '↓ -3% so với hôm qua',
-        trend: 'down',
-        color: 'orange',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
-    },
-])
-
 let eventSource = null;
 
 onMounted(async () => {
     try {
-        // Init fake data or current data
         const summary = await getSummary()
         totalEmployees.value = summary.totalEmployees.toString()
         activeEmployees.value = summary.activeEmployees.toString()
 
-        // Connect to SSE stream
         eventSource = new EventSource('https://localhost:7107/api/Statistics/employees/stream')
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data)
                 totalEmployees.value = data.totalEmployees.toString()
                 activeEmployees.value = data.activeEmployees.toString()
-            } catch (err) {
-                console.error("Lỗi parse SSE:", err)
-            }
-        }
-        eventSource.onerror = (error) => {
-            console.error("SSE Error:", error)
-            eventSource.close()
+            } catch (err) {}
         }
     } catch (error) {
-        console.error("Lỗi fetch summary:", error)
-        totalEmployees.value = 'Lỗi'
-        activeEmployees.value = 'Lỗi'
+        totalEmployees.value = '--'
+        activeEmployees.value = '--'
     }
 })
 
 onUnmounted(() => {
-    if (eventSource) {
-        eventSource.close()
-    }
+    if (eventSource) eventSource.close()
 })
 
 const weekData = ref([
@@ -236,347 +164,254 @@ const weekData = ref([
 ])
 
 const recentLogs = ref([
-    { id: 1, name: 'Nguyễn Văn An', initials: 'NA', detail: 'Cổng A - Xe 51A-123.45', type: 'check-in', time: '08:05' },
-    { id: 2, name: 'Trần Thị Bình', initials: 'TB', detail: 'Cổng B - Đi bộ', type: 'check-in', time: '08:12' },
-    { id: 3, name: 'Lê Hoàng Cường', initials: 'LC', detail: 'Cổng A - Xe 30H-567.89', type: 'check-out', time: '08:20' },
-    { id: 4, name: 'Phạm Minh Đức', initials: 'PD', detail: 'Cổng A - Xe 51B-234.56', type: 'check-in', time: '08:25' },
-    { id: 5, name: 'Võ Thị Em', initials: 'VE', detail: 'Cổng C - Đi bộ', type: 'check-out', time: '08:30' },
-    { id: 6, name: 'Hoàng Văn Phong', initials: 'HP', detail: 'Cổng A - Xe 51F-789.01', type: 'check-in', time: '08:35' },
+    { id: 1, name: 'Nguyễn Văn An', detail: 'Vào cổng A - Đi bộ', type: 'in', time: '08:05' },
+    { id: 2, name: 'Trần Thị Bình', detail: 'Ra cổng B', type: 'out', time: '08:12' },
+    { id: 3, name: 'Lê Hoàng Cường', detail: 'Vào cổng A - Xe 30H-567.89', type: 'in', time: '08:20' },
+    { id: 4, name: 'Phạm Minh Đức', detail: 'Vào cổng A - Máy khách KH29', type: 'in', time: '08:25' },
+    { id: 5, name: 'Võ Thị Em', detail: 'Ra cổng C', type: 'out', time: '08:30' },
+    { id: 6, name: 'Khách VIP', detail: 'Đã check-in mã QR', type: 'in', time: '08:35' },
 ])
 </script>
 
 <style scoped>
-/* Dashboard Grid */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 20px;
-    margin-bottom: 28px;
+.bento-dashboard {
+    padding: 0;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-/* Chart */
-.chart-card {
-    min-height: 360px;
-}
-
-.chart-legend {
+.bento-header {
     display: flex;
-    gap: 16px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-}
-
-.legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-}
-
-.legend-dot.in {
-    background: var(--accent-primary);
-}
-
-.legend-dot.out {
-    background: var(--accent-secondary);
-}
-
-.chart-container {
-    display: flex;
-    gap: 12px;
-    height: 260px;
-    position: relative;
-}
-
-.chart-y-axis {
-    display: flex;
-    flex-direction: column;
     justify-content: space-between;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    padding: 0 0 24px;
-    min-width: 30px;
-    order: -1;
-}
-
-.chart-bars {
-    flex: 1;
-    display: flex;
-    align-items: flex-end;
+    align-items: center;
+    margin-bottom: 2rem;
     gap: 16px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
 }
 
-.chart-bar-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-
-.bar-wrapper {
-    display: flex;
-    gap: 4px;
-    align-items: flex-end;
-    height: 220px;
-    width: 100%;
-    justify-content: center;
-}
-
-.bar {
-    width: 18px;
-    border-radius: 4px 4px 0 0;
-    position: relative;
-    transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    min-height: 4px;
-}
-
-.bar-in {
-    background: var(--accent-primary);
-    opacity: 0.85;
-}
-
-.bar-out {
-    background: var(--accent-secondary);
-    opacity: 0.85;
-}
-
-.bar:hover {
-    opacity: 1;
-    filter: brightness(1.2);
-}
-
-.bar-tooltip {
-    display: none;
-    position: absolute;
-    top: -28px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-secondary);
+.bento-header .greeting h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
     color: var(--text-primary);
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    white-space: nowrap;
-    border: 1px solid var(--border-color);
+    margin-bottom: 4px;
 }
 
-.bar:hover .bar-tooltip {
-    display: block;
+.bento-header .greeting p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
 }
 
-.bar-label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-.btn-link-sm {
-    font-size: 0.75rem;
-    color: var(--accent-primary);
-    text-decoration: none;
-    font-weight: 500;
-    padding: 4px 10px;
-    border-radius: 4px;
-    background: rgba(59, 130, 246, 0.1);
-    white-space: nowrap;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.btn-link-sm:hover {
-    background: rgba(59, 130, 246, 0.2);
-    color: var(--accent-primary-hover);
-}
-
-.card-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.activity-card {
-    max-height: 420px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.activity-list {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 12px;
-    margin-right: -12px;
-}
-
-.activity-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.activity-item:last-child {
-    border-bottom: none;
-}
-
-.activity-avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.75rem;
-    flex-shrink: 0;
-}
-
-.activity-avatar.check-in {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--accent-success);
-}
-
-.activity-avatar.check-out {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--accent-danger);
-}
-
-.activity-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.activity-name {
-    font-weight: 600;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.activity-detail {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.activity-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    flex-shrink: 0;
-}
-
-.activity-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-/* Quick Actions */
-.quick-actions {
-    margin-top: 8px;
-}
-
-.section-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text-primary);
-}
-
-.actions-grid {
+.bento-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 180px;
+    gap: 20px;
 }
 
-.action-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 24px;
+/* Card Base */
+.bento-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius-lg);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
     transition: all var(--transition-normal);
-    cursor: pointer;
 }
 
-.action-card:hover {
+.col-span-2 { grid-column: span 2; }
+.row-span-1 { grid-row: span 1; }
+.row-span-2 { grid-row: span 2; }
+
+/* Interactive Cards */
+.interactive-card {
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+.interactive-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
     border-color: var(--border-color-hover);
 }
-
-.action-icon {
+.interactive-card.action-primary {
+    background: linear-gradient(145deg, var(--bg-card), var(--bg-card-hover));
+}
+.interactive-card.action-secondary {
+    background: var(--bg-card);
+}
+.action-icon-large {
     width: 48px;
     height: 48px;
+    background: rgba(16, 121, 196, 0.1); /* lochmara accent */
+    color: var(--accent-primary);
     border-radius: var(--border-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: auto;
 }
-
-.action-icon svg {
-    width: 24px;
-    height: 24px;
+.action-icon-large svg { width: 24px; height: 24px; }
+.interactive-card h3 { font-size: 1.1rem; margin-bottom: 4px; font-weight: 600; }
+.interactive-card p { font-size: 0.85rem; color: var(--text-secondary); }
+.arrow-indicator {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    transition: transform var(--transition-fast);
 }
-
-.action-icon.blue {
-    background: rgba(59, 130, 246, 0.15);
+.interactive-card:hover .arrow-indicator {
+    transform: translateX(4px);
     color: var(--accent-primary);
 }
 
-.action-icon.green {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--accent-success);
+/* Stats Overview */
+.stats-overview {
+    justify-content: space-between;
 }
-
-.action-icon.purple {
-    background: rgba(139, 92, 246, 0.15);
-    color: var(--accent-secondary);
-}
-
-.action-icon.orange {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--accent-warning);
-}
-
-.action-card span {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
-
-.action-card:hover span {
-    color: var(--text-primary);
-}
-
-.header-actions {
+.stats-header {
     display: flex;
-    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
 }
+.stats-header h3 { font-size: 1rem; color: var(--text-secondary); font-weight: 500;}
+.live-badge {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-success);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pulse-dot {
+    width: 6px; height: 6px; background: currentColor; border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
 
-@media (max-width: 1024px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-    }
+.stats-content {
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+}
+.stat-highlight { flex: 1; }
+.stat-value { font-size: 3rem; font-weight: 700; line-height: 1; margin-bottom: 8px; color: var(--text-primary); }
+.stat-value.green { color: var(--accent-success); }
+.stat-label { font-size: 0.9rem; color: var(--text-muted); }
+.stat-divider { width: 1px; height: 60px; background: var(--border-color); }
+
+/* Chart Area */
+.activity-chart .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: auto;
+}
+.activity-chart h3 { font-size: 1.1rem; font-weight: 600; }
+.chart-legend { display: flex; gap: 12px; }
+.legend-item { font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.legend-dot.in { background: var(--accent-primary); }
+.legend-dot.out { background: var(--accent-secondary); }
+
+.minimal-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 100%;
+    padding-top: 40px;
+}
+.chart-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+.bar-stack {
+    height: 180px;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    width: 100%;
+    justify-content: center;
+}
+.bar {
+    width: 16px;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    cursor: pointer;
+    transition: height 0.6s ease;
+}
+.bar.in { background: var(--accent-primary); }
+.bar.out { background: var(--accent-secondary); }
+.bar .tt {
+    position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-secondary); color: var(--text-primary);
+    font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    border: 1px solid var(--border-color);
+}
+.bar:hover { filter: brightness(1.2); }
+.bar:hover .tt { opacity: 1; }
+.col-lbl { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+/* Logs Feed */
+.recent-logs-card {
+    display: flex;
+    flex-direction: column;
+}
+.recent-logs-card .card-header {
+    display: flex; justify-content: space-between; margin-bottom: 24px;
+}
+.link-muted { color: var(--text-muted); font-size: 0.85rem; text-decoration: none; transition: color 0.2s;}
+.link-muted:hover { color: var(--accent-primary); }
+.logs-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+.feed-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+.feed-marker {
+    width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+    position: relative;
+}
+.feed-marker.in { background: var(--accent-primary); box-shadow: 0 0 10px rgba(16, 121, 196, 0.4); }
+.feed-marker.out { background: var(--accent-secondary); box-shadow: 0 0 10px rgba(139, 92, 246, 0.4); }
+/* connected line */
+.feed-marker::after {
+    content: ''; position: absolute; top: 14px; left: 4px; width: 2px; height: 40px;
+    background: var(--border-color);
+}
+.feed-item:last-child .feed-marker::after { display: none; }
+.feed-time {
+    font-size: 0.8rem; color: var(--text-muted); font-weight: 600; width: 45px; flex-shrink: 0;
+}
+.feed-content {
+    display: flex; flex-direction: column; gap: 2px;
+}
+.feed-content strong { font-size: 0.9rem; color: var(--text-primary); font-weight: 500;}
+.feed-content span { font-size: 0.8rem; color: var(--text-secondary); }
+
+@media (max-width: 1200px) {
+    .bento-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+    .bento-grid { grid-template-columns: 1fr; grid-auto-rows: min-content; }
+    .col-span-2, .row-span-1, .row-span-2 { grid-column: span 1; grid-row: auto; }
+    .bar-stack { height: 120px; }
 }
 </style>

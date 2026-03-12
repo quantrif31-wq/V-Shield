@@ -1,5 +1,5 @@
 <template>
-    <header class="app-header">
+    <header class="app-header" :class="{ collapsed }">
         <div class="header-left">
             <button class="menu-toggle" @click="$emit('toggle-sidebar')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -99,6 +99,10 @@ import { authState, logout } from '../../stores/auth'
 
 const router = useRouter()
 
+defineProps({
+    collapsed: Boolean
+})
+
 defineEmits(['toggle-sidebar'])
 
 const userInitial = computed(() => {
@@ -189,6 +193,10 @@ const notifications = ref([
     padding: 0 24px;
     z-index: 90;
     transition: left var(--transition-slow);
+}
+
+.app-header.collapsed {
+    left: var(--sidebar-collapsed-width);
 }
 
 .header-left {
@@ -376,7 +384,7 @@ const notifications = ref([
 }
 
 .notification-item.unread {
-    background: rgba(59, 130, 246, 0.04);
+    background: rgba(16, 121, 196, 0.04);
 }
 
 .notification-icon {

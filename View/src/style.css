@@ -2,21 +2,34 @@
 
 /* ========== CSS VARIABLES / DESIGN TOKENS ========== */
 :root {
-  /* Colors - Dark Theme */
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-card: #1a2035;
-  --bg-card-hover: #1f2847;
-  --bg-input: #1e293b;
-  --bg-sidebar: #0d1321;
-  --bg-header: rgba(13, 19, 33, 0.85);
+/* Colors - Lochmara Palette */
+  --lochmara-50: #eaf1ff;
+  --lochmara-100: #c8dcfe;
+  --lochmara-200: #8cbefe;
+  --lochmara-300: #3ba3fd;
+  --lochmara-400: #1389dc;
+  --lochmara-500: #1079c4;
+  --lochmara-600: #0b64a3;
+  --lochmara-700: #064d80;
+  --lochmara-800: #03365b;
+  --lochmara-900: #011e36;
+  --lochmara-950: #011223;
+
+  /* Colors - Dark Theme (Mapped to Lochmara) */
+  --bg-primary: var(--lochmara-950);
+  --bg-secondary: var(--lochmara-900);
+  --bg-card: var(--lochmara-800);
+  --bg-card-hover: var(--lochmara-700);
+  --bg-input: var(--lochmara-900);
+  --bg-sidebar: var(--lochmara-950);
+  --bg-header: rgba(0, 10, 61, 0.85); /* lochmara-950 */
 
   /* Accent Colors */
-  --accent-primary: #3b82f6;
-  --accent-primary-hover: #2563eb;
-  --accent-secondary: #8b5cf6;
-  --accent-gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  --accent-gradient-hover: linear-gradient(135deg, #2563eb, #7c3aed);
+  --accent-primary: var(--lochmara-500);
+  --accent-primary-hover: var(--lochmara-600);
+  --accent-secondary: var(--lochmara-400);
+  --accent-gradient: linear-gradient(135deg, var(--lochmara-400), var(--lochmara-600));
+  --accent-gradient-hover: linear-gradient(135deg, var(--lochmara-500), var(--lochmara-700));
   --accent-success: #10b981;
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
@@ -26,7 +39,7 @@
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  --text-accent: #3b82f6;
+  --text-accent: var(--lochmara-300);
 
   /* Borders */
   --border-color: rgba(148, 163, 184, 0.1);
@@ -36,7 +49,7 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-glow: 0 0 20px rgba(16, 121, 196, 0.15); /* lochmara-500 */
 
   /* Layout */
   --sidebar-width: 260px;
@@ -171,12 +184,12 @@ img {
 .btn-primary {
   background: var(--accent-gradient);
   color: #fff;
-  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 2px 10px rgba(16, 121, 196, 0.3);
 }
 
 .btn-primary:hover {
   background: var(--accent-gradient-hover);
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 15px rgba(16, 121, 196, 0.4);
   transform: translateY(-1px);
 }
 
@@ -326,7 +339,7 @@ img {
 }
 
 .stat-icon.blue {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(16, 121, 196, 0.15);
   color: var(--accent-primary);
 }
 
@@ -467,7 +480,7 @@ img {
 }
 
 .badge.info {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(16, 121, 196, 0.15);
   color: var(--accent-primary);
 }
 
@@ -534,7 +547,7 @@ img {
 
 .search-bar input:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.1);
 }
 
 .search-bar input::placeholder {
@@ -660,7 +673,7 @@ img {
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.1);
 }
 
 .form-row {

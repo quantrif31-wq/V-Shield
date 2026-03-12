@@ -642,7 +642,7 @@ onMounted(async () => {
 }
 
 .step.active .step-num {
-    background: rgba(59, 130, 246, 0.15);
+    background: rgba(16, 121, 196, 0.15);
     border-color: var(--accent-primary);
     color: var(--accent-primary);
 }
@@ -734,7 +734,7 @@ onMounted(async () => {
 .btn-add-visitor:hover {
     border-color: var(--accent-primary);
     color: var(--accent-primary);
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(16, 121, 196, 0.05);
 }
 
 /* Form actions */
