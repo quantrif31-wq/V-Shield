@@ -8,13 +8,6 @@
                     <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
             </button>
-            <div class="search-bar">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="M21 21l-4.35-4.35" />
-                </svg>
-                <input type="text" placeholder="Tìm kiếm nhân viên, phương tiện..." />
-            </div>
         </div>
 
         <div class="header-right">
@@ -38,40 +31,41 @@
             </button>
 
             <!-- User Profile -->
-        <div class="header-user" @click="showUserMenu = !showUserMenu">
-            <div class="user-avatar">{{ userInitial }}</div>
-            <div class="user-info">
-                <span class="user-name">{{ authState.user?.fullName || authState.user?.username || 'User' }}</span>
-                <span class="user-role">{{ roleLabel }}</span>
+            <div class="header-user" @click="showUserMenu = !showUserMenu">
+                <div class="user-avatar">{{ userInitial }}</div>
+                <div class="user-info">
+                    <span class="user-name">{{ authState.user?.fullName || authState.user?.username || 'User' }}</span>
+                    <span class="user-role">{{ roleLabel }}</span>
+                </div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width: 16px; height: 16px;">
+                    <path d="M6 9l6 6 6-6" />
+                </svg>
             </div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                style="width: 16px; height: 16px;">
-                <path d="M6 9l6 6 6-6" />
-            </svg>
-        </div>
 
-        <!-- User Dropdown -->
-        <transition name="dropdown">
-            <div v-if="showUserMenu" class="dropdown user-dropdown">
-                <div class="dropdown-user-info">
-                    <div class="user-avatar" style="width:40px;height:40px;font-size:1rem;">{{ userInitial }}</div>
-                    <div>
-                        <p style="font-weight:600;">{{ authState.user?.fullName || authState.user?.username }}</p>
-                        <p style="font-size:0.8rem;color:var(--text-muted);">{{ roleLabel }}</p>
+            <!-- User Dropdown -->
+            <transition name="dropdown">
+                <div v-if="showUserMenu" class="dropdown user-dropdown">
+                    <div class="dropdown-user-info">
+                        <div class="user-avatar" style="width:40px;height:40px;font-size:1rem;">{{ userInitial }}</div>
+                        <div>
+                            <p style="font-weight:600;">{{ authState.user?.fullName || authState.user?.username }}</p>
+                            <p style="font-size:0.8rem;color:var(--text-muted);">{{ roleLabel }}</p>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid var(--border-color);padding:8px;">
+                        <button class="dropdown-item" @click="handleLogout">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                style="width:16px;height:16px;">
+                                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                                <polyline points="16 17 21 12 16 7" />
+                                <line x1="21" y1="12" x2="9" y2="12" />
+                            </svg>
+                            Đăng xuất
+                        </button>
                     </div>
                 </div>
-                <div style="border-top:1px solid var(--border-color);padding:8px;">
-                    <button class="dropdown-item" @click="handleLogout">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
-                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                            <polyline points="16 17 21 12 16 7" />
-                            <line x1="21" y1="12" x2="9" y2="12" />
-                        </svg>
-                        Đăng xuất
-                    </button>
-                </div>
-            </div>
-        </transition>
+            </transition>
 
             <!-- Notification Dropdown -->
             <transition name="dropdown">
@@ -222,41 +216,6 @@ const notifications = ref([
 .menu-toggle:hover {
     background: var(--bg-card);
     color: var(--text-primary);
-}
-
-.search-bar {
-    position: relative;
-    width: 360px;
-}
-
-.search-bar .search-icon {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    color: var(--text-muted);
-}
-
-.search-bar input {
-    width: 100%;
-    padding: 9px 16px 9px 42px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    color: var(--text-primary);
-    font-size: 0.85rem;
-    transition: all var(--transition-normal);
-}
-
-.search-bar input:focus {
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.search-bar input::placeholder {
-    color: var(--text-muted);
 }
 
 .header-right {
@@ -509,10 +468,6 @@ const notifications = ref([
 
     .menu-toggle {
         display: flex;
-    }
-
-    .search-bar {
-        width: 180px;
     }
 
     .header-clock {

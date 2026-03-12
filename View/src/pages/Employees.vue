@@ -320,10 +320,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { getAll, create, update, deleteEmployee, uploadFace } from '../services/employeeApi'
 import { getDepartments, getPositions } from '../services/lookupApi'
 
+const route = useRoute()
 const API_BASE = 'https://localhost:7107'
 
 const employees = ref([])
@@ -560,6 +562,11 @@ function getAvatarColor(id) {
 }
 
 onMounted(async () => {
+    // Check url query for search
+    if (route.query.search) {
+        searchQuery.value = route.query.search
+    }
+
     // Load lookup data + employees in parallel
     try {
         const [deptRes, posRes] = await Promise.all([
@@ -572,6 +579,13 @@ onMounted(async () => {
         console.warn('Could not load lookup data:', e)
     }
     fetchEmployees()
+})
+
+watch(() => route.query.search, (newSearch) => {
+    if (newSearch !== undefined) {
+        searchQuery.value = newSearch
+        fetchEmployees()
+    }
 })
 </script>
 

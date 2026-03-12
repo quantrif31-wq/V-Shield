@@ -70,9 +70,9 @@
 
             <!-- Recent Activity -->
             <div class="card activity-card">
-                <div class="card-header">
-                    <h3 class="card-title">Hoạt động gần đây</h3>
-                    <router-link to="/access-logs" class="btn btn-sm btn-secondary">Xem tất cả</router-link>
+                <div class="card-header" style="gap: 8px;">
+                    <h3 class="card-title" style="white-space: nowrap; font-size: 1.05rem;">Hoạt động gần đây</h3>
+                    <router-link to="/access-logs" class="btn-link-sm">Xem tất cả</router-link>
                 </div>
                 <div class="activity-list">
                     <div v-for="log in recentLogs" :key="log.id" class="activity-item">
@@ -380,7 +380,30 @@ const recentLogs = ref([
     font-weight: 500;
 }
 
-/* Activity */
+.btn-link-sm {
+    font-size: 0.75rem;
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.1);
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-link-sm:hover {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--accent-primary-hover);
+}
+
+.card-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .activity-card {
     max-height: 420px;
     overflow: hidden;
@@ -391,6 +414,8 @@ const recentLogs = ref([
 .activity-list {
     flex: 1;
     overflow-y: auto;
+    padding-right: 12px;
+    margin-right: -12px;
 }
 
 .activity-item {
@@ -435,11 +460,17 @@ const recentLogs = ref([
 .activity-name {
     font-weight: 600;
     font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .activity-detail {
     font-size: 0.75rem;
     color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .activity-meta {
@@ -447,12 +478,14 @@ const recentLogs = ref([
     flex-direction: column;
     align-items: flex-end;
     gap: 4px;
+    flex-shrink: 0;
 }
 
 .activity-time {
     font-size: 0.75rem;
     color: var(--text-muted);
     font-weight: 500;
+    white-space: nowrap;
 }
 
 /* Quick Actions */

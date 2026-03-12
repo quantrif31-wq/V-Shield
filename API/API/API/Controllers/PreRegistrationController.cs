@@ -24,6 +24,9 @@ public class PreRegistrationController : ControllerBase
     {
         var link = await _context.RegistrationLinks
             .Include(l => l.HostEmployee)
+                .ThenInclude(e => e.Department)
+            .Include(l => l.HostEmployee)
+                .ThenInclude(e => e.Position)
             .FirstOrDefaultAsync(l => l.Token == token);
 
         if (link == null)
@@ -38,6 +41,10 @@ public class PreRegistrationController : ControllerBase
         return Ok(new ValidateTokenResponseDto
         {
             HostEmployeeName = link.HostEmployee.FullName,
+            HostEmployeePhone = link.HostEmployee.Phone,
+            HostEmployeeEmail = link.HostEmployee.Email,
+            HostDepartmentName = link.HostEmployee.Department?.Name,
+            HostPositionName = link.HostEmployee.Position?.Name,
             ExpiredAt = link.ExpiredAt
         });
     }

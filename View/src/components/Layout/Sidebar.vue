@@ -18,6 +18,46 @@
 
         <!-- Navigation -->
         <nav class="sidebar-nav">
+            <!-- Thêm search bar vào Sidebar, ẩn khi collapsed -->
+            <transition name="fade">
+                <div class="sidebar-search" v-if="!collapsed" ref="searchContainerRef">
+                    <div class="search-bar">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                        <input v-model="searchQuery" type="text" placeholder="Tìm kiếm nhân viên, phương tiện..."
+                            @input="debouncedSearch" @focus="showDropdown = true" />
+
+                        <!-- Dropdown Results -->
+                        <transition name="dropdown">
+                            <div v-show="showDropdown && (isSearching || searchResults.length > 0 || noResultsFound)"
+                                class="search-dropdown">
+                                <div v-if="isSearching" class="dropdown-msg">Đang tìm kiếm...</div>
+                                <div v-else-if="noResultsFound" class="dropdown-msg">Không tìm thấy kết quả</div>
+                                <div v-else class="dropdown-list">
+                                    <div v-for="res in searchResults" :key="res.id" class="dropdown-item"
+                                        @click="handleResultClick(res)">
+                                        <div class="result-icon">
+                                            <svg v-if="res.type === 'employee'" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="1.5">
+                                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                                                <circle cx="12" cy="7" r="4" />
+                                            </svg>
+                                        </div>
+                                        <div class="result-info">
+                                            <div class="result-name">{{ res.name }}</div>
+                                            <div class="result-sub">{{ res.sub }}</div>
+                                        </div>
+                                        <div class="result-badge">{{ res.badge }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
+                </div>
+            </transition>
+
             <div class="nav-section">
                 <span v-if="!collapsed" class="nav-label">MENU CHÍNH</span>
             </div>
@@ -35,8 +75,8 @@
             <div class="nav-section" style="margin-top: 20px;">
                 <span v-if="!collapsed" class="nav-label">HỆ THỐNG</span>
             </div>
-            <router-link v-for="item in systemItems.filter(i => !i.adminOnly || authState.user?.role === 'Admin')" :key="item.path" :to="item.path" class="nav-item"
-                :class="{ active: $route.path === item.path }">
+            <router-link v-for="item in systemItems.filter(i => !i.adminOnly || authState.user?.role === 'Admin')"
+                :key="item.path" :to="item.path" class="nav-item" :class="{ active: $route.path === item.path }">
                 <span class="nav-icon" v-html="item.icon"></span>
                 <transition name="fade">
                     <span v-if="!collapsed" class="nav-text">{{ item.label }}</span>
@@ -54,7 +94,12 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { authState } from '../../stores/auth'
+import { getAll as getAllEmployees } from '../../services/employeeApi'
+
+const router = useRouter()
 
 defineProps({
     collapsed: Boolean
@@ -62,7 +107,7 @@ defineProps({
 
 defineEmits(['toggle'])
 
-const menuItems = [
+const menuItems = ref([
     {
         path: '/',
         label: 'Dashboard',
@@ -72,7 +117,7 @@ const menuItems = [
         path: '/employees',
         label: 'Nhân viên',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
-        badge: '24'
+        badge: '0'
     },
     {
         path: '/vehicles',
@@ -84,6 +129,11 @@ const menuItems = [
         label: 'Lịch sử ra/vào',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>',
         badge: '156'
+    },
+    {
+        path: '/pre-registrations',
+        label: 'Đăng ký trước',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14l2 2 4-4"/></svg>'
     },
     {
         path: '/monitoring',
@@ -104,8 +154,104 @@ const menuItems = [
         path: '/facevideo',
         label: 'facevideo',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>'
-    },
-]
+    }
+])
+
+onMounted(async () => {
+    document.addEventListener('click', handleClickOutside)
+
+    try {
+        const res = await getAllEmployees()
+        const count = res.data.length
+        const empItem = menuItems.value.find(item => item.path === '/employees')
+        if (empItem) {
+            empItem.badge = count.toString()
+        }
+    } catch (error) {
+        console.error('Lỗi khi lấy số lượng nhân viên:', error)
+    }
+})
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+})
+
+// Search Logic
+const searchQuery = ref('')
+const showDropdown = ref(false)
+const isSearching = ref(false)
+const searchResults = ref([])
+const noResultsFound = ref(false)
+const searchContainerRef = ref(null)
+
+let searchTimeout = null
+
+const debouncedSearch = () => {
+    if (searchTimeout) clearTimeout(searchTimeout)
+    if (!searchQuery.value.trim()) {
+        searchResults.value = []
+        isSearching.value = false
+        noResultsFound.value = false
+        showDropdown.value = false
+        return
+    }
+
+    showDropdown.value = true
+    isSearching.value = true
+    noResultsFound.value = false
+
+    searchTimeout = setTimeout(async () => {
+        try {
+            const query = searchQuery.value.trim()
+            // Fetch employees
+            const curEmployees = await getAllEmployees({ search: query })
+
+            const results = []
+
+            // Map employees
+            if (curEmployees.data && curEmployees.data.length > 0) {
+                curEmployees.data.forEach(emp => {
+                    results.push({
+                        id: 'emp_' + emp.employeeId,
+                        type: 'employee',
+                        name: emp.fullName,
+                        sub: emp.departmentName || 'Không có phòng ban',
+                        badge: 'Nhân viên',
+                        originalId: emp.employeeId
+                    })
+                })
+            }
+
+            // Mocks vehicle logic here later if needed
+
+            searchResults.value = results
+            noResultsFound.value = results.length === 0
+        } catch (error) {
+            console.error('Search error:', error)
+            searchResults.value = []
+            noResultsFound.value = true
+        } finally {
+            isSearching.value = false
+        }
+    }, 400)
+}
+
+const handleResultClick = (res) => {
+    if (res.type === 'employee') {
+        router.push({ path: '/employees', query: { search: res.name } })
+    }
+
+    // reset search
+    showDropdown.value = false
+    searchQuery.value = ''
+    searchResults.value = []
+}
+
+const handleClickOutside = (e) => {
+    if (searchContainerRef.value && !searchContainerRef.value.contains(e.target)) {
+        showDropdown.value = false
+    }
+}
 
 const systemItems = [
     {
@@ -192,6 +338,45 @@ const systemItems = [
     padding: 8px 12px 8px;
 }
 
+.sidebar-search {
+    padding: 0 4px 16px;
+}
+
+.search-bar {
+    position: relative;
+    width: 100%;
+}
+
+.search-bar .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 9px 16px 9px 38px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    transition: all var(--transition-normal);
+}
+
+.search-bar input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-bar input::placeholder {
+    color: var(--text-muted);
+}
+
 .nav-label {
     font-size: 0.65rem;
     font-weight: 700;
@@ -199,6 +384,113 @@ const systemItems = [
     letter-spacing: 0.1em;
     white-space: nowrap;
 }
+
+/* Dropdown */
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.dropdown-msg {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.dropdown-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background var(--transition-fast);
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: var(--bg-card-hover);
+}
+
+.result-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.result-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.result-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.result-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.result-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.result-badge {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-success);
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Transition for dropdown */
+.dropdown-enter-active,
+.dropdown-leave-active {
+    transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+    opacity: 0;
+    transform: translateY(-5px);
+}
+
 
 .nav-item {
     display: flex;
