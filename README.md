@@ -34,3 +34,9 @@ python lpr\_ipcam.py
 
 uvicorn main:app --reload --port 8000
 
+
+
+pip freeze > requirements.txt
+
+lpr\_gpu\\Scripts\\activate
+

@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 venv/
 lpr_final/
+lpr_gpu/
 
 # ===== YOLO / Dataset =====
 AI_Project/Vietnam License Plate.v2i.yolov8/
