@@ -43,6 +43,7 @@ public partial class ApplicationDbContext : DbContext
     // Thêm vào ApplicationDbContext.cs
     public virtual DbSet<RegistrationLink> RegistrationLinks { get; set; }
     public virtual DbSet<VisitorDetail> VisitorDetails { get; set; }
+    public virtual DbSet<EmployeeFaceVideo> EmployeeFaceVideos { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -194,6 +195,25 @@ public partial class ApplicationDbContext : DbContext
                 IsActive = true,
                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
+        });
+        modelBuilder.Entity<EmployeeFaceVideo>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.FileName)
+                  .HasMaxLength(255);
+
+            entity.Property(e => e.FilePath)
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(e => e.Employee)
+                  .WithMany()
+                  .HasForeignKey(e => e.EmployeeId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_EmployeeFaceVideo_Employee");
         });
 
         OnModelCreatingPartial(modelBuilder);

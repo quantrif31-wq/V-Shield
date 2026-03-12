@@ -15,6 +15,7 @@ import DepartmentPosition from '../pages/DepartmentPosition.vue'
 
 import FaceID from '../components/FaceCamera.vue'
 import bienso from '../components/BienSoSecurity.vue'
+import FaceVideo from '../components/FaceVideo.vue'
 
 const routes = [
     {
@@ -36,6 +37,7 @@ const routes = [
             { path: 'settings', name: 'Settings', component: Settings },
             { path: 'FaceID', name: 'FaceID', component: FaceID },
             { path: 'bienso', name: 'bienso', component: bienso },
+            { path: 'facevideo', name: 'facevideo', component: FaceVideo },
             {
                 path: 'users',
                 name: 'UserManagement',
