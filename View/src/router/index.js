@@ -11,6 +11,8 @@ import Monitoring from '../pages/Monitoring.vue'
 import Settings from '../pages/Settings.vue'
 import UserManagement from '../pages/UserManagement.vue'
 import DepartmentPosition from '../pages/DepartmentPosition.vue'
+import PreRegistration from '../pages/PreRegistration.vue'
+import GuestRegister from '../pages/GuestRegister.vue'
 
 
 import FaceID from '../components/FaceCamera.vue'
@@ -22,6 +24,12 @@ const routes = [
         path: '/login',
         name: 'Login',
         component: Login,
+        meta: { guest: true },
+    },
+    {
+        path: '/register/:token',
+        name: 'GuestRegister',
+        component: GuestRegister,
         meta: { guest: true },
     },
     {
@@ -38,6 +46,7 @@ const routes = [
             { path: 'FaceID', name: 'FaceID', component: FaceID },
             { path: 'bienso', name: 'bienso', component: bienso },
             { path: 'facevideo', name: 'facevideo', component: FaceVideo },
+            { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration },
             {
                 path: 'users',
                 name: 'UserManagement',
@@ -76,7 +85,8 @@ router.beforeEach((to, from, next) => {
     }
 
     // Nếu đã đăng nhập mà vào trang login → redirect Dashboard
-    if (to.meta.guest && isLoggedIn()) {
+    // Nhưng cho phép truy cập trang đăng ký khách (GuestRegister) dù đã đăng nhập
+    if (to.meta.guest && isLoggedIn() && to.name !== 'GuestRegister') {
         return next({ name: 'Dashboard' })
     }
 

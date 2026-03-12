@@ -80,6 +80,10 @@ public class CreateLinkResponseDto
 public class ValidateTokenResponseDto
 {
     public string HostEmployeeName { get; set; } = null!;
+    public string? HostEmployeePhone { get; set; }
+    public string? HostEmployeeEmail { get; set; }
+    public string? HostDepartmentName { get; set; }
+    public string? HostPositionName { get; set; }
     public DateTime ExpiredAt { get; set; }
 }
 
