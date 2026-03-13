@@ -46,7 +46,7 @@ namespace API
 
             // ── Application Services ──────────────────────────────────────────────
             builder.Services.AddScoped<IAuthService, AuthService>();
-
+            builder.Services.AddScoped<IVehicleService, VehicleService>();
             // ── SignalR ───────────────────────────────────────────────────────────
             builder.Services.AddSignalR();
 
