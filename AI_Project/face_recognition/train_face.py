@@ -1,52 +1,149 @@
 import face_recognition
 import cv2
 import pickle
+import os
+import shutil
 import numpy as np
+from pathlib import Path
 
-VIDEO_PATH = "me.mp4"
-OUTPUT = "face_model.pkl"
+print("=== FACE TRAINING SYSTEM START ===")
 
-encodings = []
+# ==============================
+# XÁC ĐỊNH ROOT V-SHIELD
+# ==============================
 
-cap = cv2.VideoCapture(VIDEO_PATH)
+current_path = Path(__file__).resolve()
 
-frame_id = 0
-
-print("Start training from video...")
-
-while True:
-
-    ret, frame = cap.read()
-
-    if not ret:
+# tìm thư mục V-Shield
+for parent in current_path.parents:
+    if parent.name == "V-Shield":
+        ROOT = parent
         break
 
-    frame_id += 1
+print("Project root:", ROOT)
 
-    # lấy mỗi 5 frame
-    if frame_id % 5 != 0:
-        continue
+# ==============================
+# CÁC ĐƯỜNG DẪN
+# ==============================
 
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+VIDEO_NOTOK = ROOT / "API/API/API/wwwroot/uploads/VideoFace/video_notok"
+VIDEO_OK = ROOT / "API/API/API/wwwroot/uploads/VideoFace/video_ok"
+FACE_MODEL = ROOT / "API/API/API/wwwroot/uploads/VideoFace/FaceID"
 
-    faces = face_recognition.face_locations(rgb, model="hog")
+# tạo folder nếu chưa có
+VIDEO_OK.mkdir(parents=True, exist_ok=True)
+FACE_MODEL.mkdir(parents=True, exist_ok=True)
 
-    if not faces:
-        continue
+# ==============================
+# LẤY DANH SÁCH VIDEO MP4
+# ==============================
 
-    face_enc = face_recognition.face_encodings(rgb, faces)
+video_files = list(VIDEO_NOTOK.glob("*.mp4"))
 
-    for enc in face_enc:
-        encodings.append(enc)
+if not video_files:
+    print("No mp4 files found.")
+    exit()
 
-    print("Collected encodings:", len(encodings))
+print("Found", len(video_files), "videos")
 
-cap.release()
+# ==============================
+# TRAIN TỪNG VIDEO
+# ==============================
 
-print("Total encodings:", len(encodings))
+for video_path in video_files:
 
-# lưu model
-with open(OUTPUT, "wb") as f:
-    pickle.dump(encodings, f)
+    print("\n=============================")
+    print("Processing:", video_path.name)
 
-print("Model saved to", OUTPUT)
+    video_name = video_path.stem
+    model_path = FACE_MODEL / f"{video_name}.pkl"
+    temp_model = FACE_MODEL / f"{video_name}.tmp"
+
+    encodings = []
+
+    try:
+
+        cap = cv2.VideoCapture(str(video_path))
+
+        frame_id = 0
+
+        print("Start training...")
+
+        while True:
+
+            ret, frame = cap.read()
+
+            if not ret:
+                break
+
+            frame_id += 1
+
+            # lấy mỗi 5 frame
+            if frame_id % 5 != 0:
+                continue
+
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            faces = face_recognition.face_locations(rgb, model="hog")
+
+            if not faces:
+                continue
+
+            face_enc = face_recognition.face_encodings(rgb, faces)
+
+            for enc in face_enc:
+                encodings.append(enc)
+
+            print("Collected encodings:", len(encodings))
+
+        cap.release()
+
+        if len(encodings) == 0:
+            raise Exception("No face found in video")
+
+        print("Total encodings:", len(encodings))
+
+        # ==========================
+        # LƯU MODEL TẠM
+        # ==========================
+
+        with open(temp_model, "wb") as f:
+            pickle.dump(encodings, f)
+
+        # rename thành file chính
+        os.rename(temp_model, model_path)
+
+        print("Model saved:", model_path.name)
+
+        # ==========================
+        # MOVE VIDEO -> VIDEO_OK
+        # ==========================
+
+        shutil.move(str(video_path), str(VIDEO_OK / video_path.name))
+
+        print("Video moved to video_ok")
+
+    except KeyboardInterrupt:
+
+        print("\nTraining interrupted!")
+
+        # xóa file tạm
+        if temp_model.exists():
+            temp_model.unlink()
+
+        print("Temporary model deleted.")
+        print("Video kept in video_notok")
+
+        break
+
+    except Exception as e:
+
+        print("Error:", e)
+
+        # xóa file tạm nếu có
+        if temp_model.exists():
+            temp_model.unlink()
+
+        print("Training failed. Video kept in video_notok.")
+
+print("\n=== TRAINING FINISHED ===")

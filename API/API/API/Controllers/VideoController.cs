@@ -75,7 +75,7 @@ namespace API.Controllers
             string folder = Path.Combine(
                 _env.WebRootPath,
                 "uploads",
-                "VideoFace"
+                "VideoFace/video_notok"
             );
 
             if (!Directory.Exists(folder))

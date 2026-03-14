@@ -66,7 +66,12 @@ AI FACE DETECTION
 
 <div>Status : {{detectLabel}}</div>
 
+<div v-if="status.employee_id">
+Employee : {{status.employee_id}}
+</div>
+
 <div>Distance : {{status.distance}}</div>
+
 
 <div v-if="status.session_confirmed" class="confirm">
 ✔ IDENTIFIED
@@ -110,6 +115,13 @@ AI FACE DETECTION
 <div class="item">
 <span>Distance</span>
 <b>{{status.distance}}</b>
+</div>
+
+<div class="item">
+<span>Employee</span>
+<b class="ok">
+{{status.employee_id || "Unknown"}}
+</b>
 </div>
 
 </div>

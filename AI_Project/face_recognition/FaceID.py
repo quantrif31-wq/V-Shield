@@ -5,6 +5,9 @@ import time
 import threading
 from collections import deque
 import numpy as np
+import pickle
+from pathlib import Path
+
 app = FastAPI()
 
 # ================= CONFIG =================
@@ -38,6 +41,7 @@ result_state = {
     "session_active": False,
     "session_confirmed": False,
     "face_match": False,
+    "employee_id": None,
     "confirm_count": 0,
     "distance": None,
     "last_seen": None,
@@ -45,18 +49,45 @@ result_state = {
 }
 
 # ================= LOAD FACE =================
-print("Loading face model...")
+print("Loading face models...")
 
-import pickle
+# ================= ROOT PATH =================
+current_path = Path(__file__).resolve()
 
-print("Loading face model...")
+for parent in current_path.parents:
+    if parent.name == "V-Shield":
+        ROOT = parent
+        break
 
-with open("face_model.pkl", "rb") as f:
-    known_encodings = pickle.load(f)
+FACE_MODEL_DIR = ROOT / "API/API/API/wwwroot/uploads/VideoFace/FaceID"
 
-print("Loaded", len(known_encodings), "face embeddings")
+print("Face model directory:", FACE_MODEL_DIR)
 
-print("Face model loaded")
+known_encodings = []
+known_ids = []
+
+model_files = list(FACE_MODEL_DIR.glob("*.pkl"))
+
+for model_file in model_files:
+
+    with open(model_file, "rb") as f:
+        encodings = pickle.load(f)
+
+    # lấy ID nhân viên từ tên file
+    # ví dụ: emp_2_20260315020708.pkl -> emp_2
+    parts = model_file.stem.split("_")
+    emp_id = f"{parts[0]}_{parts[1]}"
+
+    for enc in encodings:
+        known_encodings.append(enc)
+        known_ids.append(emp_id)
+
+print("Loaded models:", len(model_files))
+print("Total encodings:", len(known_encodings))
+print("Face models loaded")
+
+if len(known_encodings) == 0:
+    print("WARNING: No face models found")
 
 
 # ================= RESET STATE =================
@@ -79,6 +110,7 @@ def reset_state():
         result_state.update({
             "session_active": False,
             "session_confirmed": False,
+            "employee_id": None,
             "confirm_count": 0,
             "distance": None,
             "last_seen": None,
@@ -176,20 +208,34 @@ def face_processing():
                 "height": int(bottom - top)
             }
 
-            if current_time - last_encode_time > ENCODE_INTERVAL:
+            need_encode = current_time - last_encode_time > ENCODE_INTERVAL
+            if need_encode:
+
+
+
 
                 enc = face_recognition.face_encodings(rgb, [face_locations[0]])
 
-                if enc:
+                if not enc:
+                    continue
 
-                    distances = face_recognition.face_distance(
+                if len(known_encodings) == 0:
+                    continue
+
+
+                distances = face_recognition.face_distance(
                     known_encodings,
                     enc[0]
                 )
 
-                distance = float(np.mean(sorted(distances)[:5]))
+                best_index = np.argmin(distances)
+                distance = float(distances[best_index])
+                employee_id = known_ids[best_index]
+
+
 
                 is_match = distance < THRESHOLD
+
 
                 if not session_active:
                     print("Face detected")
@@ -222,8 +268,10 @@ def face_processing():
                         "session_active": session_active,
                         "session_confirmed": session_confirmed,
                         "face_match": is_match,
+                        "employee_id": employee_id if is_match else None,
                         "confirm_count": confirm_count,
                         "distance": float(avg_distance),
+
                         "last_seen": last_seen_time,
                         "face_box": face_box
                     })
