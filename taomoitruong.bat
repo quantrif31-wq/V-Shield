@@ -7,16 +7,18 @@ echo        SETUP HE THONG V-SHIELD
 echo =========================================
 echo.
 
-:: ==============================
-:: PATH CONFIG
-:: ==============================
-set ROOT=C:\DoAnTotNghiep\V-Shield\AI_Project
-set APIROOT=C:\DoAnTotNghiep\V-Shield\API\API\API
-set VIEWROOT=C:\DoAnTotNghiep\V-Shield\View
+:: =====================================================
+:: ROOT PATH (RELATIVE)
+:: =====================================================
 
-:: ==============================
+set BASEDIR=%~dp0
+set ROOT=%BASEDIR%AI_Project
+set APIROOT=%BASEDIR%API\API\API
+set VIEWROOT=%BASEDIR%View
+
+:: =====================================================
 :: KIEM TRA PHAN MEM
-:: ==============================
+:: =====================================================
 
 echo Kiem tra Python...
 python --version >nul 2>&1
@@ -46,32 +48,37 @@ echo ✔ Tat ca cong cu da san sang
 echo.
 
 :: =====================================================
-:: DOC_BIEN
+:: DOC_BIEN_GPU
 :: =====================================================
 
 echo =========================================
-echo TAO MOI TRUONG DOC_BIEN
+echo TAO MOI TRUONG DOC_BIEN_GPU
 echo =========================================
 
-cd /d %ROOT%\doc_bien
+cd /d %ROOT%\doc_bien_gpu
 
-python -m venv venv
+if not exist venv (
+    python -m venv venv
+)
+
 if %errorlevel% neq 0 (
-echo ❌ Loi tao venv DOC_BIEN
+echo ❌ Loi tao venv DOC_BIEN_GPU
 pause
 goto end
 )
 
 call venv\Scripts\activate
 
+pip install --upgrade pip
 pip install -r requirements.txt
+
 if %errorlevel% neq 0 (
-echo ❌ Loi pip install DOC_BIEN
+echo ❌ Loi pip install DOC_BIEN_GPU
 pause
 goto end
 )
 
-echo ✔ DOC_BIEN OK
+echo ✔ DOC_BIEN_GPU OK
 echo.
 
 :: =====================================================
@@ -84,7 +91,10 @@ echo =========================================
 
 cd /d %ROOT%\face_recognition
 
-python -m venv venv
+if not exist venv (
+    python -m venv venv
+)
+
 if %errorlevel% neq 0 (
 echo ❌ Loi tao venv FACE_RECOGNITION
 pause
@@ -93,7 +103,9 @@ goto end
 
 call venv\Scripts\activate
 
+pip install --upgrade pip
 pip install -r requirements.txt
+
 if %errorlevel% neq 0 (
 echo ❌ Loi pip install FACE_RECOGNITION
 pause
@@ -169,21 +181,22 @@ cd /d %VIEWROOT%
 echo Dang chay npm install...
 echo.
 
-cmd /k "npm install"
+npm install
 
 if %errorlevel% neq 0 (
-    echo.
-    echo =====================================
-    echo LOI KHI CAI DAT NPM PACKAGE
-    echo KIEM TRA NODEJS HOAC PACKAGE.JSON
-    echo =====================================
-    pause
-    goto end
+echo.
+echo =====================================
+echo LOI KHI CAI DAT NPM PACKAGE
+echo KIEM TRA NODEJS HOAC PACKAGE.JSON
+echo =====================================
+pause
+goto end
 )
 
 echo.
 echo ✔ VUE PACKAGE CAI DAT THANH CONG
 echo.
+
 :: =====================================================
 :: HOAN THANH
 :: =====================================================
@@ -196,4 +209,4 @@ echo.
 :end
 echo.
 echo Nhan phim bat ky de thoat...
-pause >nul
+pause
