@@ -74,9 +74,10 @@ for model_file in model_files:
         encodings = pickle.load(f)
 
     # lấy ID nhân viên từ tên file
-    # ví dụ: emp_2_20260315020708.pkl -> emp_2
+    # ví dụ: emp_2_20260315020708.pkl -> 2
     parts = model_file.stem.split("_")
-    emp_id = f"{parts[0]}_{parts[1]}"
+    #emp_id = f"{parts[0]}_{parts[1]}"
+    emp_id = f"{parts[1]}"
 
     for enc in encodings:
         known_encodings.append(enc)

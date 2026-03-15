@@ -25,6 +25,7 @@ public partial class Vehicle
 
     [ForeignKey("EmployeeId")]
     [InverseProperty("Vehicles")]
+    public string ParkingStatus { get; set; } = "OUT";
     public virtual Employee? Employee { get; set; }
 
     [ForeignKey("VehicleTypeId")]

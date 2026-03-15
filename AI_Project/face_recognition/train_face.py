@@ -4,9 +4,14 @@ import pickle
 import os
 import shutil
 import numpy as np
+import pyodbc
+
 from pathlib import Path
 
 print("=== FACE TRAINING SYSTEM START ===")
+# ================== DATABASE ==================
+DB_CONN_STR = r"DRIVER={ODBC Driver 17 for SQL Server};SERVER=(localdb)\MSSQLLocalDB;DATABASE=AccessControlDB;Trusted_Connection=yes;TrustServerCertificate=yes"
+
 
 # ==============================
 # XÁC ĐỊNH ROOT V-SHIELD
@@ -21,6 +26,12 @@ for parent in current_path.parents:
         break
 
 print("Project root:", ROOT)
+# ================== CONNECT DATABASE ==================
+conn = pyodbc.connect(DB_CONN_STR)
+cursor = conn.cursor()
+
+print("Database connected")
+
 
 # ==============================
 # CÁC ĐƯỜNG DẪN
@@ -56,6 +67,17 @@ for video_path in video_files:
     print("Processing:", video_path.name)
 
     video_name = video_path.stem
+    # ==========================
+# LẤY EMPLOYEE ID TỪ TÊN FILE
+# ==========================
+
+    parts = video_name.split("_")
+
+    if len(parts) < 2:
+        raise Exception("Invalid video name format")
+
+    employee_id = int(parts[1])
+
     model_path = FACE_MODEL / f"{video_name}.pkl"
     temp_model = FACE_MODEL / f"{video_name}.tmp"
 
@@ -114,6 +136,24 @@ for video_path in video_files:
         os.rename(temp_model, model_path)
 
         print("Model saved:", model_path.name)
+        # ==========================
+        # SAVE MODEL INFO TO DATABASE
+        # ==========================
+
+        cursor.execute("""
+        INSERT INTO EmployeeFaceModels
+        (EmployeeId, ModelFileName, ModelPath, CreatedAt)
+        VALUES (?, ?, ?, GETDATE())
+        """,
+        employee_id,
+        model_path.name,
+        str(model_path)
+        )
+
+        conn.commit()
+
+        print("Model saved to database for employee:", employee_id)
+
 
         # ==========================
         # MOVE VIDEO -> VIDEO_OK
@@ -145,5 +185,10 @@ for video_path in video_files:
             temp_model.unlink()
 
         print("Training failed. Video kept in video_notok.")
+
+cursor.close()
+conn.close()
+print("Database connection closed")
+
 
 print("\n=== TRAINING FINISHED ===")

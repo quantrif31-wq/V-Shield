@@ -18,6 +18,7 @@ import GuestRegister from '../pages/GuestRegister.vue'
 import FaceID from '../components/FaceCamera.vue'
 import bienso from '../components/BienSoSecurity.vue'
 import FaceVideo from '../components/FaceVideo.vue'
+import ThongHanh from '../components/ThongHanh.vue'
 
 const routes = [
     {
@@ -46,6 +47,7 @@ const routes = [
             { path: 'FaceID', name: 'FaceID', component: FaceID },
             { path: 'bienso', name: 'bienso', component: bienso },
             { path: 'facevideo', name: 'facevideo', component: FaceVideo },
+            { path: 'thonghanh', name: 'thonghanh', component: ThongHanh },
             { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration },
             {
                 path: 'users',

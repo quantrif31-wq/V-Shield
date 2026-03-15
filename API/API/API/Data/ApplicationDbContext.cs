@@ -44,6 +44,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<RegistrationLink> RegistrationLinks { get; set; }
     public virtual DbSet<VisitorDetail> VisitorDetails { get; set; }
     public virtual DbSet<EmployeeFaceVideo> EmployeeFaceVideos { get; set; }
+    public virtual DbSet<EmployeeFaceModel> EmployeeFaceModels { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -161,6 +162,9 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Employee).WithMany(p => p.Vehicles).HasConstraintName("FK_Vehicle_Employee");
 
             entity.HasOne(d => d.VehicleType).WithMany(p => p.Vehicles).HasConstraintName("FK_Vehicle_Type");
+            entity.Property(e => e.ParkingStatus)
+          .HasMaxLength(10)
+          .HasDefaultValue("OUT");
         });
 
         modelBuilder.Entity<VehicleType>(entity =>
@@ -215,6 +219,26 @@ public partial class ApplicationDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("FK_EmployeeFaceVideo_Employee");
         });
+        modelBuilder.Entity<EmployeeFaceModel>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.ModelFileName)
+                  .HasMaxLength(255);
+
+            entity.Property(e => e.ModelPath)
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(e => e.Employee)
+                  .WithMany()
+                  .HasForeignKey(e => e.EmployeeId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_EmployeeFaceModel_Employee");
+        });
+
 
         OnModelCreatingPartial(modelBuilder);
     }
