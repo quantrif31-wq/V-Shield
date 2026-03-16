@@ -40,3 +40,4 @@ pip freeze > requirements.txt
 
 lpr\_gpu\\Scripts\\activate
 
+pip cache purge
