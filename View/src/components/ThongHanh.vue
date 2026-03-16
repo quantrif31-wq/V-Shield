@@ -1,26 +1,69 @@
 <template>
 
-<div class="monitor">
+<div class="console">
 
-<h1>V-Shield AI Gate Monitor</h1>
+<header class="topbar">
 
-<div class="inputs">
+<div class="title">
+V-Shield AI Security Console
+</div>
 
-<input v-model="faceIp" placeholder="Face Camera IP"/>
+<div class="system-status">
+<span class="led" :class="{on:faceRunning || plateRunning}"></span>
+{{ faceRunning || plateRunning ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
+</div>
 
-<input v-model="plateIp" placeholder="Plate Camera IP"/>
+</header>
 
-<button @click="start">START</button>
+
+<div class="layout">
+
+<!-- CONTROL PANEL -->
+
+<div class="control">
+
+<h3>FACE CAMERA</h3>
+
+<input v-model="faceCameraIp" placeholder="Face camera URL"/>
+
+<button class="btn start" @click="startFace">
+START FACE
+</button>
+
+<button class="btn stop" @click="stopFace">
+STOP FACE
+</button>
+
+<hr>
+
+<h3>PLATE CAMERA</h3>
+
+<select v-model="selectedCamera" @change="connectPlate">
+
+<option value="">Select Camera</option>
+
+<option
+v-for="cam in cameras"
+:key="cam.cameraIP"
+:value="cam.cameraIP"
+>
+{{ cam.cameraIP }}
+</option>
+
+</select>
+
+<button class="btn stop" @click="stopPlate">
+STOP PLATE
+</button>
 
 </div>
 
-<div class="cams">
+
+<!-- CAMERA PANEL -->
+
+<div class="camera-panel">
 
 <!-- FACE CAMERA -->
-
-<div class="cam">
-
-<h3>FACE CAMERA</h3>
 
 <div class="video-wrapper">
 
@@ -28,14 +71,21 @@
 
 <canvas ref="faceCanvas"></canvas>
 
+<div class="overlay">
+
+<div>FACE DETECTION</div>
+
+<div>Status : {{detectLabel}}</div>
+<div>Gate : {{gateStatus}}</div>
+
+<div v-if="status.employee_id">
+Employee : {{status.employee_id}}
 </div>
 
-<div class="info">
+<div>Distance : {{status.distance}}</div>
 
-<div>Status : {{faceLabel}}</div>
-
-<div v-if="face.employee_id">
-Employee : {{face.employee_id}}
+<div v-if="status.session_confirmed" class="confirm">
+✔ IDENTIFIED
 </div>
 
 </div>
@@ -45,26 +95,29 @@ Employee : {{face.employee_id}}
 
 <!-- PLATE CAMERA -->
 
-<div class="cam">
-
-<h3>PLATE CAMERA</h3>
-
 <div class="video-wrapper">
 
 <img
-:src="plateIp"
+v-if="plateRunning"
+:src="streamUrl"
 class="video"
 ref="plateVideo"
 />
 
 <canvas ref="plateCanvas"></canvas>
 
+<div class="overlay">
+
+<div>LICENSE PLATE</div>
+
+<div>Plate : {{ plate || "-----" }}</div>
+
 </div>
 
-<div class="plate">
+</div>
 
-{{plate || "-----"}}
-
+<div class="plate-big">
+{{ plate || "-----" }}
 </div>
 
 </div>
@@ -74,17 +127,39 @@ ref="plateVideo"
 </div>
 
 </template>
+
+
 <script setup>
 
 import {ref,onMounted,onBeforeUnmount,computed} from "vue"
-import {getStatus} from "../services/faceApi"
-import {getPlate} from "../services/biensoApi"
 
-const faceIp = ref("")
-const plateIp = ref("")
+import {
+startCamera,
+stopCamera,
+getStatus
+} from "../services/faceApi"
 
-const face = ref({})
-const plate = ref(null)
+import {
+getCameras,
+getPlate
+} from "../services/biensoApi"
+import { scanGate } from "../services/thonghanhAPI"
+
+
+/* STATE */
+
+const cameras = ref([])
+const selectedCamera = ref("")
+
+const faceCameraIp = ref("http://127.0.0.1:8080/video")
+
+const plate = ref("")
+const status = ref({})
+
+const faceRunning = ref(false)
+const plateRunning = ref(false)
+
+const streamUrl = ref("")
 
 const faceVideo = ref(null)
 const plateVideo = ref(null)
@@ -92,175 +167,289 @@ const plateVideo = ref(null)
 const faceCanvas = ref(null)
 const plateCanvas = ref(null)
 
-let faceCtx = null
-let plateCtx = null
+let faceCtx=null
+let plateCtx=null
 
-let poller = null
+let faceLoop=null
+let plateLoop=null
+let gateLoop=null
 
+const gateStatus = ref("")
 
-/* ================= FACE COLOR ================= */
+/* FACE LABEL */
 
-const faceColor = computed(()=>{
+const detectLabel = computed(()=>{
 
-if(!face.value.session_active)
-return "yellow"
+if(!status.value.session_active) return "IDLE"
+if(status.value.session_confirmed) return "IDENTIFIED"
+if(status.value.face_match) return "VERIFYING"
 
-if(face.value.session_confirmed)
-return "#00ff00"
-
-return "yellow"
-
-})
-
-const faceLabel = computed(()=>{
-
-if(!face.value.session_active)
-return "IDLE"
-
-if(face.value.session_confirmed)
-return "CONFIRMED"
-
-return "DETECTING"
+return "UNKNOWN"
 
 })
 
 
-/* ================= START ================= */
+/* LOAD CAMERAS */
 
-function start(){
-
-faceVideo.value.src = faceIp.value
-
-startPolling()
-
-}
-
-
-/* ================= POLLING ================= */
-
-function startPolling(){
-
-poller = setInterval(update,300)
-
-}
-
-
-function stopPolling(){
-
-clearInterval(poller)
-
-}
-
-
-/* ================= UPDATE ================= */
-
-async function update(){
+async function loadCameras(){
 
 try{
 
-const resFace = await getStatus()
+const res = await getCameras()
 
-face.value = resFace.data
-
-drawFace()
-
-
-const resPlate = await getPlate()
-
-plate.value = resPlate.plateNumber
-
-drawPlate(resPlate)
+cameras.value = res || []
 
 }catch(e){
 
-console.log("poll error")
+console.log("camera load error")
 
 }
 
 }
 
 
-/* ================= DRAW FACE ================= */
+/* FACE START */
+
+async function startFace(){
+
+await startCamera(faceCameraIp.value)
+
+faceVideo.value.src = faceCameraIp.value
+
+faceRunning.value=true
+
+startFaceLoop()
+
+}
+
+
+async function stopFace(){
+
+await stopCamera()
+
+faceRunning.value=false
+
+clearInterval(faceLoop)
+
+faceVideo.value.src=""
+
+clearFace()
+
+}
+
+
+/* FACE LOOP */
+
+function startFaceLoop(){
+
+clearInterval(faceLoop)
+
+faceLoop=setInterval(updateFace,300)
+
+}
+
+
+async function updateFace(){
+
+if(!faceRunning.value) return
+
+try{
+
+const res = await getStatus()
+
+status.value = res.data || {}
+
+drawFace()
+
+}catch(e){
+
+console.log("face error")
+
+}
+
+}
+
 
 function drawFace(){
 
-const ctx = faceCtx
-const canvas = faceCanvas.value
+if(!faceCtx) return
 
-ctx.clearRect(0,0,canvas.width,canvas.height)
+clearFace()
 
-const box = face.value.face_box
+const face=status.value.face_box
 
-if(!box) return
+if(!face) return
 
-const scaleX = canvas.width / 480
-const scaleY = canvas.height / 480
+const scaleX = faceCanvas.value.width/480
+const scaleY = faceCanvas.value.height/480
 
-ctx.strokeStyle = faceColor.value
-ctx.lineWidth = 3
+faceCtx.strokeStyle="#00ff9c"
+faceCtx.lineWidth=3
 
-ctx.strokeRect(
+faceCtx.strokeRect(
 
-box.left * scaleX,
-box.top * scaleY,
-box.width * scaleX,
-box.height * scaleY
+face.left*scaleX,
+face.top*scaleY,
+face.width*scaleX,
+face.height*scaleY
 
 )
 
 }
 
 
-/* ================= DRAW PLATE ================= */
+function clearFace(){
 
-function drawPlate(res){
+faceCtx.clearRect(
+0,
+0,
+faceCanvas.value.width,
+faceCanvas.value.height
+)
 
-const ctx = plateCtx
-const canvas = plateCanvas.value
+}
 
-ctx.clearRect(0,0,canvas.width,canvas.height)
+
+/* PLATE CONNECT */
+
+function connectPlate(){
+
+if(!selectedCamera.value) return
+
+streamUrl.value = selectedCamera.value
+
+plateRunning.value=true
+
+startPlateLoop()
+
+}
+
+
+function stopPlate(){
+
+plateRunning.value=false
+
+clearInterval(plateLoop)
+
+plate.value=""
+
+plateCtx.clearRect(
+0,
+0,
+plateCanvas.value.width,
+plateCanvas.value.height
+)
+
+}
+
+
+/* PLATE LOOP */
+
+function startPlateLoop(){
+
+clearInterval(plateLoop)
+
+plateLoop=setInterval(updatePlate,500)
+
+}
+
+
+async function updatePlate(){
+
+if(!plateRunning.value) return
+
+try{
+
+const res = await getPlate(selectedCamera.value)
 
 if(!res) return
 
-const scaleX = canvas.width / 640
-const scaleY = canvas.height / 360
+plate.value = res.plateNumber
 
-const x = res.x1 * scaleX
-const y = res.y1 * scaleY
-const w = (res.x2-res.x1) * scaleX
-const h = (res.y2-res.y1) * scaleY
+drawPlate(res)
 
-ctx.strokeStyle="#00ff00"
-ctx.lineWidth=3
+}catch(e){
 
-ctx.strokeRect(x,y,w,h)
+console.log("plate error")
 
-ctx.font="20px Arial"
-ctx.fillStyle="#00ff00"
-
-ctx.fillText(res.plateNumber,x,y-10)
+}
 
 }
 
 
-/* ================= INIT ================= */
+function drawPlate(res){
+
+const canvas=plateCanvas.value
+const img=plateVideo.value
+
+if(!canvas || !img) return
+
+canvas.width=img.clientWidth
+canvas.height=img.clientHeight
+
+plateCtx.clearRect(0,0,canvas.width,canvas.height)
+
+const scaleX=canvas.width/640
+const scaleY=canvas.height/360
+
+const x=res.x1*scaleX
+const y=res.y1*scaleY
+const w=(res.x2-res.x1)*scaleX
+const h=(res.y2-res.y1)*scaleY
+
+plateCtx.strokeStyle="#00ff00"
+plateCtx.lineWidth=3
+
+plateCtx.strokeRect(x,y,w,h)
+
+plateCtx.font="20px Arial"
+plateCtx.fillStyle="#00ff00"
+
+plateCtx.fillText(res.plateNumber,x,y-10)
+
+}
+
+async function runGate(){
+
+  try{
+
+    const res = await scanGate()
+
+    if(!res || !res.data) return
+
+    gateStatus.value = res.data.status
+
+    if(res.data.status === "SUCCESS"){
+        console.log("OPEN GATE")
+    }
+
+  }catch(e){
+
+    console.log("gate error")
+
+  }
+
+}
+function startGateLoop(){
+
+  clearInterval(gateLoop)
+
+  gateLoop = setInterval(runGate,1000)
+
+}
+/* INIT */
 
 onMounted(()=>{
 
-faceCtx = faceCanvas.value.getContext("2d")
-plateCtx = plateCanvas.value.getContext("2d")
+loadCameras()
 
-faceVideo.value.onload = ()=>{
+faceCtx=faceCanvas.value.getContext("2d")
+plateCtx=plateCanvas.value.getContext("2d")
+startGateLoop()
+faceVideo.value.onload=()=>{
 
-faceCanvas.value.width = faceVideo.value.clientWidth
-faceCanvas.value.height = faceVideo.value.clientHeight
-
-}
-
-plateVideo.value.onload = ()=>{
-
-plateCanvas.value.width = plateVideo.value.clientWidth
-plateCanvas.value.height = plateVideo.value.clientHeight
+faceCanvas.value.width=faceVideo.value.clientWidth
+faceCanvas.value.height=faceVideo.value.clientHeight
 
 }
 
@@ -269,42 +458,83 @@ plateCanvas.value.height = plateVideo.value.clientHeight
 
 onBeforeUnmount(()=>{
 
-stopPolling()
-
+clearInterval(faceLoop)
+clearInterval(plateLoop)
+clearInterval(gateLoop)
 })
 
 </script>
-<style scoped>
 
-.monitor{
-width:1200px;
-margin:auto;
+
+<style>
+
+body{
+margin:0;
+background:#041424;
 color:white;
-text-align:center;
+font-family:Segoe UI;
 }
 
-.cams{
+.topbar{
 display:flex;
-gap:40px;
-justify-content:center;
-margin-top:20px;
+justify-content:space-between;
+padding:20px 40px;
+background:#0b223f;
 }
 
-.cam{
-width:520px;
+.title{
+font-size:22px;
+font-weight:bold;
 }
+
+.layout{
+display:grid;
+grid-template-columns:260px 720px;
+gap:30px;
+justify-content:center;
+padding:30px;
+}
+
+.control{
+background:#0c2747;
+padding:20px;
+border-radius:8px;
+}
+
+.control select,
+.control input{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+}
+
+.btn{
+width:100%;
+padding:12px;
+margin-bottom:10px;
+border:none;
+border-radius:6px;
+font-weight:bold;
+cursor:pointer;
+}
+
+.start{background:#27ae60}
+.stop{background:#e74c3c}
 
 .video-wrapper{
 position:relative;
-width:520px;
-height:360px;
+width:720px;
+height:320px;
 background:black;
+margin-bottom:20px;
 }
 
 .video{
 width:100%;
 height:100%;
 object-fit:contain;
+transform: rotate(-90deg);
+transform-origin:center;
 }
 
 canvas{
@@ -314,13 +544,28 @@ left:0;
 width:100%;
 height:100%;
 pointer-events:none;
+transform: rotate(-90deg);
+transform-origin:center;
 }
 
-.plate{
-font-size:40px;
-color:#00ff00;
-margin-top:10px;
+.overlay{
+position:absolute;
+top:10px;
+left:10px;
+background:rgba(0,0,0,0.5);
+padding:8px 12px;
+border-radius:6px;
+}
+
+.plate-big{
+font-size:50px;
+text-align:center;
+color:#00ff9c;
 font-weight:bold;
+}
+
+.confirm{
+color:#00ff9c;
 }
 
 </style>

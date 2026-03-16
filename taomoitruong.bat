@@ -70,21 +70,20 @@ if %errorlevel% neq 0 (
     goto end
 )
 
-call venv\Scripts\activate
+
 
 echo Cap nhat pip...
-python -m pip install --upgrade pip setuptools wheel
+venv\Scripts\python -m pip install --upgrade pip setuptools wheel
 
 echo Cai dat requirements...
-python -m pip install -r requirements.txt
-
+venv\Scripts\python -m pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo ❌ Loi pip install DOC_BIEN_GPU
     pause
     goto end
 )
 
-call deactivate
+
 
 
 echo ✔ DOC_BIEN_GPU OK
@@ -111,14 +110,12 @@ if %errorlevel% neq 0 (
     goto end
 )
 
-call venv\Scripts\activate
 
 echo Cap nhat pip...
-python -m pip install --upgrade pip setuptools wheel
+venv\Scripts\python -m pip install --upgrade pip setuptools wheel
 
 echo Cai dat requirements...
-python -m pip install -r requirements.txt
-
+venv\Scripts\python -m pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo ❌ Loi pip install FACE_RECOGNITION
     pause
@@ -126,7 +123,7 @@ if %errorlevel% neq 0 (
 )
 
 
-call deactivate
+
 
 
 echo ✔ FACE_RECOGNITION OK
