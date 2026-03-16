@@ -186,6 +186,28 @@ namespace API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "EmployeeFaceModels",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeId = table.Column<int>(type: "int", nullable: false),
+                    ModelFileName = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    ModelPath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EmployeeFaceModels", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EmployeeFaceModel_Employee",
+                        column: x => x.EmployeeId,
+                        principalTable: "Employee",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EmployeeFaceVideos",
                 columns: table => new
                 {
@@ -270,7 +292,8 @@ namespace API.Migrations
                     LicensePlate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     VehicleTypeId = table.Column<int>(type: "int", nullable: true),
                     EmployeeId = table.Column<int>(type: "int", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true)
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    ParkingStatus = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false, defaultValue: "OUT")
                 },
                 constraints: table =>
                 {
@@ -367,7 +390,7 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$xELbYg6RNqejwqEdnTUc1eLlHz2NRJ3jAGyerX8P4hZoOgFVLTlLS", "Admin", "admin" });
+                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$MQivzJUlgy3Ykp.T2F6cBOpXl8Gs33.MURF3v8D9xzJRNnjf5xNtG", "Admin", "admin" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Access_Log_CameraId",
@@ -426,6 +449,11 @@ namespace API.Migrations
                 name: "IX_Employee_PositionId",
                 table: "Employee",
                 column: "PositionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EmployeeFaceModels_EmployeeId",
+                table: "EmployeeFaceModels",
+                column: "EmployeeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EmployeeFaceVideos_EmployeeId",
@@ -492,6 +520,9 @@ namespace API.Migrations
 
             migrationBuilder.DropTable(
                 name: "CameraPlates");
+
+            migrationBuilder.DropTable(
+                name: "EmployeeFaceModels");
 
             migrationBuilder.DropTable(
                 name: "EmployeeFaceVideos");

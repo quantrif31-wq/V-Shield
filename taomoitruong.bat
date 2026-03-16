@@ -2,6 +2,7 @@
 title Setup V-Shield Environment
 color 0A
 setlocal
+echo on
 
 echo =========================================
 echo        SETUP HE THONG V-SHIELD
@@ -83,7 +84,8 @@ if %errorlevel% neq 0 (
     goto end
 )
 
-deactivate
+call deactivate
+
 
 echo ✔ DOC_BIEN_GPU OK
 echo.
@@ -123,7 +125,9 @@ if %errorlevel% neq 0 (
     goto end
 )
 
-deactivate
+
+call deactivate
+
 
 echo ✔ FACE_RECOGNITION OK
 echo.
@@ -194,7 +198,7 @@ cd /d "%VIEWROOT%"
 echo Dang chay npm install...
 echo.
 
-npm install
+call npm install
 
 if %errorlevel% neq 0 (
     echo.
@@ -205,11 +209,9 @@ if %errorlevel% neq 0 (
     pause
     goto end
 )
-
 echo.
 echo ✔ VUE PACKAGE CAI DAT THANH CONG
 echo.
-
 :: =====================================================
 :: HOAN THANH
 :: =====================================================
