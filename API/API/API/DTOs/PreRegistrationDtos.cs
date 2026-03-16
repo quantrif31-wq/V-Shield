@@ -84,6 +84,8 @@ public class ValidateTokenResponseDto
     public string? HostEmployeeEmail { get; set; }
     public string? HostDepartmentName { get; set; }
     public string? HostPositionName { get; set; }
+    public string? HostFaceImageUrl { get; set; }
+    public List<string>? HostLicensePlates { get; set; }
     public DateTime ExpiredAt { get; set; }
 }
 

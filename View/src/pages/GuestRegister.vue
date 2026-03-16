@@ -72,9 +72,14 @@
                 <div class="card-header-info">
                     <h2>Đăng ký khách thăm quan</h2>
                     <div class="host-info-card">
-                        <div class="host-avatar">
-                            {{ getInitials(hostInfo.hostEmployeeName) }}
-                        </div>
+                        <template v-if="hostInfo.hostFaceImageUrl">
+                            <img :src="API_BASE + hostInfo.hostFaceImageUrl" class="host-avatar avatar-img" @error="$event.target.style.display = 'none'" />
+                        </template>
+                        <template v-else>
+                            <div class="host-avatar">
+                                {{ getInitials(hostInfo.hostEmployeeName) }}
+                            </div>
+                        </template>
                         <div class="host-details">
                             <span class="host-name">{{ hostInfo.hostEmployeeName }}</span>
                             <span v-if="hostInfo.hostPositionName || hostInfo.hostDepartmentName" class="host-role">
@@ -88,6 +93,15 @@
                                 <span v-if="hostInfo.hostEmployeeEmail" class="host-contact-item">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                                     {{ hostInfo.hostEmployeeEmail }}
+                                </span>
+                                <span v-if="hostInfo.hostLicensePlates && hostInfo.hostLicensePlates.length > 0" class="host-contact-item" style="width: 100%;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 13px; height: 13px;">
+                                        <rect x="3" y="12" width="18" height="6" rx="2" ry="2"></rect>
+                                        <path d="M5 12l2-4h10l2 4"></path>
+                                        <circle cx="7" cy="18" r="1.5"></circle>
+                                        <circle cx="17" cy="18" r="1.5"></circle>
+                                    </svg>
+                                    {{ hostInfo.hostLicensePlates.join(' • ') }}
                                 </span>
                             </div>
                         </div>
@@ -113,7 +127,20 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Họ và tên *</label>
-                            <input v-model="form.fullName" type="text" placeholder="Nguyễn Văn A" />
+                            <input v-model="form.fullName" type="text" placeholder="Nguyễn Văn An"
+                                @input="runNameValidation"
+                                @blur="nameValidation.touched = true; runNameValidation()"
+                                :class="{ 'input-error': nameValidation.touched && !nameValidation.isValid && form.fullName.length >= 2, 'input-success': nameValidation.isValid }" />
+                            <div v-if="nameValidation.touched && form.fullName.length >= 2" class="name-feedback">
+                                <span v-if="nameValidation.isValid" class="feedback-success">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+                                    Hợp lệ
+                                </span>
+                                <span v-else class="feedback-error">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+                                    {{ nameValidation.error }}
+                                </span>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Số điện thoại</label>
@@ -123,8 +150,45 @@
 
                     <div class="form-group">
                         <label>Biển số xe *</label>
-                        <input v-model="form.expectedLicensePlate" type="text" placeholder="VD: 36H3-12389"
-                            @input="formatLicensePlate" maxlength="12" style="text-transform: uppercase;" />
+                        <div class="combo-box-wrapper" style="position: relative;">
+                            <input v-model="form.expectedLicensePlate" type="text" placeholder="VD: 36H3-12389"
+                                @input="onGuestPlateInput" 
+                                @focus="showPlateDropdown = true"
+                                @blur="showPlateDropdown = false"
+                                :class="{ 'input-error': plateValidation.touched && !plateValidation.isValid && form.expectedLicensePlate.length >= 3, 'input-success': plateValidation.isValid }"
+                                maxlength="12" 
+                                style="text-transform: uppercase; width: 100%; padding-right: 40px;" />
+                            
+                            <div v-if="hostInfo.hostLicensePlates && hostInfo.hostLicensePlates.length > 0" 
+                                class="combo-icon" 
+                                @mousedown.prevent="showPlateDropdown = !showPlateDropdown">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
+                            
+                            <div v-if="showPlateDropdown && hostInfo.hostLicensePlates && hostInfo.hostLicensePlates.length > 0" class="combo-dropdown">
+                                <div class="combo-header">Biển số xe đã đăng ký</div>
+                                <div 
+                                    v-for="(plate, idx) in hostInfo.hostLicensePlates" 
+                                    :key="idx" 
+                                    class="combo-item"
+                                    :class="{ active: form.expectedLicensePlate === plate }"
+                                    @mousedown.prevent="selectPlate(plate)"
+                                >
+                                    {{ plate }}
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="plateValidation.touched" class="plate-feedback">
+                            <span v-if="plateValidation.isValid" class="feedback-success">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+                                Hợp lệ — {{ plateValidation.typeLabel }}
+                                <span v-if="plateValidation.corrected" class="feedback-corrected">(đã sửa: {{ plateValidation.cleanedPlate }})</span>
+                            </span>
+                            <span v-else-if="form.expectedLicensePlate.length >= 3" class="feedback-error">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+                                Biển số không hợp lệ
+                            </span>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -145,7 +209,7 @@
 
                     <div class="form-actions">
                         <button class="btn btn-primary" @click="goToStep2"
-                            :disabled="!form.fullName || !form.expectedLicensePlate || !form.expectedTimeIn || !form.expectedTimeOut">
+                            :disabled="!form.fullName || !form.expectedLicensePlate || !form.expectedTimeIn || !form.expectedTimeOut || (plateValidation.touched && !plateValidation.isValid) || (nameValidation.touched && !nameValidation.isValid)">
                             Tiếp theo
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 style="width: 16px; height: 16px;">
@@ -174,7 +238,15 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Họ tên *</label>
-                                <input v-model="v.fullName" type="text" placeholder="Họ tên khách" />
+                                <input v-model="v.fullName" type="text" placeholder="Họ tên khách"
+                                    @blur="runVisitorNameValidation(i)" 
+                                    :class="{ 'input-error': v._nameError, 'input-success': v.fullName && !v._nameError }" />
+                                <div v-if="v._nameError" class="name-feedback">
+                                    <span class="feedback-error">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+                                        {{ v._nameError }}
+                                    </span>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>Số CMND / CCCD</label>
@@ -219,6 +291,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { validateToken, submitRegistration } from '../services/preRegistrationApi'
+import { optimizeAndValidatePlate, getVehicleTypeLabel } from '../utils/licensePlateValidator'
+import { validateVietnameseName, normalizeVietnameseName } from '../utils/nameValidator'
 
 const route = useRoute()
 const router = useRouter()
@@ -233,6 +307,8 @@ const hostInfo = reactive({
     hostEmployeeEmail: '',
     hostDepartmentName: '',
     hostPositionName: '',
+    hostFaceImageUrl: null,
+    hostLicensePlates: [],
     expiredAt: null
 })
 const currentStep = ref(1)
@@ -240,6 +316,78 @@ const isSubmitting = ref(false)
 const isSubmitted = ref(false)
 const submittedId = ref(null)
 const countdown = ref(5)
+const showPlateDropdown = ref(false)
+
+// License plate validation state
+const plateValidation = reactive({
+    touched: false,
+    isValid: false,
+    type: 'Unknown',
+    typeLabel: '',
+    cleanedPlate: '',
+    corrected: false
+})
+
+// Name validation state
+const nameValidation = reactive({
+    touched: false,
+    isValid: false,
+    error: ''
+})
+
+function runNameValidation() {
+    const val = form.fullName?.trim()
+    if (!val) {
+        nameValidation.touched = false
+        nameValidation.isValid = false
+        nameValidation.error = ''
+        return
+    }
+    nameValidation.touched = true
+    const result = validateVietnameseName(val)
+    nameValidation.isValid = result.isValid
+    nameValidation.error = result.error
+}
+
+function runVisitorNameValidation(index) {
+    const visitor = form.visitors[index]
+    if (!visitor) return
+    const val = visitor.fullName?.trim()
+    if (!val) {
+        visitor._nameError = ''
+        return
+    }
+    const result = validateVietnameseName(val)
+    visitor._nameError = result.isValid ? '' : result.error
+}
+
+function runPlateValidation(value) {
+    const val = value?.trim()
+    if (!val) {
+        plateValidation.touched = false
+        plateValidation.isValid = false
+        return
+    }
+    plateValidation.touched = true
+    const result = optimizeAndValidatePlate(val)
+    plateValidation.isValid = result.isValid
+    plateValidation.type = result.type
+    plateValidation.typeLabel = getVehicleTypeLabel(result.type)
+    plateValidation.cleanedPlate = result.cleanedPlate
+    plateValidation.corrected = result.cleanedPlate !== result.rawInput
+}
+
+const selectPlate = (plate) => {
+    form.expectedLicensePlate = plate
+    showPlateDropdown.value = false
+    // Biển số từ dropdown host — luôn valid
+    plateValidation.touched = true
+    plateValidation.isValid = true
+    plateValidation.type = 'Car'
+    plateValidation.typeLabel = 'Đã đăng ký'
+    plateValidation.cleanedPlate = plate
+    plateValidation.corrected = false
+}
 
 const form = reactive({
     fullName: '',
@@ -248,19 +396,20 @@ const form = reactive({
     expectedTimeIn: '',
     expectedTimeOut: '',
     numberOfVisitors: 1,
-    visitors: [{ fullName: '', idCardNumber: '', expectedFaceImage: null }]
+    visitors: [{ fullName: '', idCardNumber: '', expectedFaceImage: null, _nameError: '' }]
 })
 
 // ── Helpers ──────────────────────────────────────
+const API_BASE = 'https://localhost:7107';
+
 const getInitials = (name) => {
     if (!name) return '??'
     return name.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase()
 }
 
-const formatLicensePlate = (e) => {
+const onGuestPlateInput = (e) => {
     let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
     // Định dạng: 2 số tỉnh + 1-2 chữ cái + tùy chọn 1 số + dấu gạch + số còn lại
-    // VD: 60H1-28215, 51A-12345, 30E-99999
     const match = val.match(/^(\d{0,2})([A-Z]{0,2})(\d{0,1})(\d{0,5})$/)
     if (match) {
         let result = match[1] + match[2] + match[3]
@@ -269,6 +418,8 @@ const formatLicensePlate = (e) => {
         }
         form.expectedLicensePlate = result
     }
+    // Validate realtime
+    runPlateValidation(form.expectedLicensePlate)
 }
 
 const formatDateTime = (dt) => {
@@ -280,6 +431,27 @@ const formatDateTime = (dt) => {
 
 // ── Steps ────────────────────────────────────────
 const goToStep2 = () => {
+    // Validate name
+    runNameValidation()
+    if (!nameValidation.isValid) {
+        alert(nameValidation.error || 'Họ và tên không hợp lệ')
+        return
+    }
+    // Apply normalized name
+    form.fullName = normalizeVietnameseName(form.fullName)
+
+    // Validate license plate
+    if (form.expectedLicensePlate) {
+        runPlateValidation(form.expectedLicensePlate)
+        if (!plateValidation.isValid) {
+            alert('Biển số xe không hợp lệ. VD hợp lệ: 51A-12345 (Ô tô), 29-A1 12345 (Xe máy)')
+            return
+        }
+        // Apply cleaned plate if OCR corrected
+        if (plateValidation.corrected) {
+            form.expectedLicensePlate = plateValidation.cleanedPlate
+        }
+    }
     // Validate time
     if (new Date(form.expectedTimeOut) <= new Date(form.expectedTimeIn)) {
         alert('Thời gian ra phải sau thời gian vào!')
@@ -287,7 +459,7 @@ const goToStep2 = () => {
     }
     // Ensure we have the right number of visitors
     while (form.visitors.length < form.numberOfVisitors) {
-        form.visitors.push({ fullName: '', idCardNumber: '', expectedFaceImage: null })
+        form.visitors.push({ fullName: '', idCardNumber: '', expectedFaceImage: null, _nameError: '' })
     }
     while (form.visitors.length > form.numberOfVisitors) {
         form.visitors.pop()
@@ -296,7 +468,7 @@ const goToStep2 = () => {
 }
 
 const addVisitor = () => {
-    form.visitors.push({ fullName: '', idCardNumber: '', expectedFaceImage: null })
+    form.visitors.push({ fullName: '', idCardNumber: '', expectedFaceImage: null, _nameError: '' })
 }
 
 const removeVisitor = (index) => {
@@ -305,10 +477,26 @@ const removeVisitor = (index) => {
 
 // ── Submit ───────────────────────────────────────
 const handleSubmit = async () => {
-    // Validate visitors
+    // Validate visitor names
     const validVisitors = form.visitors.filter(v => v.fullName.trim())
     if (validVisitors.length === 0) {
         alert('Vui lòng điền tên ít nhất 1 khách trong đoàn')
+        return
+    }
+    // Validate each visitor name
+    let hasInvalidVisitor = false
+    validVisitors.forEach((v, i) => {
+        const result = validateVietnameseName(v.fullName)
+        if (!result.isValid) {
+            v._nameError = result.error
+            hasInvalidVisitor = true
+        } else {
+            v.fullName = result.normalizedName
+            v._nameError = ''
+        }
+    })
+    if (hasInvalidVisitor) {
+        alert('Vui lòng kiểm tra lại tên các khách trong đoàn')
         return
     }
 
@@ -354,11 +542,11 @@ const resetForm = () => {
     currentStep.value = 1
     form.fullName = hostInfo.hostEmployeeName || ''
     form.phone = hostInfo.hostEmployeePhone || ''
-    form.expectedLicensePlate = ''
+    form.expectedLicensePlate = (hostInfo.hostLicensePlates && hostInfo.hostLicensePlates.length > 0) ? hostInfo.hostLicensePlates[0] : ''
     form.expectedTimeIn = ''
     form.expectedTimeOut = ''
     form.numberOfVisitors = 1
-    form.visitors = [{ fullName: '', idCardNumber: '', expectedFaceImage: null }]
+    form.visitors = [{ fullName: '', idCardNumber: '', expectedFaceImage: null, _nameError: '' }]
 }
 
 // ── Init ─────────────────────────────────────────
@@ -371,11 +559,18 @@ onMounted(async () => {
         hostInfo.hostEmployeeEmail = res.data.hostEmployeeEmail
         hostInfo.hostDepartmentName = res.data.hostDepartmentName
         hostInfo.hostPositionName = res.data.hostPositionName
+        hostInfo.hostFaceImageUrl = res.data.hostFaceImageUrl
+        hostInfo.hostLicensePlates = res.data.hostLicensePlates || []
         hostInfo.expiredAt = res.data.expiredAt
 
         // Tự động điền thông tin nhân viên chủ trì vào form
         form.fullName = res.data.hostEmployeeName || ''
         form.phone = res.data.hostEmployeePhone || ''
+        
+        // Auto fill if the user has plates
+        if (hostInfo.hostLicensePlates.length > 0) {
+            form.expectedLicensePlate = hostInfo.hostLicensePlates[0]
+        }
 
         isValidating.value = false
     } catch (err) {
@@ -566,6 +761,11 @@ onMounted(async () => {
     flex-shrink: 0;
 }
 
+.host-avatar.avatar-img {
+    background: transparent;
+    object-fit: cover;
+}
+
 .host-details {
     display: flex;
     flex-direction: column;
@@ -598,6 +798,75 @@ onMounted(async () => {
     gap: 5px;
     font-size: 0.78rem;
     color: var(--text-muted);
+}
+
+/* Combo Box */
+.combo-box-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.combo-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.combo-icon:hover {
+    color: var(--accent-primary);
+}
+
+.combo-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    animation: fadeIn 0.15s ease;
+}
+
+.combo-header {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-input);
+}
+
+.combo-item {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.combo-item:hover {
+    background: var(--bg-hover);
+    color: var(--accent-primary);
+}
+
+.combo-item.active {
+    background: rgba(16, 121, 196, 0.1);
+    color: var(--accent-primary);
+    font-weight: 600;
 }
 
 /* Steps */
@@ -664,6 +933,15 @@ onMounted(async () => {
 .step-line.active {
     background: var(--accent-primary);
 }
+
+/* Plate validation feedback */
+.plate-feedback { margin-top: 4px; font-size: 0.82rem; display: flex; align-items: center; }
+.name-feedback { margin-top: 4px; font-size: 0.82rem; display: flex; align-items: center; }
+.feedback-success { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-success); font-weight: 500; }
+.feedback-error { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-danger); font-weight: 500; }
+.feedback-corrected { font-size: 0.78rem; color: var(--accent-primary); margin-left: 4px; font-style: italic; }
+.input-error { border-color: var(--accent-danger) !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15) !important; }
+.input-success { border-color: var(--accent-success) !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) !important; }
 
 /* Step content */
 .step-content {

@@ -85,6 +85,15 @@ public class VehicleService : IVehicleService
         if (!employeeExists)
             throw new KeyNotFoundException($"Không tìm thấy nhân viên với ID = {dto.EmployeeId}.");
 
+        // Kiểm tra loại xe tồn tại
+        if (dto.VehicleTypeId.HasValue)
+        {
+            var vehicleTypeExists = await _context.VehicleTypes
+                .AnyAsync(vt => vt.VehicleTypeId == dto.VehicleTypeId.Value);
+            if (!vehicleTypeExists)
+                throw new KeyNotFoundException($"Không tìm thấy loại xe với ID = {dto.VehicleTypeId}. Vui lòng kiểm tra bảng VehicleType trong database.");
+        }
+
         var vehicle = new Vehicle
         {
             LicensePlate = dto.LicensePlate.Trim().ToUpper(),
@@ -135,8 +144,16 @@ public class VehicleService : IVehicleService
             vehicle.EmployeeId = dto.EmployeeId;
         }
 
+        // Kiểm tra loại xe mới tồn tại
         if (dto.VehicleTypeId.HasValue)
+        {
+            var vehicleTypeExists = await _context.VehicleTypes
+                .AnyAsync(vt => vt.VehicleTypeId == dto.VehicleTypeId.Value);
+            if (!vehicleTypeExists)
+                throw new KeyNotFoundException($"Không tìm thấy loại xe với ID = {dto.VehicleTypeId}. Vui lòng kiểm tra bảng VehicleType trong database.");
+
             vehicle.VehicleTypeId = dto.VehicleTypeId;
+        }
 
         if (dto.Description != null)
             vehicle.Description = dto.Description;

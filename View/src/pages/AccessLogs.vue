@@ -105,7 +105,12 @@
                             </td>
                             <td>
                                 <div class="user-cell">
-                                    <div class="avatar" :style="{ background: getAvatarColor(log.initials) }">{{ log.initials }}</div>
+                                    <template v-if="log.faceImageUrl">
+                                        <img :src="API_BASE + log.faceImageUrl" class="avatar-img" @error="$event.target.style.display = 'none'" />
+                                    </template>
+                                    <template v-else>
+                                        <div class="avatar" :style="{ background: getAvatarColor(log.initials) }">{{ log.initials }}</div>
+                                    </template>
                                     <div class="user-info">
                                         <span class="user-name">{{ log.employee }}</span>
                                         <span class="user-id">{{ log.empCode }}</span>
@@ -160,6 +165,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+const API_BASE = 'https://localhost:7107'
 const searchQuery = ref('')
 const filterType = ref('')
 const filterGate = ref('')
@@ -177,9 +183,9 @@ const getAvatarColor = (str) => {
 }
 
 const logs = ref([
-    { id: 1, time: '08:05', date: '05/03/2026', employee: 'Nguyễn Văn An', initials: 'NA', empCode: 'NV001', type: 'check-in', gate: 'Cổng A', plate: '51A-123.45', method: 'face', note: '' },
+    { id: 1, time: '08:05', date: '05/03/2026', employee: 'Nguyễn Văn An', initials: 'NA', empCode: 'NV001', type: 'check-in', gate: 'Cổng A', plate: '51A-123.45', method: 'face', faceImageUrl: '/uploads/faces/default.jpg', note: '' },
     { id: 2, time: '08:12', date: '05/03/2026', employee: 'Trần Thị Bình', initials: 'TB', empCode: 'NV002', type: 'check-in', gate: 'Cổng B', plate: null, method: 'card', note: '' },
-    { id: 3, time: '08:20', date: '05/03/2026', employee: 'Lê Hoàng Cường', initials: 'LC', empCode: 'NV003', type: 'check-out', gate: 'Cổng A', plate: '30H-567.89', method: 'plate', note: 'Ra sớm - có phép' },
+    { id: 3, time: '08:20', date: '05/03/2026', employee: 'Lê Hoàng Cường', initials: 'LC', empCode: 'NV003', type: 'check-out', gate: 'Cổng A', plate: '30H-567.89', method: 'plate', faceImageUrl: '/uploads/faces/default.jpg', note: 'Ra sớm - có phép' },
     { id: 4, time: '08:25', date: '05/03/2026', employee: 'Phạm Minh Đức', initials: 'PD', empCode: 'NV004', type: 'check-in', gate: 'Cổng A', plate: '51B-234.56', method: 'face', note: '' },
     { id: 5, time: '08:30', date: '05/03/2026', employee: 'Võ Thị Em', initials: 'VE', empCode: 'NV005', type: 'check-out', gate: 'Cổng C', plate: null, method: 'card', note: '' },
     { id: 6, time: '08:35', date: '05/03/2026', employee: 'Hoàng Văn Phong', initials: 'HP', empCode: 'NV006', type: 'check-in', gate: 'Cổng A', plate: '51F-789.01', method: 'plate', note: '' },
@@ -244,7 +250,7 @@ input[type="date"].minimal-select { padding: 8px 14px; }
 .time-date { font-size: 0.8rem; color: var(--text-muted); }
 
 .user-cell { display: flex; align-items: center; gap: 14px; }
-.avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; }
+.avatar, .avatar-img { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; object-fit: cover; }
 .user-info { display: flex; flex-direction: column; }
 .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
 .user-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }

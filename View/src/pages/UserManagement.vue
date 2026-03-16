@@ -430,7 +430,7 @@ onMounted(fetchUsers)
 .table-row:hover { background: var(--bg-card-hover); cursor: default; }
 
 .user-cell { display: flex; align-items: center; gap: 14px; }
-.avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; background: var(--accent-primary); }
+.avatar, .avatar-img { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; font-size: 0.8rem; object-fit: cover; }
 .user-info { display: flex; flex-direction: column; }
 .user-name { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
 .text-primary { color: var(--text-primary); }
