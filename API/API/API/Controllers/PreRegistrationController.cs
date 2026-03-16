@@ -27,6 +27,8 @@ public class PreRegistrationController : ControllerBase
                 .ThenInclude(e => e.Department)
             .Include(l => l.HostEmployee)
                 .ThenInclude(e => e.Position)
+            .Include(l => l.HostEmployee)
+                .ThenInclude(e => e.Vehicles)
             .FirstOrDefaultAsync(l => l.Token == token);
 
         if (link == null)
@@ -45,6 +47,8 @@ public class PreRegistrationController : ControllerBase
             HostEmployeeEmail = link.HostEmployee.Email,
             HostDepartmentName = link.HostEmployee.Department?.Name,
             HostPositionName = link.HostEmployee.Position?.Name,
+            HostFaceImageUrl = link.HostEmployee.FaceImageUrl,
+            HostLicensePlates = link.HostEmployee.Vehicles?.Select(v => v.LicensePlate).ToList(),
             ExpiredAt = link.ExpiredAt
         });
     }

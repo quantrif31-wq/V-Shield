@@ -630,8 +630,10 @@ input[type="date"].minimal-select { padding: 8px 14px; }
 .mt-3 { margin-top: 24px; }
 .mt-4 { margin-top: 32px; }
 
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
-.action-footer { display: flex; justify-content: flex-end; gap: 16px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.modal-actions:not(.centered) .btn { width: auto; flex: 0 0 auto; }
+.action-footer { display: flex; justify-content: flex-end; gap: 16px; padding-top: 20px; border-top: 1px solid var(--border-color); flex-wrap: wrap; }
+.action-footer .btn { width: auto; flex: 0 0 auto; }
 
 .modal-enter-active, .modal-leave-active { transition: all 0.3s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }

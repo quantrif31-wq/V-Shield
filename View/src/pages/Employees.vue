@@ -74,7 +74,12 @@
             </div>
             <div v-else-if="loadError" class="empty-layout error-layout">
                 <p>{{ loadError }}</p>
-                <button class="btn btn-secondary btn-sm" @click="fetchEmployees">Thử lại</button>
+                <button class="btn btn-primary" @click="fetchEmployees">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                        <polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
+                    Thử lại
+                </button>
             </div>
             
             <!-- Sleek Table -->
@@ -156,7 +161,20 @@
                     <form @submit.prevent="handleSubmit" class="modal-body">
                         <div class="input-pane">
                             <label>Họ và tên <span class="req">*</span></label>
-                            <input v-model="modalForm.fullName" type="text" class="sleek-input" required placeholder="VD: Nguyễn Văn A" />
+                            <input v-model="modalForm.fullName" type="text" class="sleek-input" required placeholder="VD: Nguyễn Văn An"
+                                @input="runNameValidation"
+                                @blur="empNameValidation.touched = true; runNameValidation()"
+                                :class="{ 'input-error': empNameValidation.touched && !empNameValidation.isValid && modalForm.fullName.length >= 2, 'input-success': empNameValidation.isValid }" />
+                            <div v-if="empNameValidation.touched && modalForm.fullName.length >= 2" class="name-feedback">
+                                <span v-if="empNameValidation.isValid" class="feedback-success">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+                                    Hợp lệ
+                                </span>
+                                <span v-else class="feedback-error">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+                                    {{ empNameValidation.error }}
+                                </span>
+                            </div>
                         </div>
                         <div class="grid-2">
                             <div class="input-pane">
@@ -213,7 +231,7 @@
 
                         <div class="modal-actions">
                             <button type="button" class="btn btn-secondary" @click="closeModal">Hủy</button>
-                            <button type="submit" class="btn btn-primary" :disabled="saving">
+                            <button type="submit" class="btn btn-primary" :disabled="saving || (empNameValidation.touched && !empNameValidation.isValid)">
                                 <span v-if="saving" class="spinner-sm"></span> {{ isEditing ? 'Lưu Thông Tin' : 'Tạo Nhân Sự' }}
                             </button>
                         </div>
@@ -234,9 +252,9 @@
                         <p>Bạn sắp xóa dữ liệu của nhân viên <strong>{{ deleteTarget?.fullName }}</strong>.</p>
                         <p class="text-danger mt-1">Hành động này sẽ xóa toàn bộ lịch sử và FaceID liên quan. Vẫn tiếp tục?</p>
 
-                        <div class="modal-actions centered mt-4">
-                            <button class="btn btn-secondary" @click="showDeleteModal = false">Hủy bỏ</button>
-                            <button class="btn btn-danger" @click="handleDelete" :disabled="saving">
+                        <div class="modal-actions mt-4" style="justify-content: center; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-secondary" @click="showDeleteModal = false" style="flex: 1; min-width: 100px; max-width: 140px; justify-content: center;">Hủy bỏ</button>
+                            <button class="btn btn-danger" @click="handleDelete" :disabled="saving" style="flex: 1; min-width: 100px; max-width: 140px; justify-content: center;">
                                 <span v-if="saving" class="spinner-sm"></span> Xác nhận Xóa
                             </button>
                         </div>
@@ -257,6 +275,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAll, create, update, deleteEmployee, uploadFace } from '../services/employeeApi'
 import { getDepartments, getPositions } from '../services/lookupApi'
+import { validateVietnameseName, normalizeVietnameseName } from '../utils/nameValidator'
 
 const route = useRoute()
 const API_BASE = 'https://localhost:7107'
@@ -284,6 +303,27 @@ const deleteTarget = ref(null)
 
 const toast = ref(null)
 let toastTimer = null
+
+// Name validation state
+const empNameValidation = reactive({
+    touched: false,
+    isValid: false,
+    error: ''
+})
+
+function runNameValidation() {
+    const val = modalForm.fullName?.trim()
+    if (!val) {
+        empNameValidation.touched = false
+        empNameValidation.isValid = false
+        empNameValidation.error = ''
+        return
+    }
+    empNameValidation.touched = true
+    const result = validateVietnameseName(val)
+    empNameValidation.isValid = result.isValid
+    empNameValidation.error = result.error
+}
 
 function showToast(message, type = 'success') {
     if (toastTimer) clearTimeout(toastTimer)
@@ -316,6 +356,7 @@ async function fetchEmployees() {
 
 function openCreateModal() {
     isEditing.value = false; editingId.value = null; modalError.value = ''; faceFile.value = null; facePreview.value = null;
+    empNameValidation.touched = false; empNameValidation.isValid = false; empNameValidation.error = '';
     Object.assign(modalForm, { fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true })
     showModal.value = true
 }
@@ -330,6 +371,15 @@ function openEditModal(emp) {
 function closeModal() { showModal.value = false; modalError.value = ''; faceFile.value = null; facePreview.value = null; }
 
 async function handleSubmit() {
+    // Validate name
+    runNameValidation()
+    if (!empNameValidation.isValid) {
+        modalError.value = empNameValidation.error || 'Họ và tên không hợp lệ'
+        return
+    }
+    // Normalize name
+    modalForm.fullName = normalizeVietnameseName(modalForm.fullName)
+
     saving.value = true; modalError.value = ''
     try {
         const data = { fullName: modalForm.fullName, phone: modalForm.phone || null, email: modalForm.email || null, departmentId: modalForm.departmentId || null, positionId: modalForm.positionId || null }
@@ -447,8 +497,8 @@ watch(() => route.query.search, (val) => { if (val !== undefined) { searchQuery.
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Modern Modals */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px;}
-.modern-modal { background: var(--bg-card); width: 100%; max-width: 580px; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); overflow: hidden; display: flex; flex-direction: column;}
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px;}
+.modern-modal { background: var(--bg-card); width: 100%; max-width: 520px; max-height: 90vh; border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-xl); overflow: hidden; display: flex; flex-direction: column;}
 .modern-modal.mini { max-width: 420px; }
 .modal-top { display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid var(--border-color); }
 .modal-top.borderless { border: none; padding-bottom: 0; }
@@ -456,27 +506,35 @@ watch(() => route.query.search, (val) => { if (val !== undefined) { searchQuery.
 .icon-close { background: none; border: none; color: var(--text-muted); cursor: pointer; width: 24px; transition: color 0.2s; }
 .icon-close:hover { color: var(--accent-danger); }
 
-.modal-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .input-pane { display: flex; flex-direction: column; gap: 8px; }
 .input-pane label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
 .req { color: var(--accent-danger); }
 
-.sleek-input, .sleek-select { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.95rem; }
+.sleek-input, .sleek-select { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.9rem; }
 .sleek-input:focus, .sleek-select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
 
-.face-dropzone { border: 2px dashed var(--border-color); border-radius: 12px; height: 160px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.1); }
+.face-dropzone { border: 2px dashed var(--border-color); border-radius: 12px; height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.1); }
 .face-dropzone:hover { border-color: var(--accent-primary); background: rgba(16, 121, 196, 0.05); }
 .dropzone-text { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--text-muted); }
 .dropzone-text svg { width: 36px; height: 36px; color: var(--text-secondary); }
 .face-preview-img { width: 100%; height: 100%; object-fit: contain; }
 
-.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.modal-actions:not(.centered) .btn { width: auto; flex: 0 0 auto; }
 .modal-actions.centered { justify-content: center; }
 
 /* Notice elements */
 .alert-box { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; }
 .alert-box.error { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+
+/* Name validation feedback */
+.name-feedback { margin-top: 4px; font-size: 0.82rem; display: flex; align-items: center; }
+.feedback-success { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-success); font-weight: 500; }
+.feedback-error { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-danger); font-weight: 500; }
+.input-error { border-color: var(--accent-danger) !important; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15) !important; }
+.input-success { border-color: var(--accent-success) !important; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) !important; }
 
 .btn-text.danger { background: none; color: var(--accent-danger); border: none; font-size: 0.85rem; cursor: pointer;}
 .warning-icon svg { width: 48px; height: 48px; color: var(--accent-danger); margin-bottom: 16px; }
@@ -500,5 +558,10 @@ watch(() => route.query.search, (val) => { if (val !== undefined) { searchQuery.
     .grid-2 { grid-template-columns: 1fr; }
     .table-toolbar { flex-direction: column; gap: 16px; align-items: stretch;}
     .search-box { width: 100%; }
+    .modern-modal { max-width: 100%; max-height: 95vh; border-radius: 12px; }
+    .modal-backdrop { padding: 8px; }
+    .modal-body { padding: 16px; gap: 12px; }
+    .modal-top { padding: 16px; }
+    .face-dropzone { height: 100px; }
 }
 </style>
