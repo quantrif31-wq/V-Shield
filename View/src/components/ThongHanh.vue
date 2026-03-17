@@ -67,9 +67,16 @@ STOP PLATE
 
 <div class="video-wrapper">
 
-<img ref="faceVideo" class="video"/>
+<img
+ref="faceVideo"
+class="video"
+:style="{ transform: FACE_TRANSFORM }"
+/>
 
-<canvas ref="faceCanvas"></canvas>
+<canvas
+ref="faceCanvas"
+:style="{ transform: FACE_TRANSFORM }"
+></canvas>
 
 <div class="overlay">
 
@@ -102,10 +109,13 @@ v-if="plateRunning"
 :src="streamUrl"
 class="video"
 ref="plateVideo"
+:style="{ transform: PLATE_TRANSFORM }"
 />
 
-<canvas ref="plateCanvas"></canvas>
-
+<canvas
+ref="plateCanvas"
+:style="{ transform: PLATE_TRANSFORM }"
+></canvas>
 <div class="overlay">
 
 <div>LICENSE PLATE</div>
@@ -147,7 +157,8 @@ import { scanGate } from "../services/thonghanhAPI"
 
 
 /* STATE */
-
+const FACE_TRANSFORM = "rotate(-90deg) scaleX(-1)"   // cam trước
+const PLATE_TRANSFORM = "rotate(0deg)"              // cam sau
 const cameras = ref([])
 const selectedCamera = ref("")
 
@@ -286,13 +297,13 @@ const scaleY = faceCanvas.value.height/480
 faceCtx.strokeStyle="#00ff9c"
 faceCtx.lineWidth=3
 
+const x = faceCanvas.value.width - (face.left + face.width) * scaleX
+
 faceCtx.strokeRect(
-
-face.left*scaleX,
-face.top*scaleY,
-face.width*scaleX,
-face.height*scaleY
-
+x,
+face.top * scaleY,
+face.width * scaleX,
+face.height * scaleY
 )
 
 }
@@ -333,12 +344,14 @@ clearInterval(plateLoop)
 
 plate.value=""
 
-plateCtx.clearRect(
-0,
-0,
-plateCanvas.value.width,
-plateCanvas.value.height
-)
+if(plateCtx && plateCanvas.value){
+  plateCtx.clearRect(
+    0,
+    0,
+    plateCanvas.value.width,
+    plateCanvas.value.height
+  )
+}
 
 }
 
@@ -446,10 +459,14 @@ loadCameras()
 faceCtx=faceCanvas.value.getContext("2d")
 plateCtx=plateCanvas.value.getContext("2d")
 startGateLoop()
-faceVideo.value.onload=()=>{
+faceVideo.value.onload = () => {
 
-faceCanvas.value.width=faceVideo.value.clientWidth
-faceCanvas.value.height=faceVideo.value.clientHeight
+const w = faceVideo.value.clientWidth
+const h = faceVideo.value.clientHeight
+
+// vì rotate 90 độ → đảo lại
+faceCanvas.value.width = h
+faceCanvas.value.height = w
 
 }
 
@@ -533,7 +550,6 @@ margin-bottom:20px;
 width:100%;
 height:100%;
 object-fit:contain;
-transform: rotate(-90deg);
 transform-origin:center;
 }
 
@@ -544,7 +560,6 @@ left:0;
 width:100%;
 height:100%;
 pointer-events:none;
-transform: rotate(-90deg);
 transform-origin:center;
 }
 

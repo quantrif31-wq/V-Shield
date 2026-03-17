@@ -14,7 +14,9 @@ namespace API.Controllers
         private static Process? pythonProcess;
 
         string pythonApi = "http://127.0.0.1:8000";
-        string pythonFolder = @"C:\DoAnTotNghiep\V-Shield\AI_Project\face_recognition";
+        string pythonFolder = Path.GetFullPath(
+    Path.Combine("..", "..", "..", "AI_Project", "face_recognition")
+);
 
         // =========================
 
