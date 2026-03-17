@@ -265,14 +265,46 @@
 
                     <div class="modal-body">
                         <template v-if="!createdLink">
-                            <div class="input-pane">
+                            <div class="input-pane relative">
                                 <label>Nhân sự Host đại diện <span class="req">*</span></label>
-                                <select v-model="linkForm.hostEmployeeId" class="sleek-select">
-                                    <option :value="null" disabled>-- Chọn nhân sự --</option>
-                                    <option v-for="emp in employees" :key="emp.employeeId" :value="emp.employeeId">
-                                        {{ emp.fullName }}
-                                    </option>
-                                </select>
+                                <div class="combobox-wrapper" v-click-outside="closeHostDropdown">
+                                    <div class="input-with-avatar">
+                                        <div v-if="linkForm.hostEmployeeId && !showHostDropdown" class="selected-avatar-preview avatar mini" :style="{ background: getAvatarColor(getInitials(hostSearchQuery)) }">
+                                            {{ getInitials(hostSearchQuery) }}
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            v-model="hostSearchQuery" 
+                                            @focus="onHostInputFocus"
+                                            placeholder="-- Nhập tên để tìm nhân sự --" 
+                                            class="sleek-input combobox-input"
+                                            :class="{ 'has-avatar': linkForm.hostEmployeeId && !showHostDropdown }"
+                                        />
+                                    </div>
+                                    <svg class="dropdown-icon" :class="{ 'rotated': showHostDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                                    
+                                    <div v-if="showHostDropdown" class="combobox-dropdown">
+                                        <div v-if="filteredEmployees.length === 0" class="no-results">
+                                            Không tìm thấy nhân sự
+                                        </div>
+                                        <div 
+                                            v-else
+                                            v-for="emp in filteredEmployees" 
+                                            :key="emp.employeeId" 
+                                            class="combobox-item"
+                                            :class="{ 'selected': linkForm.hostEmployeeId === emp.employeeId }"
+                                            @click="selectHost(emp)"
+                                        >
+                                            <div class="avatar mini" :style="{ background: getAvatarColor(getInitials(emp.fullName)) }">
+                                                {{ getInitials(emp.fullName) }}
+                                            </div>
+                                            <div class="emp-details">
+                                                <span class="emp-name">{{ emp.fullName }}</span>
+                                                <span class="emp-dept" v-if="emp.departmentName">{{ emp.departmentName }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="input-pane mt-2">
                                 <label>Thời gian hiệu lực (giờ)</label>
@@ -319,7 +351,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { getAll, getDetail, updateStatus, createLink } from '../services/preRegistrationApi'
 import { getAll as getAllEmployees } from '../services/employeeApi'
 
@@ -345,6 +377,63 @@ const isCreatingLink = ref(false)
 const copied = ref(false)
 const employees = ref([])
 const totalPages = ref(1)
+
+// Custom Click Outside Directive
+const vClickOutside = {
+  mounted(el, binding) {
+    el.clickOutsideEvent = function(event) {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event, el);
+      }
+    };
+    document.addEventListener("click", el.clickOutsideEvent);
+  },
+  unmounted(el) {
+    document.removeEventListener("click", el.clickOutsideEvent);
+  }
+};
+
+// Combobox logic
+const showHostDropdown = ref(false)
+const hostSearchQuery = ref('')
+
+const filteredEmployees = computed(() => {
+    if (!hostSearchQuery.value) return employees.value || []
+    
+    // Check if query is just the selected employee's name (user hasn't typed anything new yet)
+    if (employees.value && employees.value.length > 0) {
+        const selectedEmp = employees.value.find(e => e.employeeId === linkForm.hostEmployeeId)
+        if (selectedEmp && hostSearchQuery.value === selectedEmp.fullName) {
+            return employees.value // Show all if they just clicked to open
+        }
+    }
+
+    const q = hostSearchQuery.value.toLowerCase()
+    return (employees.value || []).filter(e => e && e.fullName && e.fullName.toLowerCase().includes(q))
+})
+
+const onHostInputFocus = () => {
+    showHostDropdown.value = true
+    // Optionally clear input on focus to easily search another
+    // if (linkForm.hostEmployeeId) hostSearchQuery.value = ''
+}
+
+const selectHost = (emp) => {
+    linkForm.hostEmployeeId = emp.employeeId
+    hostSearchQuery.value = emp.fullName
+    showHostDropdown.value = false
+}
+
+const closeHostDropdown = () => {
+    showHostDropdown.value = false
+    // Restore name if they clicked away without selecting, but had something selected
+    if (linkForm.hostEmployeeId) {
+        const emp = employees.value.find(e => e.employeeId === linkForm.hostEmployeeId)
+        if (emp) hostSearchQuery.value = emp.fullName
+    } else {
+        hostSearchQuery.value = ''
+    }
+}
 
 const getInitials = (name) => {
     if (!name) return '??'
@@ -474,6 +563,8 @@ const closeCreateLinkModal = () => {
     copied.value = false
     linkForm.hostEmployeeId = null
     linkForm.expiryHours = 24
+    hostSearchQuery.value = ''
+    showHostDropdown.value = false
 }
 
 let searchTimeout = null
@@ -637,6 +728,26 @@ input[type="date"].minimal-select { padding: 8px 14px; }
 
 .modal-enter-active, .modal-leave-active { transition: all 0.3s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
+
+/* Custom Combobox */
+.combobox-wrapper { position: relative; width: 100%; border-radius: 8px; }
+.input-with-avatar { position: relative; width: 100%; display: flex; align-items: center; }
+.selected-avatar-preview { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; font-size: 0.7rem; pointer-events: none; }
+.combobox-input { width: 100%; padding-right: 40px; background: #fff !important; cursor: text; }
+.combobox-input.has-avatar { padding-left: 48px; }
+
+.dropdown-icon { position: absolute; right: 14px; top: 14px; width: 18px; height: 18px; color: var(--accent-primary); pointer-events: none; transition: transform 0.2s; }
+.dropdown-icon.rotated { transform: rotate(180deg); color: var(--accent-primary); }
+
+.combobox-dropdown { position: absolute; top: calc(100% + 4px); left: 0; width: 100%; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 100; padding: 4px 0;}
+.combobox-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color); }
+.combobox-item:last-child { border-bottom: none; }
+.combobox-item:hover { background: rgba(16, 121, 196, 0.03); }
+.combobox-item.selected { background: rgba(16, 121, 196, 0.06); }
+.emp-details { display: flex; flex-direction: column; }
+.emp-name { font-size: 0.95rem; font-weight: 500; color: var(--text-primary); }
+.emp-dept { font-size: 0.85rem; color: var(--accent-primary); }
+.no-results { padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.9rem; font-style: italic; }
 
 @media (max-width: 1200px) { .bento-grid-mini { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 768px) {

@@ -2,54 +2,54 @@
 
 /* ========== CSS VARIABLES / DESIGN TOKENS ========== */
 :root {
-/* Colors - Lochmara Palette */
-  --lochmara-50: #eaf1ff;
-  --lochmara-100: #c8dcfe;
-  --lochmara-200: #8cbefe;
-  --lochmara-300: #3ba3fd;
-  --lochmara-400: #1389dc;
-  --lochmara-500: #1079c4;
-  --lochmara-600: #0b64a3;
-  --lochmara-700: #064d80;
-  --lochmara-800: #03365b;
-  --lochmara-900: #011e36;
-  --lochmara-950: #011223;
+  /* Colors - Perano Palette */
+  --perano-50: #ffffff;
+  --perano-100: #e9f2ff;
+  --perano-200: #d4e5ff;
+  --perano-300: #cee3ff;
+  --perano-400: #b6d7ff;
+  --perano-500: #89c3ff;
+  --perano-600: #4ea3ff;
+  --perano-700: #3c7fcf;
+  --perano-800: #275791;
+  --perano-900: #0f2e52;
+  --perano-950: #091f3a;
 
-  /* Colors - Dark Theme (Mapped to Lochmara) */
-  --bg-primary: var(--lochmara-950);
-  --bg-secondary: var(--lochmara-900);
-  --bg-card: var(--lochmara-800);
-  --bg-card-hover: var(--lochmara-700);
-  --bg-input: var(--lochmara-900);
-  --bg-sidebar: var(--lochmara-950);
-  --bg-header: rgba(0, 10, 61, 0.85); /* lochmara-950 */
+  /* Colors - Light Theme (Mapped to Perano) */
+  --bg-primary: var(--perano-100);
+  --bg-secondary: var(--perano-50);
+  --bg-card: var(--perano-50);
+  --bg-card-hover: #f5f9ff;
+  --bg-input: var(--perano-50);
+  --bg-sidebar: var(--perano-50);
+  --bg-header: rgba(255, 255, 255, 0.85);
 
   /* Accent Colors */
-  --accent-primary: var(--lochmara-500);
-  --accent-primary-hover: var(--lochmara-600);
-  --accent-secondary: var(--lochmara-400);
-  --accent-gradient: linear-gradient(135deg, var(--lochmara-400), var(--lochmara-600));
-  --accent-gradient-hover: linear-gradient(135deg, var(--lochmara-500), var(--lochmara-700));
+  --accent-primary: var(--perano-600);
+  --accent-primary-hover: var(--perano-700);
+  --accent-secondary: var(--perano-500);
+  --accent-gradient: linear-gradient(135deg, var(--perano-500), var(--perano-700));
+  --accent-gradient-hover: linear-gradient(135deg, var(--perano-600), var(--perano-800));
   --accent-success: #10b981;
   --accent-warning: #f59e0b;
   --accent-danger: #ef4444;
   --accent-info: #06b6d4;
 
   /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-accent: var(--lochmara-300);
+  --text-primary: var(--perano-950);
+  --text-secondary: var(--perano-800);
+  --text-muted: var(--perano-700);
+  --text-accent: var(--perano-600);
 
   /* Borders */
-  --border-color: rgba(148, 163, 184, 0.1);
-  --border-color-hover: rgba(148, 163, 184, 0.2);
+  --border-color: rgba(9, 31, 58, 0.1);
+  --border-color-hover: rgba(9, 31, 58, 0.2);
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(16, 121, 196, 0.15); /* lochmara-500 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(78, 163, 255, 0.15); /* perano-600 */
 
   /* Layout */
   --sidebar-width: 260px;
@@ -74,19 +74,17 @@
   box-sizing: border-box;
 }
 
-html {
+html, body, #app {
   font-size: 14px;
   scroll-behavior: smooth;
-}
-
-body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg-primary);
+  background-color: var(--bg-primary) !important;
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 a {
@@ -194,15 +192,15 @@ img {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(9, 31, 58, 0.05); /* perano-950 at 5% */
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #fff;
+  background: rgba(9, 31, 58, 0.1);
+  border-color: var(--border-color-hover);
+  color: var(--text-primary);
 }
 
 .btn-danger {
