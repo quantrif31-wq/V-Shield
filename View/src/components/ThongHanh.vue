@@ -7,7 +7,9 @@
 <div class="title">
 V-Shield AI Security Console
 </div>
-
+<div v-if="alarmActive" class="alarm-overlay">
+🚨 SECURITY ALERT 🚨
+</div>
 <div class="system-status">
 <span class="led" :class="{on:faceRunning || plateRunning}"></span>
 {{ faceRunning || plateRunning ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
@@ -33,7 +35,16 @@ START FACE
 <button class="btn stop" @click="stopFace">
 STOP FACE
 </button>
-
+<button class="btn shutdown" @click="shutdown">
+⚡ SHUTDOWN AI
+</button>
+<button
+v-if="alarmActive"
+class="btn stop"
+@click="stopAlarm"
+>
+🧯 STOP ALARM
+</button>
 <hr>
 
 <h3>PLATE CAMERA</h3>
@@ -65,7 +76,8 @@ STOP PLATE
 
 <!-- FACE CAMERA -->
 
-<div class="video-wrapper">
+<div class="video-wrapper"
+     :style="{ '--camColor': detectColor }">
 
 <img
 ref="faceVideo"
@@ -154,16 +166,22 @@ getCameras,
 getPlate
 } from "../services/biensoApi"
 import { scanGate } from "../services/thonghanhAPI"
-
+import { shutdownAI } from "../services/faceApi"
 
 /* STATE */
-const FACE_TRANSFORM = "rotate(-90deg) scaleX(-1)"   // cam trước
+const FACE_TRANSFORM = "rotate(-90deg)"   // cam trước
 const PLATE_TRANSFORM = "rotate(0deg)"              // cam sau
 const cameras = ref([])
 const selectedCamera = ref("")
 
 const faceCameraIp = ref("http://127.0.0.1:8080/video")
+const alarmActive = ref(false)
+let lastConfirmed = false
 
+const successSound = new Audio("/sounds/success.mp3")
+const alarmSound = new Audio("/sounds/alarm.mp3")
+
+alarmSound.loop = true
 const plate = ref("")
 const status = ref({})
 
@@ -187,6 +205,16 @@ let gateLoop=null
 
 const gateStatus = ref("")
 
+function stopAlarm(){
+
+alarmActive.value = false
+
+alarmSound.pause()
+alarmSound.currentTime = 0
+
+startFaceLoop() // chạy lại face loop
+
+}
 /* FACE LABEL */
 
 const detectLabel = computed(()=>{
@@ -198,7 +226,20 @@ if(status.value.face_match) return "VERIFYING"
 return "UNKNOWN"
 
 })
+const detectColor = computed(()=>{
 
+if(!status.value.session_active)
+return "#00bfff"
+
+if(status.value.session_confirmed)
+return "#00ff9c"
+
+if(status.value.face_match)
+return "#33ccff"
+
+return "#ffd500"
+
+})
 
 /* LOAD CAMERAS */
 
@@ -248,6 +289,21 @@ clearFace()
 
 }
 
+async function shutdown(){
+
+if(!confirm("Shutdown AI server ?")) return
+
+try{
+await shutdownAI()
+}catch(e){}
+
+faceRunning.value=false
+faceVideo.value.src=""
+
+clearInterval(faceLoop)
+clearFace()
+
+}
 
 /* FACE LOOP */
 
@@ -261,7 +317,7 @@ faceLoop=setInterval(updateFace,300)
 
 
 async function updateFace(){
-
+if(alarmActive.value) return
 if(!faceRunning.value) return
 
 try{
@@ -270,8 +326,30 @@ const res = await getStatus()
 
 status.value = res.data || {}
 
-drawFace()
+// ===== SUCCESS SOUND =====
+if(
+    status.value.session_confirmed &&
+    !lastConfirmed
+){
+    successSound.currentTime = 0
+    successSound.play()
+}
 
+lastConfirmed = status.value.session_confirmed
+
+
+// ===== ALARM =====
+if(status.value.alert && !alarmActive.value){
+
+    alarmActive.value = true
+
+    alarmSound.currentTime = 0
+    alarmSound.play()
+
+    clearInterval(faceLoop) // ⛔ stop face loop
+}
+
+drawFace()
 }catch(e){
 
 console.log("face error")
@@ -540,11 +618,8 @@ cursor:pointer;
 .stop{background:#e74c3c}
 
 .video-wrapper{
-position:relative;
-width:720px;
-height:320px;
-background:black;
-margin-bottom:20px;
+border:3px solid var(--camColor);
+box-shadow:0 0 20px var(--camColor);
 }
 
 .video{
