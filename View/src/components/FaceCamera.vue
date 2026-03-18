@@ -7,7 +7,9 @@
 <div class="title">
 V-Shield AI Security Console
 </div>
-
+<div v-if="alarmActive" class="alarm-overlay">
+🚨 SECURITY ALERT 🚨
+</div>
 <div class="system-status">
 <span class="led" :class="{on:running}"></span>
 {{ running ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
@@ -39,7 +41,13 @@ placeholder="Camera Stream URL"
 <button class="btn shutdown" @click="shutdown">
 ⚡ SHUTDOWN AI
 </button>
-
+<button
+v-if="alarmActive"
+class="btn stop"
+@click="stopAlarm"
+>
+🧯 STOP ALARM
+</button>
 </div>
 
 
@@ -150,8 +158,12 @@ let ctx = null
 let poller = null
 
 const running = ref(false)
+const alarmActive = ref(false)
+let lastConfirmed = false
+const successSound = new Audio("/sounds/success.mp3")
+const alarmSound = new Audio("/sounds/alarm.mp3")
 
-
+alarmSound.loop = true
 /* ================= COLOR LOGIC ================= */
 
 const detectColor = computed(()=>{
@@ -169,7 +181,16 @@ return "#ffd500"   // unknown
 
 })
 
+function stopAlarm(){
 
+alarmActive.value = false
+
+alarmSound.pause()
+alarmSound.currentTime = 0
+
+startPolling() // ▶ chạy lại API
+
+}
 const detectLabel = computed(()=>{
 
 if(!status.value.session_active)
@@ -270,11 +291,37 @@ poller=null
 
 async function updateStatus(){
 
+if(alarmActive.value)
+return "#ff0000"  // ⛔ NGỪNG polling khi alarm
+
 try{
 
 const res = await getStatus()
 
 status.value = res.data
+
+// ===== SUCCESS SOUND =====
+if(
+    status.value.session_confirmed &&
+    !lastConfirmed
+){
+    successSound.currentTime = 0
+    successSound.play()
+}
+
+lastConfirmed = status.value.session_confirmed
+
+
+// ===== ALERT SOUND =====
+if(status.value.alert && !alarmActive.value){
+
+    alarmActive.value = true
+
+    alarmSound.currentTime = 0
+    alarmSound.play()
+
+    stopPolling() // ⛔ DỪNG polling
+}
 
 drawFace()
 
@@ -597,5 +644,20 @@ border-radius:6px;
 
 .ok{color:#00ff9c}
 .bad{color:#ff5a5a}
+.alarm-overlay{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:40px;
+color:red;
+font-weight:bold;
+animation:blink 1s infinite;
+}
 
+@keyframes blink{
+0%{opacity:1}
+50%{opacity:0}
+100%{opacity:1}
+}
 </style>

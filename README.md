@@ -44,3 +44,5 @@ lpr\_gpu\\Scripts\\activate
 
 pip cache purge
 
+pip install pyodbc
+

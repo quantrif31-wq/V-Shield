@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260316192332_InitialCreate")]
+    [Migration("20260318045925_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -164,7 +164,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$DUusT39GhhbUPUmQmoT43uT1z1m4In5bWJXR2Y8t3v2YlG9Q1wRp6",
+                            PasswordHash = "$2a$11$86qaO767SE.tjzByBr42O.9VB0gsq.fRCSxoKoqoBCzCCqJg2.EaC",
                             Role = "Admin",
                             Username = "admin"
                         });

@@ -17,7 +17,8 @@ LOST_TIMEOUT = 2.0
 ENCODE_INTERVAL = 0.7
 FRAME_WIDTH = 480
 ROTATE_MODE = -90
-
+SESSION_TIMEOUT = 5.0   # thời gian tối đa cho 1 phiên
+ALERT_TIMEOUT = 8.0     # quá thời gian này thì báo động
 # ================= GLOBAL STATE =================
 running = False
 cap = None
@@ -32,7 +33,8 @@ session_confirmed = False
 confirm_count = 0
 last_seen_time = 0
 last_encode_time = 0
-
+session_start_time = 0
+alert_triggered = False
 distance_buffer = deque(maxlen=5)
 
 # API result
@@ -45,7 +47,9 @@ result_state = {
     "confirm_count": 0,
     "distance": None,
     "last_seen": None,
-    "face_box": None
+    "face_box": None,
+    "timeout": False,
+    "alert": False
 }
 
 # ================= LOAD FACE =================
@@ -98,12 +102,16 @@ def reset_state():
     global confirm_count
     global last_seen_time
     global last_encode_time
+    global session_start_time
+    global alert_triggered
 
     session_active = False
     session_confirmed = False
     confirm_count = 0
     last_seen_time = 0
     last_encode_time = 0
+    session_start_time = 0
+    alert_triggered = False
 
     distance_buffer.clear()
 
@@ -115,7 +123,9 @@ def reset_state():
             "confirm_count": 0,
             "distance": None,
             "last_seen": None,
-            "face_box": None
+            "face_box": None,
+            "timeout": False,
+            "alert": False
         })
 
 
@@ -158,6 +168,8 @@ def face_processing():
     global confirm_count
     global last_seen_time
     global last_encode_time
+    global session_start_time
+    global alert_triggered
 
     print("Face processing thread started")
 
@@ -244,6 +256,8 @@ def face_processing():
                     session_confirmed = False
                     confirm_count = 0
                     distance_buffer.clear()
+                    session_start_time = current_time
+                    alert_triggered = False
 
                 distance_buffer.append(distance)
                 avg_distance = sum(distance_buffer) / len(distance_buffer)
@@ -274,8 +288,36 @@ def face_processing():
                         "distance": float(avg_distance),
 
                         "last_seen": last_seen_time,
-                        "face_box": face_box
+                        "face_box": face_box,
+                        "timeout": False,
+                        "alert": False
                     })
+        # ===== SESSION TIMEOUT =====
+        if session_active and not session_confirmed:
+
+            elapsed = current_time - session_start_time
+
+            # quá thời gian xác nhận
+            if elapsed > SESSION_TIMEOUT and not result_state["timeout"]:
+                print("Session timeout - cannot recognize")
+
+                confirm_count = 0
+                session_confirmed = False
+
+                with state_lock:
+                    result_state.update({
+                        "face_match": False,
+                        "employee_id": None,
+                        "timeout": True
+                    })
+
+            # trigger alert (chỉ 1 lần)
+            if elapsed > ALERT_TIMEOUT and not alert_triggered:
+                alert_triggered = True
+                print("ALERT: Unknown person - call security!")
+
+                with state_lock:
+                    result_state["alert"] = True
         # face lost
         if session_active and current_time - last_seen_time > LOST_TIMEOUT:
 

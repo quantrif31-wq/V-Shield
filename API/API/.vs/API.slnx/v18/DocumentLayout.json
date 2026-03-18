@@ -34,21 +34,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 6,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "FaceIDController.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\FaceIDController.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
-              "RelativeToolTip": "API\\Controllers\\FaceIDController.cs",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAAABIAAAACAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-17T05:14:34.686Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
@@ -75,6 +62,19 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "FaceIDController.cs",
+              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\FaceIDController.cs",
+              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
+              "RelativeToolTip": "API\\Controllers\\FaceIDController.cs",
+              "ViewState": "AgIAAHAAAAAAAAAAAAAqwHoAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-17T05:14:34.686Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 3,
               "Title": "Vehicle.cs",
               "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\Vehicle.cs",
@@ -95,8 +95,7 @@
               "RelativeToolTip": "API\\Controllers\\ThongHanhController.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAGEAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-15T08:06:47.517Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-03-15T08:06:47.517Z"
             },
             {
               "$type": "Document",

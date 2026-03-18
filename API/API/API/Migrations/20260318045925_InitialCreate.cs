@@ -390,7 +390,7 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$DUusT39GhhbUPUmQmoT43uT1z1m4In5bWJXR2Y8t3v2YlG9Q1wRp6", "Admin", "admin" });
+                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$86qaO767SE.tjzByBr42O.9VB0gsq.fRCSxoKoqoBCzCCqJg2.EaC", "Admin", "admin" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Access_Log_CameraId",
