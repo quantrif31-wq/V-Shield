@@ -95,10 +95,21 @@ ref="faceCanvas"
 <div>FACE DETECTION</div>
 
 <div>Status : {{detectLabel}}</div>
-<div>Gate : {{gateStatus}}</div>
+<div>Gate : {{ gateStatus }}</div>
+<div style="color:#00ff9c;font-weight:bold">
+  {{ gateMessage }}
+</div>
 
-<div v-if="status.employee_id">
-Employee : {{status.employee_id}}
+<div v-if="gateResult?.employeeId">
+  Employee ID: {{ gateResult.employeeId }}
+</div>
+
+<div v-if="gateResult?.plate">
+  Plate Scan: {{ gateResult.plate }}
+</div>
+
+<div v-if="gateResult?.parkingStatus">
+  Parking: {{ gateResult.parkingStatus }}
 </div>
 
 <div>Distance : {{status.distance}}</div>
@@ -204,6 +215,8 @@ let plateLoop=null
 let gateLoop=null
 
 const gateStatus = ref("")
+const gateResult = ref(null)   // lưu toàn bộ response scan
+const gateMessage = ref("")    // text hiển thị
 
 function stopAlarm(){
 
@@ -508,10 +521,46 @@ async function runGate(){
 
     if(!res || !res.data) return
 
-    gateStatus.value = res.data.status
+    const data = res.data
 
-    if(res.data.status === "SUCCESS"){
-        console.log("OPEN GATE")
+    gateResult.value = data
+    gateStatus.value = data.status
+
+    // =========================
+    // XỬ LÝ UI THEO STATUS
+    // =========================
+
+    switch(data.status){
+
+      case "WAIT_FACE":
+        gateMessage.value = "🟡 Waiting for face..."
+        break
+
+      case "WAIT_PLATE":
+        gateMessage.value = "🟡 Waiting for plate..."
+        break
+
+      case "NO_EMPLOYEE":
+        gateMessage.value = "❌ Unknown employee"
+        
+        alarmSound.currentTime = 0
+        alarmSound.play()
+        break
+
+      case "SUCCESS":
+
+        gateMessage.value = `✅ ${data.action} | Plate: ${data.plate}`
+
+        // 🔊 mở cổng sound
+        successSound.currentTime = 0
+        successSound.play()
+
+        console.log("OPEN GATE", data)
+
+        break
+
+      default:
+        gateMessage.value = data.status
     }
 
   }catch(e){
