@@ -213,6 +213,7 @@ let plateCtx=null
 let faceLoop=null
 let plateLoop=null
 let gateLoop=null
+let gateLocked = false  // 🔒 chỉ cho phép SUCCESS 1 lần mỗi session
 
 const gateStatus = ref("")
 const gateResult = ref(null)   // lưu toàn bộ response scan
@@ -338,6 +339,10 @@ try{
 const res = await getStatus()
 
 status.value = res.data || {}
+// 🔓 reset khi session kết thúc
+if(!status.value.session_active){
+    gateLocked = false
+}
 
 // ===== SUCCESS SOUND =====
 if(
@@ -514,7 +519,7 @@ plateCtx.fillText(res.plateNumber,x,y-10)
 }
 
 async function runGate(){
-
+if(gateLocked) return  // 🔒 đã SUCCESS thì không gọi nữa
   try{
 
     const res = await scanGate()
@@ -548,6 +553,17 @@ async function runGate(){
         break
 
       case "SUCCESS":
+
+        gateMessage.value = `✅ ${data.action} | Plate: ${data.plate}`
+
+        successSound.currentTime = 0
+        successSound.play()
+
+        gateLocked = true   // 🔥 KHÓA SAU KHI THÀNH CÔNG
+
+        console.log("OPEN GATE", data)
+
+        break
 
         gateMessage.value = `✅ ${data.action} | Plate: ${data.plate}`
 

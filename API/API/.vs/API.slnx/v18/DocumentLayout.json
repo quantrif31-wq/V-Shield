@@ -3,12 +3,12 @@
   "WorkspaceRootPath": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\faceidcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\faceidcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\thonghanhcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\thonghanhcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\faceidcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\faceidcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -34,7 +34,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 6,
+          "SelectedChildIndex": 8,
           "Children": [
             {
               "$type": "Bookmark",
@@ -62,13 +62,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "FaceIDController.cs",
               "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
               "RelativeDocumentMoniker": "API\\Controllers\\FaceIDController.cs",
               "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
               "RelativeToolTip": "API\\Controllers\\FaceIDController.cs",
-              "ViewState": "AgIAAHAAAAAAAAAAAAAqwHoAAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAAGgAAAAAAAAAAAAmwHgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-17T05:14:34.686Z",
               "EditorCaption": ""
@@ -87,15 +87,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "ThongHanhController.cs",
               "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\ThongHanhController.cs",
               "RelativeDocumentMoniker": "API\\Controllers\\ThongHanhController.cs",
               "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\ThongHanhController.cs",
               "RelativeToolTip": "API\\Controllers\\ThongHanhController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGEAAAARAAAAAAAAAA==",
+              "ViewState": "AgIAAFkAAAAAAAAAAAAuwKEAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-15T08:06:47.517Z"
+              "WhenOpened": "2026-03-15T08:06:47.517Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
