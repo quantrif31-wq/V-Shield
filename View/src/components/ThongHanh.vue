@@ -74,84 +74,78 @@ STOP PLATE
 
 <div class="camera-panel">
 
-<!-- FACE CAMERA -->
+  <!-- FACE -->
+  <div class="video-wrapper"
+       :class="{
+         'success-glow': status.session_confirmed,
+         'alert-glow': alarmActive
+       }"
+       :style="{ '--camColor': detectColor }">
 
-<div class="video-wrapper"
-     :style="{ '--camColor': detectColor }">
+    <img ref="faceVideo" class="video"
+         :style="{ transform: FACE_TRANSFORM }"/>
 
-<img
-ref="faceVideo"
-class="video"
-:style="{ transform: FACE_TRANSFORM }"
-/>
+    <canvas ref="faceCanvas"
+            :style="{ transform: FACE_TRANSFORM }"></canvas>
 
-<canvas
-ref="faceCanvas"
-:style="{ transform: FACE_TRANSFORM }"
-></canvas>
+    <!-- NEW OVERLAY -->
+    <div class="overlay">
 
-<div class="overlay">
+  <!-- HEADER -->
+  <div class="row space">
+    <div>
+      <div class="label">STATUS</div>
+      <div class="value">{{ detectLabel }}</div>
+    </div>
 
-<div>FACE DETECTION</div>
+    <div>
+      <div class="label">GATE</div>
+      <div class="value">{{ gateStatus }}</div>
+    </div>
+  </div>
 
-<div>Status : {{detectLabel}}</div>
-<div>Gate : {{ gateStatus }}</div>
-<div style="color:#00ff9c;font-weight:bold">
+  <!-- MESSAGE -->
+  <div class="main-message" :style="{ color: messageColor }">
   {{ gateMessage }}
 </div>
 
-<div v-if="gateResult?.employeeId">
-  Employee ID: {{ gateResult.employeeId }}
+  <!-- DATA GRID -->
+  <div class="grid">
+  <div><span class="g-label">ID:</span> {{ displayId }}</div>
+  <div><span class="g-label">Plate:</span> {{ displayPlate }}</div>
+  <div><span class="g-label">Parking:</span> {{ displayParking }}</div>
+  <div><span class="g-label">Dist:</span> {{ displayDistance }}</div>
 </div>
 
-<div v-if="gateResult?.plate">
-  Plate Scan: {{ gateResult.plate }}
-</div>
-
-<div v-if="gateResult?.parkingStatus">
-  Parking: {{ gateResult.parkingStatus }}
-</div>
-
-<div>Distance : {{status.distance}}</div>
-
-<div v-if="status.session_confirmed" class="confirm">
-✔ IDENTIFIED
-</div>
+  <!-- BADGE -->
+  <div class="badge success" v-if="status.session_confirmed">
+    ✔ IDENTIFIED
+  </div>
 
 </div>
 
-</div>
+  </div>
 
+  <!-- PLATE -->
+  <div class="video-wrapper">
 
-<!-- PLATE CAMERA -->
+    <img v-if="plateRunning"
+         :src="streamUrl"
+         class="video"
+         ref="plateVideo"
+         :style="{ transform: PLATE_TRANSFORM }"/>
 
-<div class="video-wrapper">
+    <canvas ref="plateCanvas"
+            :style="{ transform: PLATE_TRANSFORM }"></canvas>
 
-<img
-v-if="plateRunning"
-:src="streamUrl"
-class="video"
-ref="plateVideo"
-:style="{ transform: PLATE_TRANSFORM }"
-/>
+    <div class="overlay">
+      <div class="status-line">
+        <span class="label">PLATE</span>
+        <span class="value">{{ plate || "-----" }}</span>
+      </div>
+    </div>
 
-<canvas
-ref="plateCanvas"
-:style="{ transform: PLATE_TRANSFORM }"
-></canvas>
-<div class="overlay">
-
-<div>LICENSE PLATE</div>
-
-<div>Plate : {{ plate || "-----" }}</div>
-
-</div>
-
-</div>
-
-<div class="plate-big">
-{{ plate || "-----" }}
-</div>
+  </div>
 
 </div>
 
@@ -188,7 +182,7 @@ const selectedCamera = ref("")
 const faceCameraIp = ref("http://127.0.0.1:8080/video")
 const alarmActive = ref(false)
 let lastConfirmed = false
-
+let gateLoop = null
 const successSound = new Audio("/sounds/success.mp3")
 const alarmSound = new Audio("/sounds/alarm.mp3")
 
@@ -212,7 +206,7 @@ let plateCtx=null
 
 let faceLoop=null
 let plateLoop=null
-let gateLoop=null
+
 let gateLocked = false  // 🔒 chỉ cho phép SUCCESS 1 lần mỗi session
 
 const gateStatus = ref("")
@@ -253,6 +247,46 @@ return "#33ccff"
 
 return "#ffd500"
 
+})
+const displayId = computed(()=>{
+  return (
+    gateResult.value?.employeeId ||
+    status.value?.employee_id ||
+    "-"
+  )
+})
+
+const displayPlate = computed(()=>{
+  return (
+    gateResult.value?.plate ||
+    plate.value ||
+    status.value?.plate ||
+    "-"
+  )
+})
+
+const displayParking = computed(()=>{
+  return (
+    gateResult.value?.parkingStatus ||
+    status.value?.parking_status ||
+    "-"
+  )
+})
+
+const displayDistance = computed(()=>{
+  const d = status.value.distance
+  if(!d) return "-"
+  return Number(d).toFixed(2) + "m"
+})
+
+const messageColor = computed(()=>{
+  switch(gateStatus.value){
+    case "SUCCESS": return "#00ff9c"
+    case "WAIT_PLATE": return "#ffd500"
+    case "WAIT_FACE": return "#00bfff"
+    case "NO_EMPLOYEE": return "red"
+    default: return "#ccc"
+  }
 })
 
 /* LOAD CAMERAS */
@@ -590,7 +624,9 @@ function startGateLoop(){
 
   clearInterval(gateLoop)
 
-  gateLoop = setInterval(runGate,1000)
+  gateLoop = setInterval(() => {
+    runGate()
+  }, 1000)
 
 }
 /* INIT */
@@ -650,16 +686,17 @@ font-weight:bold;
 
 .layout{
 display:grid;
-grid-template-columns:260px 720px;
-gap:30px;
-justify-content:center;
-padding:30px;
+grid-template-columns:280px 1fr;
+height:calc(100vh - 80px);
+gap:16px;
+padding:16px;
 }
 
 .control{
 background:#0c2747;
-padding:20px;
+padding:16px;
 border-radius:8px;
+border-right:1px solid rgba(255,255,255,0.1);
 }
 
 .control select,
@@ -671,8 +708,9 @@ margin-bottom:10px;
 
 .btn{
 width:100%;
-padding:12px;
-margin-bottom:10px;
+padding:10px;
+margin-bottom:8px;
+font-size:13px;
 border:none;
 border-radius:6px;
 font-weight:bold;
@@ -683,14 +721,20 @@ cursor:pointer;
 .stop{background:#e74c3c}
 
 .video-wrapper{
-border:3px solid var(--camColor);
-box-shadow:0 0 20px var(--camColor);
+position:relative;
+border-radius:12px;
+overflow:hidden;
+background:black;
+border:2px solid var(--camColor);
+box-shadow:0 0 10px var(--camColor);
+transition:0.3s;
 }
 
 .video{
 width:100%;
 height:100%;
-object-fit:contain;
+object-fit:cover;
+max-height:100%;
 transform-origin:center;
 }
 
@@ -705,12 +749,78 @@ transform-origin:center;
 }
 
 .overlay{
-position:absolute;
-top:10px;
-left:10px;
-background:rgba(0,0,0,0.5);
-padding:8px 12px;
-border-radius:6px;
+  position:absolute;
+  top:10px;
+  left:10px;
+
+  min-width:240px;
+  max-width:320px;   /* 🔥 FIX CỤT */
+
+  background:rgba(0,0,0,0.8);
+  padding:10px;
+  border-radius:8px;
+
+  font-size:13px;
+}
+/* STATUS ROW */
+.top-row{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:6px;
+}
+
+.status-box{
+  text-align:left;
+}
+
+.label{
+  font-size:11px;
+  color:#aaa;
+}
+
+.value{
+  font-weight:bold;
+  font-size:14px;
+}
+
+/* MESSAGE */
+.main-message{
+  font-weight:bold;
+  font-size:14px;
+  margin:4px 0;
+  color:#00ff9c;
+}
+
+/* GRID INFO */
+.info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  font-size:12px;
+  color:#ddd;
+}
+
+/* BADGES */
+.badges{
+  margin-top:6px;
+  display:flex;
+  gap:6px;
+}
+
+.badge{
+  padding:2px 6px;
+  border-radius:4px;
+  font-size:11px;
+  font-weight:bold;
+}
+
+.badge.success{
+  background:#00ff9c;
+  color:black;
+}
+
+.badge.alert{
+  background:red;
 }
 
 .plate-big{
@@ -723,5 +833,160 @@ font-weight:bold;
 .confirm{
 color:#00ff9c;
 }
+.camera-panel{
+display:grid;
+grid-template-rows: 2fr 1fr;
+gap:16px;
+height:100%;
+}
 
+.success-glow{
+box-shadow:0 0 30px #00ff9c !important;
+border-color:#00ff9c !important;
+}
+
+.alert-glow{
+box-shadow:0 0 40px red !important;
+border-color:red !important;
+}
+.status-line{
+display:flex;
+justify-content:space-between;
+margin-bottom:4px;
+}
+
+.label{
+color:#aaa;
+}
+
+.value{
+font-weight:bold;
+}
+
+.main-message{
+margin-top:6px;
+font-size:16px;
+font-weight:bold;
+}
+.alarm-overlay{
+position:fixed;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background:rgba(255,0,0,0.2);
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:48px;
+font-weight:bold;
+color:red;
+z-index:999;
+animation: blink 1s infinite;
+}
+
+@keyframes blink{
+0%{opacity:1}
+50%{opacity:0.4}
+100%{opacity:1}
+}
+.camera-panel{
+display:grid;
+grid-template-rows: 2fr 1fr;
+gap:16px;
+height:100%;
+
+}
+.video-wrapper{
+height:100%;
+}
+.control{
+overflow:auto;
+}
+.row{
+  display:flex;
+}
+
+.space{
+  justify-content:space-between;
+  margin-bottom:6px;
+}
+
+.label{
+  font-size:11px;
+  color:#bbbbbb;   /* 🔥 từ #aaa → sáng hơn */
+  letter-spacing:0.5px;
+}
+
+.value{
+  font-weight:bold;
+}
+
+.main-message{
+  margin:4px 0;
+  font-weight:bold;
+  color:#00ff9c;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  font-size:12px;
+}
+
+.badge{
+  margin-top:6px;
+  padding:3px 6px;
+  font-size:11px;
+  border-radius:4px;
+  display:inline-block;
+}
+
+.badge.success{
+  background:#00ff9c;
+  color:black;
+}
+.value{
+  font-weight:bold;
+  font-size:15px;
+  color:#ffffff;   /* 🔥 trắng hẳn */
+}
+.main-message{
+  margin:6px 0;
+  font-size:15px;
+  font-weight:bold;
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  font-size:12px;
+  color:#ddd;
+}
+.g-label{
+  color:#66ccff;   /* 🔥 xanh nhẹ dễ đọc */
+  margin-right:4px;
+}
+.main-message{
+  margin:6px 0;
+  font-size:16px;
+  font-weight:bold;
+  text-shadow:0 0 6px rgba(255,255,255,0.3); /* 🔥 glow nhẹ */
+}
+.value{
+  font-weight:bold;
+  font-size:15px;
+}
+
+.row .value{
+  font-size:16px;
+}
+.grid div:nth-child(2){
+  color:#00ff9c;
+  font-weight:bold;
+}
+.success-glow .overlay{
+  background:rgba(0,50,0,0.75);
+}
 </style>
