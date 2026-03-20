@@ -37,7 +37,7 @@ if getattr(sys, "frozen", False):
 else:
     base_path = os.path.dirname(os.path.abspath(__file__))
 
-API_PORT = 5002
+API_PORT = int(os.getenv("PORT", 5001))
 WINDOW_NAME = "FACEID SINGLE-READ LOCK MODE"
 
 THRESHOLD = 0.35

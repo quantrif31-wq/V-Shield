@@ -161,9 +161,9 @@ STOP PLATE
 import {ref,onMounted,onBeforeUnmount,computed} from "vue"
 
 import {
-startCamera,
-stopCamera,
-getStatus
+//startCamera
+//stopCamera
+//getStatus
 } from "../services/faceApi"
 
 import {
@@ -171,7 +171,7 @@ import {
 //getPlate
 } from "../services/biensoApi"
 import { scanGate } from "../services/thonghanhAPI"
-import { shutdownAI } from "../services/faceApi"
+//import { shutdownAI } from "../services/faceApi"
 
 /* STATE */
 const FACE_TRANSFORM = "rotate(-90deg)"   // cam trước

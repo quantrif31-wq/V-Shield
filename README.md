@@ -42,6 +42,12 @@ lpr\_gpu\\Scripts\\activate
 
 
 
+set PORT=5002
+
+python faceid\_single\_read\_lock.py
+
+
+
 pip cache purge
 
 pip install pyodbc

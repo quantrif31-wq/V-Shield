@@ -1,663 +1,772 @@
 <template>
+  <div class="security-container">
+    <h1 class="title">V-Shield FaceID Monitor</h1>
 
-<div class="console">
+    <div class="control-panel">
+      <input
+        v-model="cameraIp"
+        type="text"
+        class="ip-input"
+        placeholder="Nhập URL camera / stream URL..."
+        :disabled="loading"
+      />
 
-<header class="topbar">
+      <button class="btn btn-on" @click="handleTurnOnPreview" :disabled="loading">
+        {{ loading ? "Đang xử lý..." : "Bật preview" }}
+      </button>
 
-<div class="title">
-V-Shield AI Security Console
-</div>
-<div v-if="alarmActive" class="alarm-overlay">
-🚨 SECURITY ALERT 🚨
-</div>
-<div class="system-status">
-<span class="led" :class="{on:running}"></span>
-{{ running ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
-</div>
+      <button
+        class="btn btn-reset"
+        @click="handleInitOrResetSession"
+        :disabled="loading || !cameraIp.trim()"
+      >
+        {{ loading ? "Đang xử lý..." : sessionActionLabel }}
+      </button>
 
-</header>
+      <button class="btn btn-off" @click="handleTurnOff" :disabled="loading">
+        {{ loading ? "Đang xử lý..." : "Tắt camera" }}
+      </button>
+    </div>
 
+    <div class="status-bar">
+      <span><b>Camera:</b> {{ cameraRunning ? "Đang chạy" : "Đang tắt" }}</span>
+      <span><b>Kết nối:</b> {{ cameraConnected ? "Đã kết nối" : "Chưa kết nối" }}</span>
+      <span><b>Preview:</b> {{ previewRunning ? "Đang mở" : "Đang tắt" }}</span>
+      <span><b>Input URL:</b> {{ currentIp || cameraIp || "-----" }}</span>
+      <span><b>FPS:</b> {{ fps }}</span>
+      <span><b>Tracking:</b> {{ trackingActive ? "Đang theo dõi" : "Idle" }}</span>
+      <span><b>Lock:</b> {{ scanLocked ? "Đã khóa" : "Đang quét" }}</span>
+      <span><b>Preview Health:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
+    </div>
 
-<div class="layout">
+    <div class="video-wrapper">
+      <img
+        v-if="previewRunning && directCameraUrl"
+        :key="directCameraKey"
+        :src="directCameraUrl"
+        class="video"
+        alt="Direct Camera Preview"
+        @load="handleDirectPreviewLoaded"
+        @error="handleDirectPreviewError"
+      />
 
-<!-- CONTROL PANEL -->
-<div class="control">
+      <div v-else class="video-off">
+        Camera Offline
+      </div>
+    </div>
 
-<h3>Camera Control</h3>
+    <div class="face-panel">
+      <div class="face-box">
+        <div class="face-label">Employee ID</div>
+        <div class="face-number confirmed">
+          {{ employeeId || "-----" }}
+        </div>
+      </div>
 
-<input
-v-model="cameraIp"
-placeholder="Camera Stream URL"
-/>
+      <div class="face-box">
+        <div class="face-label">Recognition State</div>
+        <div class="face-number raw">
+          {{ detectionLabel }}
+        </div>
+      </div>
+    </div>
 
-<button class="btn start" @click="start">
-▶ START CAMERA
-</button>
+    <div class="lock-banner" v-if="scanLocked">
+      Đã có kết quả cuối và khóa phiên. Bấm “{{ sessionActionLabel }}” để quét người tiếp theo.
+    </div>
 
-<button class="btn stop" @click="stop">
-■ STOP CAMERA
-</button>
+    <div class="alert-banner" v-if="alert">
+      🚨 CẢNH BÁO: Người lạ / không xác nhận được danh tính
+    </div>
 
-<button class="btn shutdown" @click="shutdown">
-⚡ SHUTDOWN AI
-</button>
-<button
-v-if="alarmActive"
-class="btn stop"
-@click="stopAlarm"
->
-🧯 STOP ALARM
-</button>
-</div>
+    <div class="evidence-panel">
+      <div class="evidence-card">
+        <div class="evidence-title">Ảnh chụp toàn khung</div>
+        <img
+          v-if="lockedSnapshot"
+          :src="lockedSnapshot"
+          class="evidence-image"
+          alt="Locked Snapshot"
+        />
+        <div v-else class="evidence-empty">Chưa có ảnh</div>
+      </div>
 
+      <div class="evidence-card">
+        <div class="evidence-title">Ảnh crop khuôn mặt</div>
+        <img
+          v-if="lockedFaceCrop"
+          :src="lockedFaceCrop"
+          class="evidence-image"
+          alt="Locked Face Crop"
+        />
+        <div v-else class="evidence-empty">Chưa có ảnh</div>
+      </div>
+    </div>
 
-<!-- CAMERA -->
-<div class="camera-panel">
+    <div class="live-panel">
+      <div class="live-title">Face Realtime State</div>
 
-<div
-class="video-wrapper"
-:style="{ '--camColor': detectColor }"
->
+      <div class="candidate-list">
+        <div class="candidate-item">
+          <span class="candidate-text">Face Match</span>
+          <span class="candidate-meta">{{ faceMatch ? "Yes" : "No" }}</span>
+        </div>
 
-<img
-ref="video"
-class="video"
-/>
+        <div class="candidate-item">
+          <span class="candidate-text">Identity Confirmed</span>
+          <span class="candidate-meta">{{ identityConfirmed ? "Yes" : "No" }}</span>
+        </div>
 
-<canvas ref="canvas"></canvas>
+        <div class="candidate-item">
+          <span class="candidate-text">Confirm Count</span>
+          <span class="candidate-meta">{{ confirmCount }}</span>
+        </div>
 
-<div class="overlay">
+        <div class="candidate-item">
+          <span class="candidate-text">Distance</span>
+          <span class="candidate-meta">{{ distanceText }}</span>
+        </div>
 
-<div :style="{color:detectColor}">
-AI FACE DETECTION
-</div>
+        <div class="candidate-item">
+          <span class="candidate-text">Lock Reason</span>
+          <span class="candidate-meta">{{ lockReason || "-----" }}</span>
+        </div>
+      </div>
+    </div>
 
-<div>Status : {{detectLabel}}</div>
-
-<div v-if="status.employee_id">
-Employee : {{status.employee_id}}
-</div>
-
-<div>Distance : {{status.distance}}</div>
-
-
-<div v-if="status.session_confirmed" class="confirm">
-✔ IDENTIFIED
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- STATUS -->
-<div class="status">
-
-<h3>Detection Status</h3>
-
-<div class="status-box">
-
-<div class="item">
-<span>Camera</span>
-<b :class="status.camera_running?'ok':'bad'">
-{{status.camera_running ? "ONLINE":"OFFLINE"}}
-</b>
-</div>
-
-<div class="item">
-<span>Session</span>
-<b :class="status.session_active?'ok':'bad'">
-{{status.session_active}}
-</b>
-</div>
-
-<div class="item">
-<span>Confirmed</span>
-<b :class="status.session_confirmed?'ok':'bad'">
-{{status.session_confirmed}}
-</b>
-</div>
-
-<div class="item">
-<span>Distance</span>
-<b>{{status.distance}}</b>
-</div>
-
-<div class="item">
-<span>Employee</span>
-<b class="ok">
-{{status.employee_id || "Unknown"}}
-</b>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
+    <div class="result-panel">
+      <div><b>Box:</b> {{ bboxText }}</div>
+      <div><b>Employee ID:</b> {{ employeeId || "-----" }}</div>
+      <div><b>Tracking Active:</b> {{ trackingActive ? "Yes" : "No" }}</div>
+      <div><b>Identity Confirmed:</b> {{ identityConfirmed ? "Yes" : "No" }}</div>
+      <div><b>Face Match:</b> {{ faceMatch ? "Yes" : "No" }}</div>
+      <div><b>Timeout:</b> {{ timeoutState ? "Yes" : "No" }}</div>
+      <div><b>Alert:</b> {{ alert ? "Yes" : "No" }}</div>
+      <div><b>Message:</b> {{ message || "-----" }}</div>
+      <div><b>Last Update:</b> {{ lastUpdate || "-----" }}</div>
+    </div>
+  </div>
 </template>
 
-<script setup>
+<script>
+import {
+  turnOnCamera,
+  turnOffCamera,
+  resetCameraState,
+  getCameraStatus,
+  getCameraResult,
+  getLockedImages
+} from "../services/faceApi"
 
-import {ref,onMounted,onBeforeUnmount,computed} from "vue"
-import {startCamera,stopCamera,getStatus,shutdownAI} from "../services/faceApi"
+export default {
+  name: "FaceIdSecurity",
 
-const cameraIp = ref("http://55.247.111.137:8080/video")
+  data() {
+    return {
+      cameraIp: "",
+      currentIp: "",
+      cameraRunning: false,
+      cameraConnected: false,
+      previewRunning: false,
+      loading: false,
 
-const status = ref({})
+      employeeId: "",
+      trackingActive: false,
+      identityConfirmed: false,
+      faceMatch: false,
+      confirmCount: 0,
+      distance: null,
+      bbox: null,
+      timeoutState: false,
+      alert: false,
 
-const video = ref(null)
-const canvas = ref(null)
+      lockedSnapshot: "",
+      lockedFaceCrop: "",
+      scanLocked: false,
+      lockReason: "",
 
-let ctx = null
-let poller = null
+      fps: 0,
+      message: "",
+      lastUpdate: "",
 
-const running = ref(false)
-const alarmActive = ref(false)
-let lastConfirmed = false
-const successSound = new Audio("/sounds/success.mp3")
-const alarmSound = new Audio("/sounds/alarm.mp3")
+      directCameraUrl: "",
+      directCameraKey: 0,
+      previewHealthy: false,
 
-alarmSound.loop = true
-/* ================= COLOR LOGIC ================= */
+      resultTimer: null,
+      busyResult: false,
+      isFetchingLockedImages: false,
 
-const detectColor = computed(()=>{
+      destroyed: false
+    }
+  },
 
-if(!status.value.session_active)
-return "#00bfff"   // idle
+  computed: {
+    bboxText() {
+      if (!this.bbox) return "-----"
 
-if(status.value.session_confirmed)
-return "#00ff9c"   // confirmed
+      return `left=${this.bbox.left}, top=${this.bbox.top}, right=${this.bbox.right}, bottom=${this.bbox.bottom}`
+    },
 
-if(status.value.face_match)
-return "#33ccff"   // verifying
+    sessionActionLabel() {
+      return this.cameraRunning ? "Reset phiên nhận diện" : "Khởi tạo phiên nhận diện"
+    },
 
-return "#ffd500"   // unknown
+    detectionLabel() {
+      if (this.scanLocked) {
+        if (this.lockReason === "confirmed") return "LOCKED - IDENTIFIED"
+        if (this.lockReason === "timeout") return "LOCKED - TIMEOUT"
+        if (this.lockReason === "alert") return "LOCKED - ALERT"
+        return "LOCKED"
+      }
 
-})
+      if (!this.trackingActive) return "IDLE"
+      if (this.identityConfirmed) return "IDENTIFIED"
+      if (this.faceMatch) return "VERIFYING"
+      return "UNKNOWN"
+    },
 
-function stopAlarm(){
+    distanceText() {
+      const num = Number(this.distance)
+      if (Number.isNaN(num)) return "-----"
+      return num.toFixed(4)
+    }
+  },
 
-alarmActive.value = false
+  async mounted() {
+    this.destroyed = false
+    await this.loadCurrentStatus()
 
-alarmSound.pause()
-alarmSound.currentTime = 0
+    if (this.cameraRunning) {
+      this.startResultLoop()
+    }
+  },
 
-startPolling() // ▶ chạy lại API
+  beforeUnmount() {
+    this.destroyed = true
+    this.stopResultLoop()
+    this.resetDirectPreview()
+  },
 
+  methods: {
+    buildDirectCameraUrl(inputUrl) {
+      const raw = String(inputUrl || "").trim()
+      if (!raw) return ""
+
+      const sep = raw.includes("?") ? "&" : "?"
+      return `${raw}${sep}t=${Date.now()}`
+    },
+
+    clearResultStateOnly() {
+      this.employeeId = ""
+      this.trackingActive = false
+      this.identityConfirmed = false
+      this.faceMatch = false
+      this.confirmCount = 0
+      this.distance = null
+      this.bbox = null
+      this.timeoutState = false
+      this.alert = false
+
+      this.lockedSnapshot = ""
+      this.lockedFaceCrop = ""
+      this.scanLocked = false
+      this.lockReason = ""
+
+      this.fps = 0
+      this.message = ""
+      this.lastUpdate = ""
+    },
+
+    hardResetUiState() {
+      this.cameraRunning = false
+      this.cameraConnected = false
+      this.currentIp = ""
+      this.clearResultStateOnly()
+    },
+
+    mountDirectPreview(url) {
+      const cleanUrl = String(url || "").trim()
+      if (!cleanUrl) return
+
+      this.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
+      this.directCameraKey += 1
+      this.previewHealthy = false
+      this.previewRunning = true
+    },
+
+    resetDirectPreview() {
+      this.directCameraUrl = ""
+      this.directCameraKey += 1
+      this.previewHealthy = false
+      this.previewRunning = false
+    },
+
+    stopResultLoop() {
+      if (this.resultTimer) {
+        clearInterval(this.resultTimer)
+        this.resultTimer = null
+      }
+      this.busyResult = false
+    },
+
+    startResultLoop() {
+      this.stopResultLoop()
+
+      this.resultTimer = setInterval(async () => {
+        if (this.destroyed) return
+        if (!this.cameraRunning) return
+        if (this.busyResult) return
+
+        this.busyResult = true
+        try {
+          await this.refreshResult()
+        } finally {
+          this.busyResult = false
+        }
+      }, 500)
+    },
+
+    async loadCurrentStatus() {
+      try {
+        const res = await getCameraStatus()
+        await this.applyRealtimeState(res, false)
+
+        if (this.currentIp) {
+          this.cameraIp = this.currentIp
+        }
+
+        if (this.currentIp) {
+          this.mountDirectPreview(this.currentIp)
+        } else {
+          this.resetDirectPreview()
+        }
+
+        if (this.cameraRunning) {
+          await this.fetchLockedImagesIfNeeded(true)
+        }
+      } catch (e) {
+        console.error("Load status error:", e)
+      }
+    },
+
+    async handleTurnOnPreview() {
+      const ip = (this.cameraIp || this.currentIp || "").trim()
+      if (!ip) {
+        alert("Vui lòng nhập URL camera")
+        return
+      }
+
+      try {
+        this.loading = true
+        this.currentIp = ip
+        this.mountDirectPreview(ip)
+        this.message = "Đã mở preview camera trên giao diện"
+      } catch (e) {
+        console.error("Turn on preview error:", e)
+        alert(e?.message || "Lỗi mở preview camera")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async handleInitOrResetSession() {
+      const ip = (this.cameraIp || this.currentIp || "").trim()
+      if (!ip) {
+        alert("Vui lòng nhập URL camera")
+        return
+      }
+
+      try {
+        this.loading = true
+
+        this.currentIp = ip
+        if (!this.previewRunning) {
+          this.mountDirectPreview(ip)
+        }
+
+        this.clearResultStateOnly()
+
+        if (!this.cameraRunning) {
+          this.stopResultLoop()
+
+          const res = await turnOnCamera(ip)
+          if (!res?.success) {
+            alert(res?.message || "Không thể khởi tạo phiên nhận diện")
+            return
+          }
+
+          this.cameraRunning = true
+          this.currentIp = ip
+          this.message = res.message || "Khởi tạo phiên nhận diện thành công"
+
+          await this.refreshResult()
+          this.startResultLoop()
+          return
+        }
+
+        const res = await resetCameraState()
+        this.message = res?.message || "Đã reset phiên nhận diện"
+
+        await this.refreshResult()
+
+        if (!this.resultTimer) {
+          this.startResultLoop()
+        }
+      } catch (e) {
+        console.error("Init/Reset session error:", e)
+        alert(e?.message || "Lỗi khởi tạo / reset phiên nhận diện")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async handleTurnOff() {
+      try {
+        this.loading = true
+
+        this.stopResultLoop()
+
+        try {
+          const res = await turnOffCamera()
+          this.message = res?.message || "Đã tắt camera"
+        } catch (e) {
+          console.warn("Turn off warning:", e)
+        }
+
+        this.hardResetUiState()
+        this.resetDirectPreview()
+      } catch (e) {
+        console.error("Turn off error:", e)
+        alert(e?.message || "Lỗi tắt camera")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async refreshResult() {
+      try {
+        const res = await getCameraResult()
+        await this.applyRealtimeState(res, true)
+      } catch (e) {
+        console.warn("Result polling error:", e)
+      }
+    },
+
+    async fetchLockedImagesIfNeeded(force = false) {
+      if (this.destroyed) return
+      if (!this.cameraRunning) return
+      if (!this.scanLocked && !force) {
+        this.lockedSnapshot = ""
+        this.lockedFaceCrop = ""
+        return
+      }
+      if (this.isFetchingLockedImages) return
+
+      this.isFetchingLockedImages = true
+      try {
+        const res = await getLockedImages()
+
+        if (res?.scan_locked) {
+          this.lockedSnapshot = res.locked_snapshot || ""
+          this.lockedFaceCrop = res.locked_face_crop || ""
+        } else {
+          this.lockedSnapshot = ""
+          this.lockedFaceCrop = ""
+        }
+      } catch (e) {
+        console.warn("Fetch locked images error:", e)
+      } finally {
+        this.isFetchingLockedImages = false
+      }
+    },
+
+    async applyRealtimeState(res, allowTurnOffReset = true) {
+      if (!res || this.destroyed) return
+
+      const incomingCameraEnabled = !!res.camera_enabled
+
+      this.cameraRunning = incomingCameraEnabled
+      this.cameraConnected = !!res.camera_connected
+      this.currentIp = res.ip || this.currentIp
+
+      this.employeeId = res.employee_id || ""
+      this.trackingActive = !!res.tracking_active
+      this.identityConfirmed = !!res.identity_confirmed
+      this.faceMatch = !!res.face_match
+      this.confirmCount = Number(res.confirm_count || 0)
+      this.distance = res.distance ?? null
+      this.bbox = res.bbox || null
+      this.timeoutState = !!res.timeout
+      this.alert = !!res.alert
+
+      this.scanLocked = !!res.scan_locked
+      this.lockReason = res.lock_reason || ""
+
+      this.fps = Number(res.fps || 0)
+      this.message = res.message || ""
+      this.lastUpdate = res.last_update || ""
+
+      if (!this.scanLocked) {
+        this.lockedSnapshot = ""
+        this.lockedFaceCrop = ""
+      }
+
+      if (!incomingCameraEnabled && allowTurnOffReset) {
+        this.stopResultLoop()
+        this.hardResetUiState()
+        return
+      }
+
+      if (this.scanLocked) {
+        await this.fetchLockedImagesIfNeeded(false)
+      }
+    },
+
+    handleDirectPreviewLoaded() {
+      this.previewHealthy = true
+    },
+
+    handleDirectPreviewError() {
+      this.previewHealthy = false
+    }
+  }
 }
-const detectLabel = computed(()=>{
-
-if(!status.value.session_active)
-return "IDLE"
-
-if(status.value.session_confirmed)
-return "IDENTIFIED"
-
-if(status.value.face_match)
-return "VERIFYING"
-
-return "UNKNOWN"
-
-})
-
-
-/* ================= CAMERA CONTROL ================= */
-
-async function start(){
-
-if(running.value) return
-
-try{
-
-await startCamera(cameraIp.value)
-
-video.value.src = cameraIp.value
-
-running.value = true
-
-startPolling()
-
-}catch(e){
-
-console.log("start failed",e)
-
-}
-
-}
-
-
-async function stop(){
-
-try{
-await stopCamera()
-}catch(e){}
-
-running.value=false
-
-video.value.src=""
-
-stopPolling()
-
-clearCanvas()
-
-}
-
-
-async function shutdown(){
-
-if(!confirm("Shutdown AI server ?")) return
-
-try{
-
-await shutdownAI()
-
-}catch(e){}
-
-running.value=false
-
-video.value.src=""
-
-stopPolling()
-
-clearCanvas()
-
-}
-
-
-/* ================= POLLING ================= */
-
-function startPolling(){
-
-if(poller) return
-
-poller=setInterval(updateStatus,200)
-
-}
-
-function stopPolling(){
-
-clearInterval(poller)
-
-poller=null
-
-}
-
-
-async function updateStatus(){
-
-if(alarmActive.value)
-return "#ff0000"  // ⛔ NGỪNG polling khi alarm
-
-try{
-
-const res = await getStatus()
-
-status.value = res.data
-
-// ===== SUCCESS SOUND =====
-if(
-    status.value.session_confirmed &&
-    !lastConfirmed
-){
-    successSound.currentTime = 0
-    successSound.play()
-}
-
-lastConfirmed = status.value.session_confirmed
-
-
-// ===== ALERT SOUND =====
-if(status.value.alert && !alarmActive.value){
-
-    alarmActive.value = true
-
-    alarmSound.currentTime = 0
-    alarmSound.play()
-
-    stopPolling() // ⛔ DỪNG polling
-}
-
-drawFace()
-
-}catch(e){
-
-running.value=false
-
-}
-
-}
-
-
-/* ================= DRAW FACE ================= */
-
-function drawFace(){
-
-if(!ctx) return
-
-clearCanvas()
-
-const face = status.value.face_box
-
-if(!face) return
-
-const scaleX = canvas.value.width / 480
-const scaleY = canvas.value.height / 480
-
-ctx.strokeStyle = detectColor.value
-ctx.lineWidth=3
-
-ctx.strokeRect(
-face.left * scaleX,
-face.top * scaleY,
-face.width * scaleX,
-face.height * scaleY
-)
-
-}
-
-
-function clearCanvas(){
-
-ctx.clearRect(
-0,
-0,
-canvas.value.width,
-canvas.value.height
-)
-
-}
-
-
-/* ================= INIT ================= */
-
-onMounted(()=>{
-
-ctx = canvas.value.getContext("2d")
-
-video.value.onload = ()=>{
-
-canvas.value.width = video.value.clientWidth
-canvas.value.height = video.value.clientHeight
-
-}
-
-})
-
-onBeforeUnmount(()=>{
-
-stopPolling()
-
-})
-
 </script>
 
-
-<style>
-
-body{
-margin:0;
-background:#041424;
-color:white;
-font-family:Segoe UI;
+<style scoped>
+.security-container {
+  width: 1100px;
+  margin: auto;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
-
-/* TOP BAR */
-
-.topbar{
-
-display:flex;
-justify-content:space-between;
-align-items:center;
-
-padding:20px 40px;
-
-background:#0b223f;
-border-bottom:2px solid #0af;
-
+.title {
+  margin-bottom: 20px;
 }
 
-.title{
-font-size:22px;
-font-weight:bold;
-letter-spacing:2px;
+.control-panel {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
 }
 
-
-/* LED */
-
-.system-status{
-
-display:flex;
-align-items:center;
-gap:10px;
-font-size:14px;
-
+.ip-input {
+  width: 420px;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
 }
 
-.led{
-
-width:12px;
-height:12px;
-
-border-radius:50%;
-
-background:#666;
-
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 170px;
 }
 
-.led.on{
-
-background:#00ff9c;
-box-shadow:0 0 12px #00ff9c;
-
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-
-/* LAYOUT */
-
-.layout{
-
-display:grid;
-
-grid-template-columns:260px 720px 260px;
-
-gap:30px;
-
-justify-content:center;
-
-padding:30px;
-
+.btn-on {
+  background: #198754;
 }
 
-
-/* CONTROL */
-
-.control{
-
-background:#0c2747;
-padding:20px;
-border-radius:8px;
-
+.btn-reset {
+  background: #0d6efd;
 }
 
-.control input{
-
-width:100%;
-padding:10px;
-margin-bottom:15px;
-
-border:none;
-border-radius:6px;
-
+.btn-off {
+  background: #dc3545;
 }
 
-
-/* BUTTON */
-
-.btn{
-
-width:100%;
-padding:12px;
-
-margin-bottom:10px;
-
-border:none;
-border-radius:6px;
-
-font-weight:bold;
-
-cursor:pointer;
-
-transition:0.2s;
-
+.status-bar {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  font-size: 14px;
 }
 
-.btn:hover{
-transform:scale(1.05)
+.video-wrapper {
+  width: 800px;
+  height: 450px;
+  background: black;
+  margin: auto;
+  position: relative;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
-.start{background:#27ae60}
-.stop{background:#e74c3c}
-.shutdown{background:#f39c12}
-
-
-/* VIDEO */
-
-.video-wrapper{
-
-position:relative;
-
-width:720px;
-height:480px;
-
-border:3px solid var(--camColor);
-
-border-radius:8px;
-
-overflow:hidden;
-
-box-shadow:0 0 20px var(--camColor);
-
-background:black;
-
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
-.video{
-
-position:absolute;
-
-width:100%;
-height:100%;
-
-object-fit:contain;
-
-transform: rotate(-90deg);
-
+.video-off {
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 20px;
 }
 
-canvas{
-
-position:absolute;
-
-width:100%;
-height:100%;
-
-pointer-events:none;
-
-transform: rotate(-90deg);
-
+.face-panel {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
 }
 
-.video,
-canvas{
-transform: rotate(-90deg) scale(1.5);
-transform-origin:center;
-}
-/* OVERLAY */
-
-.overlay{
-
-position:absolute;
-
-top:10px;
-left:10px;
-
-background:rgba(0,0,0,0.5);
-
-padding:8px 12px;
-
-border-radius:6px;
-
-font-size:13px;
-
-border:1px solid #00bfff;
-
+.face-box {
+  min-width: 280px;
 }
 
-.confirm{
-
-color:#00ff9c;
-font-weight:bold;
-
+.face-label {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #666;
 }
 
-
-/* STATUS */
-
-.status{
-
-background:#0c2747;
-padding:20px;
-border-radius:8px;
-
+.face-number {
+  font-size: 30px;
+  font-weight: bold;
 }
 
-.status-box{
-
-margin-top:15px;
-
-display:flex;
-flex-direction:column;
-gap:10px;
-
+.confirmed {
+  color: #00aa00;
 }
 
-.item{
-
-display:flex;
-justify-content:space-between;
-
-padding:10px;
-
-background:#081b33;
-
-border-radius:6px;
-
+.raw {
+  color: #ff8800;
 }
 
-.ok{color:#00ff9c}
-.bad{color:#ff5a5a}
-.alarm-overlay{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-font-size:40px;
-color:red;
-font-weight:bold;
-animation:blink 1s infinite;
+.lock-banner {
+  width: 800px;
+  margin: 20px auto 0;
+  padding: 12px 16px;
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+  border-radius: 10px;
+  color: #7a5b00;
+  font-weight: bold;
 }
 
-@keyframes blink{
-0%{opacity:1}
-50%{opacity:0}
-100%{opacity:1}
+.alert-banner {
+  width: 800px;
+  margin: 20px auto 0;
+  padding: 12px 16px;
+  background: #f8d7da;
+  border: 1px solid #f1aeb5;
+  border-radius: 10px;
+  color: #842029;
+  font-weight: bold;
+}
+
+.evidence-panel {
+  width: 1000px;
+  margin: 20px auto 0;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.evidence-card {
+  width: 460px;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+}
+
+.evidence-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.evidence-image {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.evidence-empty {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  background: white;
+  border-radius: 10px;
+  border: 1px dashed #ccc;
+}
+
+.live-panel {
+  margin-top: 20px;
+  text-align: left;
+  width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.live-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.candidate-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0d6efd;
+}
+
+.candidate-meta {
+  font-size: 13px;
+  color: #666;
+}
+
+.result-panel {
+  margin-top: 20px;
+  font-size: 15px;
+  line-height: 1.8;
 }
 </style>
