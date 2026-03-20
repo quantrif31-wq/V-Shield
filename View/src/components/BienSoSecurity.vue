@@ -11,16 +11,16 @@
         :disabled="loading"
       />
 
-      <button class="btn btn-on" @click="handleTurnOn" :disabled="loading">
+      <button class="btn btn-on" @click="handleTurnOnPreview" :disabled="loading">
         {{ loading ? "Đang xử lý..." : "Bật camera" }}
       </button>
 
       <button
         class="btn btn-reset"
-        @click="handleReset"
-        :disabled="loading || !cameraRunning"
+        @click="handleInitOrResetSession"
+        :disabled="loading || !cameraIp.trim()"
       >
-        {{ loading ? "Đang xử lý..." : "Reset phiên quét" }}
+        {{ loading ? "Đang xử lý..." : sessionActionLabel }}
       </button>
 
       <button class="btn btn-off" @click="handleTurnOff" :disabled="loading">
@@ -30,18 +30,19 @@
 
     <div class="status-bar">
       <span><b>Trạng thái:</b> {{ cameraRunning ? "Đang chạy" : "Đang tắt" }}</span>
-      <span><b>Input URL:</b> {{ currentIp || "-----" }}</span>
+      <span><b>Preview:</b> {{ previewRunning ? "Đang mở" : "Đang tắt" }}</span>
+      <span><b>Input URL:</b> {{ currentIp || cameraIp || "-----" }}</span>
       <span><b>Session:</b> {{ sessionId || 0 }}</span>
       <span><b>FPS:</b> {{ fps }}</span>
       <span><b>OCR:</b> {{ ocrRunning ? "Đang xử lý" : "Sẵn sàng" }}</span>
       <span><b>Mode:</b> Direct Preview + Polling</span>
       <span><b>Khóa phiên:</b> {{ scanLocked ? "Đã khóa" : "Đang quét" }}</span>
-      <span><b>Preview:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
+      <span><b>Preview Health:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
     </div>
 
     <div class="video-wrapper">
       <img
-        v-if="cameraRunning && directCameraUrl"
+        v-if="previewRunning && directCameraUrl"
         :key="directCameraKey"
         :src="directCameraUrl"
         class="video"
@@ -72,7 +73,7 @@
     </div>
 
     <div class="lock-banner" v-if="scanLocked">
-      Đã đọc xong và khóa kết quả. Bấm “Reset phiên quét” để quét biển mới.
+      Đã đọc xong và khóa kết quả. Bấm “{{ sessionActionLabel }}” để quét biển mới.
     </div>
 
     <div class="evidence-panel">
@@ -147,7 +148,8 @@ export default {
     return {
       cameraIp: "",
       currentIp: "",
-      cameraRunning: false,
+      cameraRunning: false, // backend OCR/camera state
+      previewRunning: false, // chỉ preview Vue
       loading: false,
 
       // session / state chống dữ liệu cũ
@@ -189,6 +191,10 @@ export default {
     bboxText() {
       if (!this.bbox) return "-----"
       return `x1=${this.bbox.x1}, y1=${this.bbox.y1}, x2=${this.bbox.x2}, y2=${this.bbox.y2}`
+    },
+
+    sessionActionLabel() {
+      return this.cameraRunning ? "Reset phiên đọc" : "Khởi tạo phiên đọc"
     }
   },
 
@@ -215,8 +221,6 @@ export default {
     },
 
     buildDirectCameraUrl(inputUrl) {
-      // user nhập URL nào thì preview dùng đúng URL đó
-      // thêm timestamp để tránh browser cache nếu là snapshot URL
       const raw = String(inputUrl || "").trim()
       if (!raw) return ""
 
@@ -247,19 +251,23 @@ export default {
       this.sessionId = 0
       this.lastAppliedSessionId = 0
       this.clearResultStateOnly()
-      this.resetDirectPreview()
     },
 
     mountDirectPreview(url) {
-      this.directCameraUrl = this.buildDirectCameraUrl(url)
+      const cleanUrl = String(url || "").trim()
+      if (!cleanUrl) return
+
+      this.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
       this.directCameraKey += 1
       this.previewHealthy = false
+      this.previewRunning = true
     },
 
     resetDirectPreview() {
       this.directCameraUrl = ""
       this.directCameraKey += 1
       this.previewHealthy = false
+      this.previewRunning = false
     },
 
     stopResultLoop() {
@@ -292,20 +300,29 @@ export default {
         const res = await getCameraStatus()
         await this.applyRealtimeState(res, false)
 
-        if (this.cameraRunning && this.currentIp) {
+        if (this.currentIp) {
           this.cameraIp = this.currentIp
+        }
+
+        // Khi load lại trang:
+        // - backend có thể đang chạy
+        // - preview Vue thì tự mở lại để đồng bộ trải nghiệm
+        if (this.currentIp) {
           this.mountDirectPreview(this.currentIp)
-          await this.fetchLockedImagesIfNeeded(true)
         } else {
-          this.hardResetUiState()
+          this.resetDirectPreview()
+        }
+
+        if (this.cameraRunning) {
+          await this.fetchLockedImagesIfNeeded(true)
         }
       } catch (e) {
         console.error("Load status error:", e)
       }
     },
 
-    async handleTurnOn() {
-      const ip = (this.cameraIp || "").trim()
+    async handleTurnOnPreview() {
+      const ip = (this.cameraIp || this.currentIp || "").trim()
       if (!ip) {
         alert("Vui lòng nhập URL camera")
         return
@@ -314,29 +331,76 @@ export default {
       try {
         this.loading = true
 
-        this.stopResultLoop()
+        // Chỉ mở preview Vue, không gọi backend
+        this.currentIp = ip
+        this.mountDirectPreview(ip)
+        this.message = "Đã mở preview camera trên giao diện"
+      } catch (e) {
+        console.error("Turn on preview error:", e)
+        alert(e?.message || "Lỗi mở preview camera")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async handleInitOrResetSession() {
+      const ip = (this.cameraIp || this.currentIp || "").trim()
+      if (!ip) {
+        alert("Vui lòng nhập URL camera")
+        return
+      }
+
+      try {
+        this.loading = true
+
+        // luôn đảm bảo preview có thể xem được
+        this.currentIp = ip
+        if (!this.previewRunning) {
+          this.mountDirectPreview(ip)
+        }
+
+        // clear dữ liệu UI trước khi bắt đầu/reset
         this.clearResultStateOnly()
 
-        const res = await turnOnCamera(ip)
-        if (!res?.success) {
-          alert(res?.message || "Không thể mở camera")
+        // Trường hợp 1: backend chưa chạy -> gửi URL để mở camera backend
+        if (!this.cameraRunning) {
+          this.stopResultLoop()
+
+          const res = await turnOnCamera(ip)
+          if (!res?.success) {
+            alert(res?.message || "Không thể khởi tạo phiên đọc")
+            return
+          }
+
+          this.cameraRunning = true
+          this.currentIp = ip
+          this.sessionId = Number(res.session_id || 0)
+          this.lastAppliedSessionId = this.sessionId
+          this.message = res.message || "Khởi tạo phiên đọc thành công"
+
+          await this.refreshResult()
+          this.startResultLoop()
           return
         }
 
-        this.cameraRunning = true
-        this.currentIp = ip
-        this.sessionId = Number(res.session_id || 0)
-        this.lastAppliedSessionId = this.sessionId
-        this.message = res.message || "Mở camera thành công"
+        // Trường hợp 2: backend đang chạy -> reset phiên đọc
+        const res = await resetCameraState()
+        this.message = res?.message || "Đã reset phiên đọc"
 
-        // Preview direct chỉ mount 1 lần khi bật camera
-        this.mountDirectPreview(ip)
+        const newSessionId = Number(res?.session_id || 0)
+        if (newSessionId > 0) {
+          this.sessionId = newSessionId
+          this.lastAppliedSessionId = newSessionId
+        }
 
         await this.refreshResult()
-        this.startResultLoop()
+
+        if (!this.resultTimer) {
+          this.startResultLoop()
+        }
       } catch (e) {
-        console.error("Turn on error:", e)
-        alert(e?.message || "Lỗi bật camera")
+        console.error("Init/Reset session error:", e)
+        alert(e?.message || "Lỗi khởi tạo / reset phiên đọc")
       } finally {
         this.loading = false
       }
@@ -356,35 +420,10 @@ export default {
         }
 
         this.hardResetUiState()
+        this.resetDirectPreview()
       } catch (e) {
         console.error("Turn off error:", e)
         alert(e?.message || "Lỗi tắt camera")
-      } finally {
-        this.loading = false
-      }
-    },
-
-    async handleReset() {
-      try {
-        this.loading = true
-
-        // Reset chỉ reset dữ liệu nhận diện
-        // Không đụng preview camera trực tiếp
-        this.clearResultStateOnly()
-
-        const res = await resetCameraState()
-        this.message = res?.message || "Đã reset trạng thái nhận diện"
-
-        const newSessionId = Number(res?.session_id || 0)
-        if (newSessionId > 0) {
-          this.sessionId = newSessionId
-          this.lastAppliedSessionId = newSessionId
-        }
-
-        await this.refreshResult()
-      } catch (e) {
-        console.error("Reset error:", e)
-        alert(e?.message || "Lỗi reset trạng thái")
       } finally {
         this.loading = false
       }
@@ -478,6 +517,9 @@ export default {
       this.message = res.message || ""
       this.lastUpdate = res.last_update || ""
 
+      // nếu preview đang tắt nhưng đã có IP thì không tự ép mở,
+      // vì theo yêu cầu preview phải do nút Vue điều khiển.
+      // Chỉ mounted() mới tự restore preview khi reload trang.
       if (!this.scanLocked) {
         this.lockedSnapshot = ""
         this.lockedPlateCrop = ""
@@ -543,7 +585,7 @@ export default {
   color: white;
   cursor: pointer;
   font-size: 14px;
-  min-width: 130px;
+  min-width: 170px;
 }
 
 .btn:disabled {
