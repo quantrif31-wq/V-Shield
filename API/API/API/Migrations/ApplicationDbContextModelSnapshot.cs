@@ -161,7 +161,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$86qaO767SE.tjzByBr42O.9VB0gsq.fRCSxoKoqoBCzCCqJg2.EaC",
+                            PasswordHash = "$2a$11$cGRk8CMj/N.LJGtA7QmFQ.8sBq7QV60DgEKD9RBhOTABydj2yAjAW",
                             Role = "Admin",
                             Username = "admin"
                         });

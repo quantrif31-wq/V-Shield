@@ -1,258 +1,738 @@
 <template>
+  <div class="security-container">
+    <h1 class="title">Gate Camera Monitor</h1>
 
-<div class="security-container">
+    <div class="control-panel">
+      <input
+        v-model="cameraIp"
+        type="text"
+        class="ip-input"
+        placeholder="Nhập URL camera / stream URL..."
+        :disabled="loading"
+      />
 
-<h1 class="title">Gate Camera Monitor</h1>
+      <button class="btn btn-on" @click="handleTurnOn" :disabled="loading">
+        {{ loading ? "Đang xử lý..." : "Bật camera" }}
+      </button>
 
-<select v-model="selectedCamera" @change="connectCamera">
+      <button
+        class="btn btn-reset"
+        @click="handleReset"
+        :disabled="loading || !cameraRunning"
+      >
+        {{ loading ? "Đang xử lý..." : "Reset phiên quét" }}
+      </button>
 
-<option value="">Select Camera</option>
+      <button class="btn btn-off" @click="handleTurnOff" :disabled="loading">
+        {{ loading ? "Đang xử lý..." : "Tắt camera" }}
+      </button>
+    </div>
 
-<option
-v-for="cam in cameras"
-:key="cam.cameraIP"
-:value="cam.cameraIP"
->
-{{ cam.cameraIP }}
-</option>
+    <div class="status-bar">
+      <span><b>Trạng thái:</b> {{ cameraRunning ? "Đang chạy" : "Đang tắt" }}</span>
+      <span><b>Input URL:</b> {{ currentIp || "-----" }}</span>
+      <span><b>Session:</b> {{ sessionId || 0 }}</span>
+      <span><b>FPS:</b> {{ fps }}</span>
+      <span><b>OCR:</b> {{ ocrRunning ? "Đang xử lý" : "Sẵn sàng" }}</span>
+      <span><b>Mode:</b> Direct Preview + Polling</span>
+      <span><b>Khóa phiên:</b> {{ scanLocked ? "Đã khóa" : "Đang quét" }}</span>
+      <span><b>Preview:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
+    </div>
 
-</select>
+    <div class="video-wrapper">
+      <img
+        v-if="cameraRunning && directCameraUrl"
+        :key="directCameraKey"
+        :src="directCameraUrl"
+        class="video"
+        alt="Direct Camera Preview"
+        @load="handleDirectPreviewLoaded"
+        @error="handleDirectPreviewError"
+      />
 
-<div class="video-wrapper">
+      <div v-else class="video-off">
+        Camera Offline
+      </div>
+    </div>
 
-<img
-v-if="cameraRunning"
-:src="streamUrl"
-class="video"
-ref="video"
-/>
+    <div class="plate-panel">
+      <div class="plate-box">
+        <div class="plate-label">Confirmed Plate</div>
+        <div class="plate-number confirmed">
+          {{ confirmedPlate || "-----" }}
+        </div>
+      </div>
 
-<canvas
-ref="canvas"
-class="overlay"
-></canvas>
+      <div class="plate-box">
+        <div class="plate-label">Last Raw Plate</div>
+        <div class="plate-number raw">
+          {{ lastRawPlate || "-----" }}
+        </div>
+      </div>
+    </div>
 
-<div v-if="!cameraRunning" class="video-off">
-Camera Offline
-</div>
+    <div class="lock-banner" v-if="scanLocked">
+      Đã đọc xong và khóa kết quả. Bấm “Reset phiên quét” để quét biển mới.
+    </div>
 
-</div>
+    <div class="evidence-panel">
+      <div class="evidence-card">
+        <div class="evidence-title">Ảnh chụp toàn khung</div>
+        <img
+          v-if="lockedSnapshot"
+          :src="lockedSnapshot"
+          class="evidence-image"
+          alt="Locked Snapshot"
+        />
+        <div v-else class="evidence-empty">Chưa có ảnh</div>
+      </div>
 
-<div class="plate-panel">
+      <div class="evidence-card">
+        <div class="evidence-title">Ảnh crop biển số</div>
+        <img
+          v-if="lockedPlateCrop"
+          :src="lockedPlateCrop"
+          class="evidence-image"
+          alt="Locked Plate Crop"
+        />
+        <div v-else class="evidence-empty">Chưa có ảnh</div>
+      </div>
+    </div>
 
-<div class="plate-label">Detected Plate</div>
+    <div class="live-panel">
+      <div class="live-title">OCR Candidates</div>
 
-<div class="plate-number">
-{{ plate || "-----" }}
-</div>
+      <div v-if="liveCandidates.length > 0" class="candidate-list">
+        <div
+          v-for="(item, index) in liveCandidates"
+          :key="`${item.text}-${index}`"
+          class="candidate-item"
+        >
+          <span class="candidate-text">{{ item.text }}</span>
+          <span class="candidate-meta">
+            conf={{ formatConf(item.conf) }} | {{ item.valid ? "valid" : "raw" }}
+          </span>
+        </div>
+      </div>
 
-</div>
+      <div v-else class="candidate-empty">
+        Chưa có dữ liệu OCR
+      </div>
+    </div>
 
-</div>
-
+    <div class="result-panel">
+      <div><b>Box:</b> {{ bboxText }}</div>
+      <div><b>Stable Count:</b> {{ stableCount }}</div>
+      <div><b>Moving Fast:</b> {{ movingFast ? "Yes" : "No" }}</div>
+      <div><b>Message:</b> {{ message || "-----" }}</div>
+      <div><b>Last Update:</b> {{ lastUpdate || "-----" }}</div>
+    </div>
+  </div>
 </template>
 
-
 <script>
+import {
+  turnOnCamera,
+  turnOffCamera,
+  resetCameraState,
+  getCameraStatus,
+  getCameraResult,
+  getLockedImages
+} from "../services/biensoApi"
 
-import { getCameras,getPlate } from "../services/biensoApi"
+export default {
+  name: "BienSoSecurity",
 
-export default{
+  data() {
+    return {
+      cameraIp: "",
+      currentIp: "",
+      cameraRunning: false,
+      loading: false,
 
-name:"SecurityPlateMonitor",
+      // session / state chống dữ liệu cũ
+      sessionId: 0,
+      lastAppliedSessionId: 0,
+      lastLockedImageSessionId: 0,
 
-data(){
+      // result state
+      confirmedPlate: "",
+      lastRawPlate: "",
+      liveCandidates: [],
+      lockedSnapshot: "",
+      lockedPlateCrop: "",
+      scanLocked: false,
 
-return{
+      fps: 0,
+      ocrRunning: false,
+      stableCount: 0,
+      movingFast: false,
+      bbox: null,
+      message: "",
+      lastUpdate: "",
 
-cameras:[],
-selectedCamera:"",
+      // direct preview từ camera
+      directCameraUrl: "",
+      directCameraKey: 0,
+      previewHealthy: false,
 
-streamUrl:"",
-cameraRunning:false,
+      // polling
+      resultTimer: null,
+      busyResult: false,
+      isFetchingLockedImages: false,
 
-plate:"",
+      destroyed: false
+    }
+  },
 
-pollTimer:null
+  computed: {
+    bboxText() {
+      if (!this.bbox) return "-----"
+      return `x1=${this.bbox.x1}, y1=${this.bbox.y1}, x2=${this.bbox.x2}, y2=${this.bbox.y2}`
+    }
+  },
 
+  async mounted() {
+    this.destroyed = false
+    await this.loadCurrentStatus()
+
+    if (this.cameraRunning) {
+      this.startResultLoop()
+    }
+  },
+
+  beforeUnmount() {
+    this.destroyed = true
+    this.stopResultLoop()
+    this.resetDirectPreview()
+  },
+
+  methods: {
+    formatConf(value) {
+      const num = Number(value)
+      if (Number.isNaN(num)) return value
+      return num.toFixed(4)
+    },
+
+    buildDirectCameraUrl(inputUrl) {
+      // user nhập URL nào thì preview dùng đúng URL đó
+      // thêm timestamp để tránh browser cache nếu là snapshot URL
+      const raw = String(inputUrl || "").trim()
+      if (!raw) return ""
+
+      const sep = raw.includes("?") ? "&" : "?"
+      return `${raw}${sep}t=${Date.now()}`
+    },
+
+    clearResultStateOnly() {
+      this.confirmedPlate = ""
+      this.lastRawPlate = ""
+      this.liveCandidates = []
+      this.lockedSnapshot = ""
+      this.lockedPlateCrop = ""
+      this.scanLocked = false
+      this.fps = 0
+      this.ocrRunning = false
+      this.stableCount = 0
+      this.movingFast = false
+      this.bbox = null
+      this.message = ""
+      this.lastUpdate = ""
+      this.lastLockedImageSessionId = 0
+    },
+
+    hardResetUiState() {
+      this.cameraRunning = false
+      this.currentIp = ""
+      this.sessionId = 0
+      this.lastAppliedSessionId = 0
+      this.clearResultStateOnly()
+      this.resetDirectPreview()
+    },
+
+    mountDirectPreview(url) {
+      this.directCameraUrl = this.buildDirectCameraUrl(url)
+      this.directCameraKey += 1
+      this.previewHealthy = false
+    },
+
+    resetDirectPreview() {
+      this.directCameraUrl = ""
+      this.directCameraKey += 1
+      this.previewHealthy = false
+    },
+
+    stopResultLoop() {
+      if (this.resultTimer) {
+        clearInterval(this.resultTimer)
+        this.resultTimer = null
+      }
+      this.busyResult = false
+    },
+
+    startResultLoop() {
+      this.stopResultLoop()
+
+      this.resultTimer = setInterval(async () => {
+        if (this.destroyed) return
+        if (!this.cameraRunning) return
+        if (this.busyResult) return
+
+        this.busyResult = true
+        try {
+          await this.refreshResult()
+        } finally {
+          this.busyResult = false
+        }
+      }, 500)
+    },
+
+    async loadCurrentStatus() {
+      try {
+        const res = await getCameraStatus()
+        await this.applyRealtimeState(res, false)
+
+        if (this.cameraRunning && this.currentIp) {
+          this.cameraIp = this.currentIp
+          this.mountDirectPreview(this.currentIp)
+          await this.fetchLockedImagesIfNeeded(true)
+        } else {
+          this.hardResetUiState()
+        }
+      } catch (e) {
+        console.error("Load status error:", e)
+      }
+    },
+
+    async handleTurnOn() {
+      const ip = (this.cameraIp || "").trim()
+      if (!ip) {
+        alert("Vui lòng nhập URL camera")
+        return
+      }
+
+      try {
+        this.loading = true
+
+        this.stopResultLoop()
+        this.clearResultStateOnly()
+
+        const res = await turnOnCamera(ip)
+        if (!res?.success) {
+          alert(res?.message || "Không thể mở camera")
+          return
+        }
+
+        this.cameraRunning = true
+        this.currentIp = ip
+        this.sessionId = Number(res.session_id || 0)
+        this.lastAppliedSessionId = this.sessionId
+        this.message = res.message || "Mở camera thành công"
+
+        // Preview direct chỉ mount 1 lần khi bật camera
+        this.mountDirectPreview(ip)
+
+        await this.refreshResult()
+        this.startResultLoop()
+      } catch (e) {
+        console.error("Turn on error:", e)
+        alert(e?.message || "Lỗi bật camera")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async handleTurnOff() {
+      try {
+        this.loading = true
+
+        this.stopResultLoop()
+
+        try {
+          const res = await turnOffCamera()
+          this.message = res?.message || "Đã tắt camera"
+        } catch (e) {
+          console.warn("Turn off warning:", e)
+        }
+
+        this.hardResetUiState()
+      } catch (e) {
+        console.error("Turn off error:", e)
+        alert(e?.message || "Lỗi tắt camera")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async handleReset() {
+      try {
+        this.loading = true
+
+        // Reset chỉ reset dữ liệu nhận diện
+        // Không đụng preview camera trực tiếp
+        this.clearResultStateOnly()
+
+        const res = await resetCameraState()
+        this.message = res?.message || "Đã reset trạng thái nhận diện"
+
+        const newSessionId = Number(res?.session_id || 0)
+        if (newSessionId > 0) {
+          this.sessionId = newSessionId
+          this.lastAppliedSessionId = newSessionId
+        }
+
+        await this.refreshResult()
+      } catch (e) {
+        console.error("Reset error:", e)
+        alert(e?.message || "Lỗi reset trạng thái")
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async refreshResult() {
+      try {
+        const res = await getCameraResult()
+        await this.applyRealtimeState(res, true)
+      } catch (e) {
+        console.warn("Result polling error:", e)
+      }
+    },
+
+    async fetchLockedImagesIfNeeded(force = false) {
+      if (this.destroyed) return
+      if (!this.cameraRunning) return
+
+      if (!this.scanLocked) {
+        this.lockedSnapshot = ""
+        this.lockedPlateCrop = ""
+        this.lastLockedImageSessionId = 0
+        return
+      }
+
+      if (this.isFetchingLockedImages) return
+      if (!force && this.lastLockedImageSessionId === this.sessionId) return
+
+      this.isFetchingLockedImages = true
+      try {
+        const res = await getLockedImages()
+        const responseSessionId = Number(res?.session_id || 0)
+
+        if (responseSessionId !== this.sessionId) {
+          return
+        }
+
+        if (res?.scan_locked) {
+          this.lockedSnapshot = res.locked_snapshot || ""
+          this.lockedPlateCrop = res.locked_plate_crop || ""
+          this.lastLockedImageSessionId = responseSessionId
+        } else {
+          this.lockedSnapshot = ""
+          this.lockedPlateCrop = ""
+          this.lastLockedImageSessionId = 0
+        }
+      } catch (e) {
+        console.warn("Fetch locked images error:", e)
+      } finally {
+        this.isFetchingLockedImages = false
+      }
+    },
+
+    async applyRealtimeState(res, allowTurnOffReset = true) {
+      if (!res || this.destroyed) return
+
+      const incomingSessionId = Number(res.session_id || 0)
+
+      if (incomingSessionId > 0) {
+        if (
+          this.lastAppliedSessionId > 0 &&
+          incomingSessionId < this.lastAppliedSessionId
+        ) {
+          return
+        }
+
+        if (incomingSessionId > this.lastAppliedSessionId) {
+          this.lastAppliedSessionId = incomingSessionId
+          this.sessionId = incomingSessionId
+          this.lastLockedImageSessionId = 0
+        } else if (!this.sessionId) {
+          this.sessionId = incomingSessionId
+        }
+      }
+
+      const incomingCameraEnabled = !!res.camera_enabled
+
+      this.cameraRunning = incomingCameraEnabled
+      this.currentIp = res.ip || this.currentIp
+      this.confirmedPlate = res.confirmed_plate || ""
+      this.lastRawPlate = res.last_raw_plate || ""
+      this.liveCandidates = Array.isArray(res.live_candidates)
+        ? res.live_candidates.slice(0, 5)
+        : []
+      this.scanLocked = !!res.scan_locked
+      this.fps = Number(res.fps || 0)
+      this.ocrRunning = !!res.ocr_running
+      this.stableCount = Number(res.stable_count || 0)
+      this.movingFast = !!res.moving_fast
+      this.bbox = res.bbox || null
+      this.message = res.message || ""
+      this.lastUpdate = res.last_update || ""
+
+      if (!this.scanLocked) {
+        this.lockedSnapshot = ""
+        this.lockedPlateCrop = ""
+        this.lastLockedImageSessionId = 0
+      }
+
+      if (!incomingCameraEnabled && allowTurnOffReset) {
+        this.stopResultLoop()
+        this.hardResetUiState()
+        return
+      }
+
+      if (this.scanLocked) {
+        await this.fetchLockedImagesIfNeeded(false)
+      }
+    },
+
+    handleDirectPreviewLoaded() {
+      this.previewHealthy = true
+    },
+
+    handleDirectPreviewError() {
+      this.previewHealthy = false
+    }
+  }
 }
-
-},
-
-async mounted(){
-
-await this.loadCameras()
-
-},
-
-methods:{
-
-async loadCameras(){
-
-try{
-
-const data = await getCameras()
-
-console.log("CAMERAS:",data)
-
-this.cameras = data
-
-}
-catch(e){
-
-console.error("Load camera error",e)
-
-}
-
-},
-
-connectCamera(){
-
-if(!this.selectedCamera) return
-
-this.streamUrl = this.selectedCamera
-
-this.cameraRunning = true
-
-this.startPolling()
-
-},
-
-startPolling(){
-
-if(this.pollTimer)
-clearInterval(this.pollTimer)
-
-this.pollTimer = setInterval(async()=>{
-
-try{
-
-const res = await getPlate(this.selectedCamera)
-
-if(!res) return
-
-this.plate = res.plateNumber
-
-this.drawBox(res)
-
-}
-catch(e){
-
-console.log("poll error")
-
-}
-
-},500)
-
-},
-
-drawBox(res){
-
-const canvas = this.$refs.canvas
-const ctx = canvas.getContext("2d")
-const img = this.$refs.video
-
-if(!img) return
-
-canvas.width = img.clientWidth
-canvas.height = img.clientHeight
-
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-if(!res) return
-
-const scaleX = canvas.width / 640
-const scaleY = canvas.height / 360
-
-const x = res.x1 * scaleX
-const y = res.y1 * scaleY
-const w = (res.x2 - res.x1) * scaleX
-const h = (res.y2 - res.y1) * scaleY
-
-ctx.strokeStyle="#00ff00"
-ctx.lineWidth=3
-ctx.strokeRect(x,y,w,h)
-
-if(this.plate){
-
-ctx.font="20px Arial"
-ctx.fillStyle="#00ff00"
-ctx.fillText(this.plate,x,y-10)
-
-}
-
-}
-
-},
-
-beforeUnmount(){
-
-clearInterval(this.pollTimer)
-
-}
-
-}
-
 </script>
 
-
 <style scoped>
-
-.security-container{
-width:900px;
-margin:auto;
-text-align:center;
-font-family:Arial;
+.security-container {
+  width: 1100px;
+  margin: auto;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
-.video-wrapper{
-width:800px;
-height:450px;
-background:black;
-margin:auto;
-position:relative;
-margin-top:20px;
+.title {
+  margin-bottom: 20px;
 }
 
-.video{
-width:100%;
-height:100%;
-object-fit:contain;
-
-/* xoay lại camera */
-transform: rotate(-90deg);
-transform-origin:center;
+.control-panel {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
 }
 
-.overlay{
-position:absolute;
-top:0;
-left:0;
-width:100%;
-height:100%;
-pointer-events:none;
-
-/* xoay canvas giống video */
-transform: rotate(-90deg);
-transform-origin:center;
-}
-.video-off{
-color:white;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100%;
-font-size:20px;
+.ip-input {
+  width: 420px;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
 }
 
-.plate-panel{
-margin-top:20px;
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 130px;
 }
 
-.plate-number{
-font-size:40px;
-color:#00aa00;
-font-weight:bold;
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
+.btn-on {
+  background: #198754;
+}
+
+.btn-reset {
+  background: #0d6efd;
+}
+
+.btn-off {
+  background: #dc3545;
+}
+
+.status-bar {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.video-wrapper {
+  width: 800px;
+  height: 450px;
+  background: black;
+  margin: auto;
+  position: relative;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.video-off {
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 20px;
+}
+
+.plate-panel {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.plate-box {
+  min-width: 280px;
+}
+
+.plate-label {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.plate-number {
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.confirmed {
+  color: #00aa00;
+}
+
+.raw {
+  color: #ff8800;
+}
+
+.lock-banner {
+  width: 800px;
+  margin: 20px auto 0;
+  padding: 12px 16px;
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+  border-radius: 10px;
+  color: #7a5b00;
+  font-weight: bold;
+}
+
+.evidence-panel {
+  width: 1000px;
+  margin: 20px auto 0;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.evidence-card {
+  width: 460px;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+}
+
+.evidence-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.evidence-image {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.evidence-empty {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  background: white;
+  border-radius: 10px;
+  border: 1px dashed #ccc;
+}
+
+.live-panel {
+  margin-top: 20px;
+  text-align: left;
+  width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.live-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidate-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.candidate-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0d6efd;
+}
+
+.candidate-meta {
+  font-size: 13px;
+  color: #666;
+}
+
+.candidate-empty {
+  color: #777;
+  font-style: italic;
+}
+
+.result-panel {
+  margin-top: 20px;
+  font-size: 15px;
+  line-height: 1.8;
+}
 </style>
