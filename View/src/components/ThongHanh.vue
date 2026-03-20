@@ -1,1237 +1,1364 @@
 <template>
-
-<div class="console">
-
-<header class="topbar">
-
-<div class="title">
-V-Shield AI Security Console
-</div>
-<div v-if="alarmActive" class="alarm-overlay">
-🚨 SECURITY ALERT 🚨
-</div>
-<div class="system-status">
-<span class="led" :class="{on:faceRunning || plateRunning}"></span>
-{{ faceRunning || plateRunning ? "AI SYSTEM ONLINE" : "AI SYSTEM OFFLINE" }}
-</div>
-
-</header>
-
-
-<div class="layout">
-
-<!-- CONTROL PANEL -->
-
-<div class="control">
-
-<h3>FACE CAMERA</h3>
-
-<input v-model="faceCameraIp" placeholder="Face camera URL"/>
-
-<button class="btn start" @click="startFace">
-START FACE
-</button>
-
-<button class="btn stop" @click="stopFace">
-STOP FACE
-</button>
-<button class="btn shutdown" @click="shutdown">
-⚡ SHUTDOWN AI
-</button>
-<button
-v-if="alarmActive"
-class="btn stop"
-@click="stopAlarm"
->
-🧯 STOP ALARM
-</button>
-<hr>
-
-<h3>PLATE CAMERA</h3>
-
-<select v-model="selectedCamera" @change="connectPlate">
-
-<option value="">Select Camera</option>
-
-<option
-v-for="cam in cameras"
-:key="cam.cameraIP"
-:value="cam.cameraIP"
->
-{{ cam.cameraIP }}
-</option>
-
-</select>
-
-<button class="btn stop" @click="stopPlate">
-STOP PLATE
-</button>
-
-</div>
-
-
-<!-- CAMERA PANEL -->
-
-<div class="camera-panel">
-
-  <!-- FACE -->
-  <div class="video-wrapper"
-       :class="{
-         'success-glow': status.session_confirmed,
-         'alert-glow': alarmActive
-       }"
-       :style="{ '--camColor': detectColor }">
-
-    <img ref="faceVideo" class="video"
-         :style="{ transform: FACE_TRANSFORM }"/>
-
-    <canvas ref="faceCanvas"
-            :style="{ transform: FACE_TRANSFORM }"></canvas>
-
-    <!-- NEW OVERLAY -->
-    <div class="overlay">
-
-  <!-- HEADER -->
-  <div class="row space">
-    <div>
-      <div class="label">STATUS</div>
-      <div class="value">{{ detectLabel }}</div>
-    </div>
-
-    <div>
-      <div class="label">GATE</div>
-      <div class="value">{{ gateStatus }}</div>
-    </div>
-  </div>
-
-  <!-- MESSAGE -->
-  <div class="main-message" :style="{ color: messageColor }">
-  {{ gateMessage }}
-</div>
-
-  <!-- DATA GRID -->
-  <div class="grid">
-  <div><span class="g-label">ID:</span> {{ displayId }}</div>
-  <div><span class="g-label">Plate:</span> {{ displayPlate }}</div>
-  <div><span class="g-label">Parking:</span> {{ displayParking }}</div>
-  <div><span class="g-label">Dist:</span> {{ displayDistance }}</div>
-</div>
-
-  <!-- BADGE -->
-  <div class="badge success" v-if="status.session_confirmed">
-    ✔ IDENTIFIED
-  </div>
-
-</div>
-
-  </div>
-
-  <!-- PLATE -->
-  <div class="video-wrapper">
-
-    <img v-if="plateRunning"
-         :src="streamUrl"
-         class="video"
-         ref="plateVideo"
-         :style="{ transform: PLATE_TRANSFORM }"/>
-
-    <canvas ref="plateCanvas"
-            :style="{ transform: PLATE_TRANSFORM }"></canvas>
-
-    <div class="overlay">
-      <div class="status-line">
-        <span class="label">PLATE</span>
-        <span class="value">{{ plate || "-----" }}</span>
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>V-Shield Gate Monitor</h1>
+        <p>Giao diện tối giản cho bảo an vận hành nhanh</p>
       </div>
     </div>
 
+    <div class="lane-grid">
+      <section
+        v-for="lane in lanes"
+        :key="lane.id"
+        class="lane-card"
+        :class="{ ready: isLaneReady(lane) }"
+      >
+        <div class="lane-head">
+          <div>
+            <h2>{{ lane.name }}</h2>
+            <p>{{ lane.desc }}</p>
+          </div>
+
+          <div class="lane-final-status" :class="isLaneReady(lane) ? 'ok' : 'wait'">
+            {{ isLaneReady(lane) ? "SẴN SÀNG XÁC NHẬN" : "ĐANG XỬ LÝ" }}
+          </div>
+        </div>
+
+        <div class="lane-actions">
+          <button class="btn btn-preview" :disabled="lane.loading" @click="previewLane(lane)">
+            {{ lane.loading ? "Đang xử lý..." : "Preview" }}
+          </button>
+
+          <button
+            class="btn btn-main"
+            :disabled="lane.loading || !lane.face.cameraIp.trim() || !lane.plate.cameraIp.trim()"
+            @click="readAllLane(lane)"
+          >
+            {{ lane.loading ? "Đang xử lý..." : laneAnyRunning(lane) ? "Đọc lại cả 2" : "Đọc cả 2" }}
+          </button>
+
+          <button
+            class="btn btn-sub"
+            :disabled="lane.loading || !lane.face.cameraIp.trim()"
+            @click="retryFace(lane)"
+          >
+            {{ lane.loading ? "Đang xử lý..." : "Đọc lại Face" }}
+          </button>
+
+          <button
+            class="btn btn-sub"
+            :disabled="lane.loading || !lane.plate.cameraIp.trim()"
+            @click="retryPlate(lane)"
+          >
+            {{ lane.loading ? "Đang xử lý..." : "Đọc lại Biển" }}
+          </button>
+
+          <button class="btn btn-off" :disabled="lane.loading" @click="stopLane(lane)">
+            {{ lane.loading ? "Đang xử lý..." : "Tắt" }}
+          </button>
+
+          <button class="btn btn-confirm" :disabled="lane.loading" @click="confirmLane(lane)">
+            Xác nhận
+          </button>
+        </div>
+
+        <div class="ip-row">
+          <div class="ip-box">
+            <label>Face Camera URL</label>
+            <input
+              v-model="lane.face.cameraIp"
+              type="text"
+              placeholder="Nhập URL face camera..."
+              :disabled="lane.loading"
+            />
+          </div>
+
+          <div class="ip-box">
+            <label>Plate Camera URL</label>
+            <input
+              v-model="lane.plate.cameraIp"
+              type="text"
+              placeholder="Nhập URL plate camera..."
+              :disabled="lane.loading"
+            />
+          </div>
+        </div>
+
+        <div class="summary-bar">
+          <div class="summary-item">
+            <span class="label">Employee ID</span>
+            <span class="value strong">{{ lane.face.employeeId || "-----" }}</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="label">Face</span>
+            <span class="value" :class="faceStateClass(lane.face)">
+              {{ faceStateText(lane.face) }}
+            </span>
+          </div>
+
+          <div class="summary-item">
+            <span class="label">Biển số</span>
+            <span class="value strong plate">{{ lane.plate.confirmedPlate || "-----" }}</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="label">Cảnh báo</span>
+            <span class="value" :class="lane.face.alert ? 'danger-text' : 'ok-text'">
+              {{ lane.face.alert ? "NGƯỜI LẠ" : "BÌNH THƯỜNG" }}
+            </span>
+          </div>
+        </div>
+
+        <div class="camera-stack">
+          <!-- FACE -->
+          <div class="cam-block">
+            <div class="cam-head">
+              <span>Face Camera</span>
+              <span class="mini-status" :class="lane.face.previewHealthy ? 'ok' : 'wait'">
+                {{ lane.face.previewRunning ? (lane.face.previewHealthy ? "Preview OK" : "Preview...") : "Preview OFF" }}
+              </span>
+            </div>
+
+            <div class="cam-preview">
+              <img
+                v-if="lane.face.previewRunning && lane.face.directCameraUrl"
+                :key="lane.face.directCameraKey"
+                :src="lane.face.directCameraUrl"
+                class="preview-image"
+                alt="Face Preview"
+                @load="onPreviewLoaded(lane.face)"
+                @error="onPreviewError(lane.face)"
+              />
+              <div v-else class="cam-off">Face Offline</div>
+            </div>
+
+            <div class="quick-result">
+              <div class="result-pill" :class="lane.face.cameraRunning ? 'ok' : 'off'">
+                {{ lane.face.cameraRunning ? "RUNNING" : "STOPPED" }}
+              </div>
+              <div class="result-pill" :class="lane.face.scanLocked ? 'ok' : 'wait'">
+                {{ lane.face.scanLocked ? "LOCKED" : "SCANNING" }}
+              </div>
+              <div class="result-pill" :class="lane.face.alert ? 'danger' : 'neutral'">
+                {{ lane.face.alert ? "ALERT" : "NORMAL" }}
+              </div>
+            </div>
+
+            <div class="evidence-row">
+              <div class="evidence-box">
+                <img
+                  v-if="lane.face.lockedFaceCrop"
+                  :src="lane.face.lockedFaceCrop"
+                  class="evidence-image"
+                  alt="Face Crop"
+                />
+                <div v-else class="evidence-empty">Face Crop</div>
+              </div>
+
+              <div class="evidence-box">
+                <img
+                  v-if="lane.face.lockedSnapshot"
+                  :src="lane.face.lockedSnapshot"
+                  class="evidence-image"
+                  alt="Face Snapshot"
+                />
+                <div v-else class="evidence-empty">Face Snapshot</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PLATE -->
+          <div class="cam-block">
+            <div class="cam-head">
+              <span>Plate Camera</span>
+              <span class="mini-status" :class="lane.plate.previewHealthy ? 'ok' : 'wait'">
+                {{ lane.plate.previewRunning ? (lane.plate.previewHealthy ? "Preview OK" : "Preview...") : "Preview OFF" }}
+              </span>
+            </div>
+
+            <div class="cam-preview">
+              <img
+                v-if="lane.plate.previewRunning && lane.plate.directCameraUrl"
+                :key="lane.plate.directCameraKey"
+                :src="lane.plate.directCameraUrl"
+                class="preview-image"
+                alt="Plate Preview"
+                @load="onPreviewLoaded(lane.plate)"
+                @error="onPreviewError(lane.plate)"
+              />
+              <div v-else class="cam-off">Plate Offline</div>
+            </div>
+
+            <div class="quick-result">
+              <div class="result-pill" :class="lane.plate.cameraRunning ? 'ok' : 'off'">
+                {{ lane.plate.cameraRunning ? "RUNNING" : "STOPPED" }}
+              </div>
+              <div class="result-pill" :class="lane.plate.scanLocked ? 'ok' : 'wait'">
+                {{ lane.plate.scanLocked ? "LOCKED" : "SCANNING" }}
+              </div>
+              <div class="result-pill neutral">
+                {{ lane.plate.confirmedPlate || "NO PLATE" }}
+              </div>
+            </div>
+
+            <div class="evidence-row">
+              <div class="evidence-box">
+                <img
+                  v-if="lane.plate.lockedPlateCrop"
+                  :src="lane.plate.lockedPlateCrop"
+                  class="evidence-image"
+                  alt="Plate Crop"
+                />
+                <div v-else class="evidence-empty">Plate Crop</div>
+              </div>
+
+              <div class="evidence-box">
+                <img
+                  v-if="lane.plate.lockedSnapshot"
+                  :src="lane.plate.lockedSnapshot"
+                  class="evidence-image"
+                  alt="Plate Snapshot"
+                />
+                <div v-else class="evidence-empty">Plate Snapshot</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-note">
+          <span><b>Face Msg:</b> {{ lane.face.message || "-----" }}</span>
+          <span><b>Plate Msg:</b> {{ lane.plate.message || "-----" }}</span>
+        </div>
+      </section>
+    </div>
   </div>
-
-</div>
-
-</div>
-
-</div>
-
 </template>
 
+<script>
+/*
+  ĐỔI TÊN FILE SERVICE Ở ĐÂY LÀ XONG
 
-<script setup>
+  Ví dụ:
+  - Lane 1:
+    ../services/faceApiLane1
+    ../services/biensoApiLane1
 
-import {ref,onMounted,onBeforeUnmount,computed} from "vue"
+  - Lane 2:
+    ../services/faceApiLane2
+    ../services/biensoApiLane2
+*/
 
-import {
-//startCamera
-//stopCamera
-//getStatus
-} from "../services/faceApi"
+import * as faceLane1Api from "../services/faceApi"
+import * as plateLane1Api from "../services/biensoApi"
+import * as faceLane2Api from "../services/faceApi"
+import * as plateLane2Api from "../services/biensoApi"
 
-import {
-//getCameras,
-//getPlate
-} from "../services/biensoApi"
-import { scanGate } from "../services/thonghanhAPI"
-//import { shutdownAI } from "../services/faceApi"
+function createFaceModule() {
+  return {
+    cameraIp: "",
+    currentIp: "",
+    cameraRunning: false,
+    cameraConnected: false,
+    previewRunning: false,
 
-/* STATE */
-const FACE_TRANSFORM = "rotate(-90deg)"   // cam trước
-const PLATE_TRANSFORM = "rotate(0deg)"              // cam sau
-const cameras = ref([])
-const selectedCamera = ref("")
+    employeeId: "",
+    trackingActive: false,
+    identityConfirmed: false,
+    faceMatch: false,
+    confirmCount: 0,
+    distance: null,
+    timeoutState: false,
+    alert: false,
+    scanLocked: false,
+    lockReason: "",
 
-const faceCameraIp = ref("http://127.0.0.1:8080/video")
-const alarmActive = ref(false)
-let lastConfirmed = false
-let gateLoop = null
-const successSound = new Audio("/sounds/success.mp3")
-const alarmSound = new Audio("/sounds/alarm.mp3")
+    lockedSnapshot: "",
+    lockedFaceCrop: "",
 
-alarmSound.loop = true
-const plate = ref("")
-const status = ref({})
+    message: "",
+    fps: 0,
+    lastUpdate: "",
 
-const faceRunning = ref(false)
-const plateRunning = ref(false)
+    directCameraUrl: "",
+    directCameraKey: 0,
+    previewHealthy: false,
 
-const streamUrl = ref("")
-
-const faceVideo = ref(null)
-const plateVideo = ref(null)
-
-const faceCanvas = ref(null)
-const plateCanvas = ref(null)
-
-let faceCtx=null
-let plateCtx=null
-
-let faceLoop=null
-let plateLoop=null
-
-let gateLocked = false  // 🔒 chỉ cho phép SUCCESS 1 lần mỗi session
-
-const gateStatus = ref("")
-const gateResult = ref(null)   // lưu toàn bộ response scan
-const gateMessage = ref("")    // text hiển thị
-
-function stopAlarm(){
-
-alarmActive.value = false
-
-alarmSound.pause()
-alarmSound.currentTime = 0
-
-startFaceLoop() // chạy lại face loop
-
-}
-/* FACE LABEL */
-
-const detectLabel = computed(()=>{
-
-if(!status.value.session_active) return "IDLE"
-if(status.value.session_confirmed) return "IDENTIFIED"
-if(status.value.face_match) return "VERIFYING"
-
-return "UNKNOWN"
-
-})
-const detectColor = computed(()=>{
-
-if(!status.value.session_active)
-return "#00bfff"
-
-if(status.value.session_confirmed)
-return "#00ff9c"
-
-if(status.value.face_match)
-return "#33ccff"
-
-return "#ffd500"
-
-})
-const displayId = computed(()=>{
-  return (
-    gateResult.value?.employeeId ||
-    status.value?.employee_id ||
-    "-"
-  )
-})
-
-const displayPlate = computed(()=>{
-  return (
-    gateResult.value?.plate ||
-    plate.value ||
-    status.value?.plate ||
-    "-"
-  )
-})
-
-const displayParking = computed(()=>{
-  return (
-    gateResult.value?.parkingStatus ||
-    status.value?.parking_status ||
-    "-"
-  )
-})
-
-const displayDistance = computed(()=>{
-  const d = status.value.distance
-  if(!d) return "-"
-  return Number(d).toFixed(2) + "m"
-})
-
-const messageColor = computed(()=>{
-  switch(gateStatus.value){
-    case "SUCCESS": return "#00ff9c"
-    case "WAIT_PLATE": return "#ffd500"
-    case "WAIT_FACE": return "#00bfff"
-    case "NO_EMPLOYEE": return "red"
-    default: return "#ccc"
+    resultTimer: null,
+    busyResult: false,
+    isFetchingLockedImages: false,
+    destroyed: false
   }
-})
-
-/* LOAD CAMERAS */
-
-async function loadCameras(){
-
-try{
-
-const res = await getCameras()
-
-cameras.value = res || []
-
-}catch(e){
-
-console.log("camera load error")
-
 }
 
+function createPlateModule() {
+  return {
+    cameraIp: "",
+    currentIp: "",
+    cameraRunning: false,
+    previewRunning: false,
+
+    sessionId: 0,
+    lastAppliedSessionId: 0,
+    lastLockedImageSessionId: 0,
+
+    confirmedPlate: "",
+    lastRawPlate: "",
+    scanLocked: false,
+
+    lockedSnapshot: "",
+    lockedPlateCrop: "",
+
+    message: "",
+    fps: 0,
+    ocrRunning: false,
+    stableCount: 0,
+    movingFast: false,
+    lastUpdate: "",
+
+    directCameraUrl: "",
+    directCameraKey: 0,
+    previewHealthy: false,
+
+    resultTimer: null,
+    busyResult: false,
+    isFetchingLockedImages: false,
+    destroyed: false
+  }
 }
 
-
-/* FACE START */
-
-async function startFace(){
-
-await startCamera(faceCameraIp.value)
-
-faceVideo.value.src = faceCameraIp.value
-
-faceRunning.value=true
-
-startFaceLoop()
-
-}
-
-
-async function stopFace(){
-
-await stopCamera()
-
-faceRunning.value=false
-
-clearInterval(faceLoop)
-
-faceVideo.value.src=""
-
-clearFace()
-
-}
-
-async function shutdown(){
-
-if(!confirm("Shutdown AI server ?")) return
-
-try{
-await shutdownAI()
-}catch(e){}
-
-faceRunning.value=false
-faceVideo.value.src=""
-
-clearInterval(faceLoop)
-clearFace()
-
-}
-
-/* FACE LOOP */
-
-function startFaceLoop(){
-
-clearInterval(faceLoop)
-
-faceLoop=setInterval(updateFace,300)
-
-}
-
-
-async function updateFace(){
-if(alarmActive.value) return
-if(!faceRunning.value) return
-
-try{
-
-const res = await getStatus()
-
-status.value = res.data || {}
-// 🔓 reset khi session kết thúc
-if(!status.value.session_active){
-    gateLocked = false
-}
-
-// ===== SUCCESS SOUND =====
-if(
-    status.value.session_confirmed &&
-    !lastConfirmed
-){
-    successSound.currentTime = 0
-    successSound.play()
-}
-
-lastConfirmed = status.value.session_confirmed
-
-
-// ===== ALARM =====
-if(status.value.alert && !alarmActive.value){
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    alarmActive.value = true
-
-    alarmSound.currentTime = 0
-    alarmSound.play()
-
-    clearInterval(faceLoop) // ⛔ stop face loop
-}
-
-drawFace()
-}catch(e){
-
-console.log("face error")
-
-}
-
-}
-
-
-function drawFace(){
-
-if(!faceCtx) return
-
-clearFace()
-
-const face=status.value.face_box
-
-if(!face) return
-
-const scaleX = faceCanvas.value.width/480
-const scaleY = faceCanvas.value.height/480
-
-faceCtx.strokeStyle="#00ff9c"
-faceCtx.lineWidth=3
-
-const x = faceCanvas.value.width - (face.left + face.width) * scaleX
-
-faceCtx.strokeRect(
-x,
-face.top * scaleY,
-face.width * scaleX,
-face.height * scaleY
-)
-
-}
-
-
-function clearFace(){
-
-faceCtx.clearRect(
-0,
-0,
-faceCanvas.value.width,
-faceCanvas.value.height
-)
-
-}
-
-
-/* PLATE CONNECT */
-
-function connectPlate(){
-
-if(!selectedCamera.value) return
-
-streamUrl.value = selectedCamera.value
-
-plateRunning.value=true
-
-startPlateLoop()
-
-}
-
-
-function stopPlate(){
-
-plateRunning.value=false
-
-clearInterval(plateLoop)
-
-plate.value=""
-
-if(plateCtx && plateCanvas.value){
-  plateCtx.clearRect(
-    0,
-    0,
-    plateCanvas.value.width,
-    plateCanvas.value.height
-  )
-}
-
-}
-
-
-/* PLATE LOOP */
-
-function startPlateLoop(){
-
-clearInterval(plateLoop)
-
-plateLoop=setInterval(updatePlate,500)
-
-}
-
-
-async function updatePlate(){
-
-if(!plateRunning.value) return
-
-try{
-
-const res = await getPlate(selectedCamera.value)
-
-if(!res) return
-
-plate.value = res.plateNumber
-
-drawPlate(res)
-
-}catch(e){
-
-console.log("plate error")
-
-}
-
-}
-
-
-function drawPlate(res){
-
-const canvas=plateCanvas.value
-const img=plateVideo.value
-
-if(!canvas || !img) return
-
-canvas.width=img.clientWidth
-canvas.height=img.clientHeight
-
-plateCtx.clearRect(0,0,canvas.width,canvas.height)
-
-const scaleX=canvas.width/640
-const scaleY=canvas.height/360
-
-const x=res.x1*scaleX
-const y=res.y1*scaleY
-const w=(res.x2-res.x1)*scaleX
-const h=(res.y2-res.y1)*scaleY
-
-plateCtx.strokeStyle="#00ff00"
-plateCtx.lineWidth=3
-
-plateCtx.strokeRect(x,y,w,h)
-
-plateCtx.font="20px Arial"
-plateCtx.fillStyle="#00ff00"
-
-plateCtx.fillText(res.plateNumber,x,y-10)
-
-}
-
-async function runGate(){
-if(gateLocked) return  // 🔒 đã SUCCESS thì không gọi nữa
-  try{
-
-    const res = await scanGate()
-
-    if(!res || !res.data) return
-
-    const data = res.data
-
-    gateResult.value = data
-    gateStatus.value = data.status
-
-    // =========================
-    // XỬ LÝ UI THEO STATUS
-    // =========================
-
-    switch(data.status){
-
-      case "WAIT_FACE":
-        gateMessage.value = "🟡 Waiting for face..."
-        break
-
-      case "WAIT_PLATE":
-        gateMessage.value = "🟡 Waiting for plate..."
-        break
-
-      case "NO_EMPLOYEE":
-        gateMessage.value = "❌ Unknown employee"
-        
-        alarmSound.currentTime = 0
-        alarmSound.play()
-        break
-
-      case "SUCCESS":
-
-        gateMessage.value = `✅ ${data.action} | Plate: ${data.plate}`
-
-        successSound.currentTime = 0
-        successSound.play()
-
-        gateLocked = true   // 🔥 KHÓA SAU KHI THÀNH CÔNG
-
-        console.log("OPEN GATE", data)
-
-        break
-
-        gateMessage.value = `✅ ${data.action} | Plate: ${data.plate}`
-
-        // 🔊 mở cổng sound
-        successSound.currentTime = 0
-        successSound.play()
-
-        console.log("OPEN GATE", data)
-
-        break
-
-      default:
-        gateMessage.value = data.status
+export default {
+  name: "VShieldGateMinimal",
+
+  data() {
+    return {
+      lanes: [
+        {
+          id: "lane1",
+          name: "Làn 1",
+          desc: "Face trên / Biển dưới",
+          loading: false,
+          faceApi: faceLane1Api,
+          plateApi: plateLane1Api,
+          face: createFaceModule(),
+          plate: createPlateModule()
+        },
+        {
+          id: "lane2",
+          name: "Làn 2",
+          desc: "Face trên / Biển dưới",
+          loading: false,
+          faceApi: faceLane2Api,
+          plateApi: plateLane2Api,
+          face: createFaceModule(),
+          plate: createPlateModule()
+        }
+      ]
     }
+  },
 
-  }catch(e){
+  async mounted() {
+    for (const lane of this.lanes) {
+      lane.face.destroyed = false
+      lane.plate.destroyed = false
 
-    console.log("gate error")
+      await this.loadStatusFace(lane)
+      await this.loadStatusPlate(lane)
 
+      if (lane.face.cameraRunning) this.startFaceLoop(lane)
+      if (lane.plate.cameraRunning) this.startPlateLoop(lane)
+    }
+  },
+
+  beforeUnmount() {
+    for (const lane of this.lanes) {
+      lane.face.destroyed = true
+      lane.plate.destroyed = true
+      this.stopFaceLoop(lane)
+      this.stopPlateLoop(lane)
+      this.resetPreview(lane.face)
+      this.resetPreview(lane.plate)
+    }
+  },
+
+  methods: {
+    isLaneReady(lane) {
+      return (
+        lane.face.scanLocked &&
+        lane.plate.scanLocked &&
+        !!lane.face.employeeId &&
+        !!lane.plate.confirmedPlate &&
+        !lane.face.alert
+      )
+    },
+
+    laneAnyRunning(lane) {
+      return lane.face.cameraRunning || lane.plate.cameraRunning
+    },
+
+    faceStateText(face) {
+      if (face.scanLocked) {
+        if (face.lockReason === "confirmed") return "ĐÃ NHẬN DIỆN"
+        if (face.lockReason === "alert") return "CẢNH BÁO"
+        if (face.lockReason === "timeout") return "TIMEOUT"
+        return "ĐÃ KHÓA"
+      }
+
+      if (!face.trackingActive) return "CHỜ"
+      if (face.identityConfirmed) return "ĐANG XÁC NHẬN"
+      if (face.faceMatch) return "ĐANG SO KHỚP"
+      return "ĐANG QUÉT"
+    },
+
+    faceStateClass(face) {
+      if (face.alert) return "danger-text"
+      if (face.scanLocked && face.identityConfirmed) return "ok-text"
+      return "warn-text"
+    },
+
+    buildDirectCameraUrl(inputUrl) {
+      const raw = String(inputUrl || "").trim()
+      if (!raw) return ""
+      const sep = raw.includes("?") ? "&" : "?"
+      return `${raw}${sep}t=${Date.now()}`
+    },
+
+    mountPreview(module, url) {
+      const cleanUrl = String(url || "").trim()
+      if (!cleanUrl) return
+      module.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
+      module.directCameraKey += 1
+      module.previewHealthy = false
+      module.previewRunning = true
+    },
+
+    resetPreview(module) {
+      module.directCameraUrl = ""
+      module.directCameraKey += 1
+      module.previewHealthy = false
+      module.previewRunning = false
+    },
+
+    onPreviewLoaded(module) {
+      module.previewHealthy = true
+    },
+
+    onPreviewError(module) {
+      module.previewHealthy = false
+    },
+
+    clearFaceState(face) {
+      face.employeeId = ""
+      face.trackingActive = false
+      face.identityConfirmed = false
+      face.faceMatch = false
+      face.confirmCount = 0
+      face.distance = null
+      face.timeoutState = false
+      face.alert = false
+      face.scanLocked = false
+      face.lockReason = ""
+      face.lockedSnapshot = ""
+      face.lockedFaceCrop = ""
+      face.message = ""
+      face.fps = 0
+      face.lastUpdate = ""
+    },
+
+    clearPlateState(plate) {
+      plate.confirmedPlate = ""
+      plate.lastRawPlate = ""
+      plate.scanLocked = false
+      plate.lockedSnapshot = ""
+      plate.lockedPlateCrop = ""
+      plate.message = ""
+      plate.fps = 0
+      plate.ocrRunning = false
+      plate.stableCount = 0
+      plate.movingFast = false
+      plate.lastUpdate = ""
+      plate.lastLockedImageSessionId = 0
+    },
+
+    hardResetFace(face) {
+      face.cameraRunning = false
+      face.cameraConnected = false
+      face.currentIp = ""
+      this.clearFaceState(face)
+    },
+
+    hardResetPlate(plate) {
+      plate.cameraRunning = false
+      plate.currentIp = ""
+      plate.sessionId = 0
+      plate.lastAppliedSessionId = 0
+      this.clearPlateState(plate)
+    },
+
+    stopFaceLoop(lane) {
+      const face = lane.face
+      if (face.resultTimer) {
+        clearInterval(face.resultTimer)
+        face.resultTimer = null
+      }
+      face.busyResult = false
+    },
+
+    stopPlateLoop(lane) {
+      const plate = lane.plate
+      if (plate.resultTimer) {
+        clearInterval(plate.resultTimer)
+        plate.resultTimer = null
+      }
+      plate.busyResult = false
+    },
+
+    startFaceLoop(lane) {
+      this.stopFaceLoop(lane)
+
+      lane.face.resultTimer = setInterval(async () => {
+        if (lane.face.destroyed) return
+        if (!lane.face.cameraRunning) return
+        if (lane.face.busyResult) return
+
+        lane.face.busyResult = true
+        try {
+          await this.refreshFace(lane)
+        } finally {
+          lane.face.busyResult = false
+        }
+      }, 500)
+    },
+
+    startPlateLoop(lane) {
+      this.stopPlateLoop(lane)
+
+      lane.plate.resultTimer = setInterval(async () => {
+        if (lane.plate.destroyed) return
+        if (!lane.plate.cameraRunning) return
+        if (lane.plate.busyResult) return
+
+        lane.plate.busyResult = true
+        try {
+          await this.refreshPlate(lane)
+        } finally {
+          lane.plate.busyResult = false
+        }
+      }, 500)
+    },
+
+    async loadStatusFace(lane) {
+      try {
+        const res = await lane.faceApi.getCameraStatus()
+        await this.applyFaceRealtimeState(lane, res, false)
+
+        if (lane.face.currentIp) {
+          lane.face.cameraIp = lane.face.currentIp
+          this.mountPreview(lane.face, lane.face.currentIp)
+        }
+      } catch (e) {
+        console.error("loadStatusFace error:", e)
+      }
+    },
+
+    async loadStatusPlate(lane) {
+      try {
+        const res = await lane.plateApi.getCameraStatus()
+        await this.applyPlateRealtimeState(lane, res, false)
+
+        if (lane.plate.currentIp) {
+          lane.plate.cameraIp = lane.plate.currentIp
+          this.mountPreview(lane.plate, lane.plate.currentIp)
+        }
+      } catch (e) {
+        console.error("loadStatusPlate error:", e)
+      }
+    },
+
+    async refreshFace(lane) {
+      try {
+        const res = await lane.faceApi.getCameraResult()
+        await this.applyFaceRealtimeState(lane, res, true)
+      } catch (e) {
+        console.warn("refreshFace error:", e)
+      }
+    },
+
+    async refreshPlate(lane) {
+      try {
+        const res = await lane.plateApi.getCameraResult()
+        await this.applyPlateRealtimeState(lane, res, true)
+      } catch (e) {
+        console.warn("refreshPlate error:", e)
+      }
+    },
+
+    async fetchFaceLockedImages(lane, force = false) {
+      const face = lane.face
+      if (face.destroyed) return
+      if (!face.cameraRunning) return
+      if (!face.scanLocked && !force) {
+        face.lockedSnapshot = ""
+        face.lockedFaceCrop = ""
+        return
+      }
+      if (face.isFetchingLockedImages) return
+
+      face.isFetchingLockedImages = true
+      try {
+        const res = await lane.faceApi.getLockedImages()
+        if (res?.scan_locked) {
+          face.lockedSnapshot = res.locked_snapshot || ""
+          face.lockedFaceCrop = res.locked_face_crop || ""
+        } else {
+          face.lockedSnapshot = ""
+          face.lockedFaceCrop = ""
+        }
+      } catch (e) {
+        console.warn("fetchFaceLockedImages error:", e)
+      } finally {
+        face.isFetchingLockedImages = false
+      }
+    },
+
+    async fetchPlateLockedImages(lane, force = false) {
+      const plate = lane.plate
+      if (plate.destroyed) return
+      if (!plate.cameraRunning) return
+
+      if (!plate.scanLocked) {
+        plate.lockedSnapshot = ""
+        plate.lockedPlateCrop = ""
+        plate.lastLockedImageSessionId = 0
+        return
+      }
+
+      if (plate.isFetchingLockedImages) return
+      if (!force && plate.lastLockedImageSessionId === plate.sessionId) return
+
+      plate.isFetchingLockedImages = true
+      try {
+        const res = await lane.plateApi.getLockedImages()
+        const responseSessionId = Number(res?.session_id || 0)
+
+        if (responseSessionId !== plate.sessionId) return
+
+        if (res?.scan_locked) {
+          plate.lockedSnapshot = res.locked_snapshot || ""
+          plate.lockedPlateCrop = res.locked_plate_crop || ""
+          plate.lastLockedImageSessionId = responseSessionId
+        } else {
+          plate.lockedSnapshot = ""
+          plate.lockedPlateCrop = ""
+          plate.lastLockedImageSessionId = 0
+        }
+      } catch (e) {
+        console.warn("fetchPlateLockedImages error:", e)
+      } finally {
+        plate.isFetchingLockedImages = false
+      }
+    },
+
+    async applyFaceRealtimeState(lane, res, allowTurnOffReset = true) {
+      if (!res || lane.face.destroyed) return
+
+      const face = lane.face
+      const incomingCameraEnabled = !!res.camera_enabled
+
+      face.cameraRunning = incomingCameraEnabled
+      face.cameraConnected = !!res.camera_connected
+      face.currentIp = res.ip || face.currentIp
+
+      face.employeeId = res.employee_id || ""
+      face.trackingActive = !!res.tracking_active
+      face.identityConfirmed = !!res.identity_confirmed
+      face.faceMatch = !!res.face_match
+      face.confirmCount = Number(res.confirm_count || 0)
+      face.distance = res.distance ?? null
+      face.timeoutState = !!res.timeout
+      face.alert = !!res.alert
+
+      face.scanLocked = !!res.scan_locked
+      face.lockReason = res.lock_reason || ""
+
+      face.fps = Number(res.fps || 0)
+      face.message = res.message || ""
+      face.lastUpdate = res.last_update || ""
+
+      if (!face.scanLocked) {
+        face.lockedSnapshot = ""
+        face.lockedFaceCrop = ""
+      }
+
+      if (!incomingCameraEnabled && allowTurnOffReset) {
+        this.stopFaceLoop(lane)
+        this.hardResetFace(face)
+        return
+      }
+
+      if (face.scanLocked) {
+        await this.fetchFaceLockedImages(lane, false)
+      }
+    },
+
+    async applyPlateRealtimeState(lane, res, allowTurnOffReset = true) {
+      if (!res || lane.plate.destroyed) return
+
+      const plate = lane.plate
+      const incomingSessionId = Number(res.session_id || 0)
+
+      if (incomingSessionId > 0) {
+        if (plate.lastAppliedSessionId > 0 && incomingSessionId < plate.lastAppliedSessionId) {
+          return
+        }
+
+        if (incomingSessionId > plate.lastAppliedSessionId) {
+          plate.lastAppliedSessionId = incomingSessionId
+          plate.sessionId = incomingSessionId
+          plate.lastLockedImageSessionId = 0
+        } else if (!plate.sessionId) {
+          plate.sessionId = incomingSessionId
+        }
+      }
+
+      const incomingCameraEnabled = !!res.camera_enabled
+
+      plate.cameraRunning = incomingCameraEnabled
+      plate.currentIp = res.ip || plate.currentIp
+      plate.confirmedPlate = res.confirmed_plate || ""
+      plate.lastRawPlate = res.last_raw_plate || ""
+      plate.scanLocked = !!res.scan_locked
+      plate.fps = Number(res.fps || 0)
+      plate.ocrRunning = !!res.ocr_running
+      plate.stableCount = Number(res.stable_count || 0)
+      plate.movingFast = !!res.moving_fast
+      plate.message = res.message || ""
+      plate.lastUpdate = res.last_update || ""
+
+      if (!plate.scanLocked) {
+        plate.lockedSnapshot = ""
+        plate.lockedPlateCrop = ""
+        plate.lastLockedImageSessionId = 0
+      }
+
+      if (!incomingCameraEnabled && allowTurnOffReset) {
+        this.stopPlateLoop(lane)
+        this.hardResetPlate(plate)
+        return
+      }
+
+      if (plate.scanLocked) {
+        await this.fetchPlateLockedImages(lane, false)
+      }
+    },
+
+    async previewLane(lane) {
+      if (!lane.face.cameraIp.trim() && !lane.plate.cameraIp.trim()) {
+        alert("Vui lòng nhập ít nhất 1 URL camera")
+        return
+      }
+
+      try {
+        lane.loading = true
+
+        if (lane.face.cameraIp.trim()) {
+          lane.face.currentIp = lane.face.cameraIp.trim()
+          this.mountPreview(lane.face, lane.face.currentIp)
+          lane.face.message = "Đã mở preview Face"
+        }
+
+        if (lane.plate.cameraIp.trim()) {
+          lane.plate.currentIp = lane.plate.cameraIp.trim()
+          this.mountPreview(lane.plate, lane.plate.currentIp)
+          lane.plate.message = "Đã mở preview Plate"
+        }
+      } catch (e) {
+        console.error("previewLane error:", e)
+        alert(e?.message || "Lỗi mở preview")
+      } finally {
+        lane.loading = false
+      }
+    },
+
+    async readAllLane(lane) {
+      if (!lane.face.cameraIp.trim() || !lane.plate.cameraIp.trim()) {
+        alert("Vui lòng nhập đủ URL Face và Plate")
+        return
+      }
+
+      try {
+        lane.loading = true
+
+        lane.face.currentIp = lane.face.cameraIp.trim()
+        lane.plate.currentIp = lane.plate.cameraIp.trim()
+
+        if (!lane.face.previewRunning) this.mountPreview(lane.face, lane.face.currentIp)
+        if (!lane.plate.previewRunning) this.mountPreview(lane.plate, lane.plate.currentIp)
+
+        this.clearFaceState(lane.face)
+        this.clearPlateState(lane.plate)
+
+        if (!lane.face.cameraRunning) {
+          this.stopFaceLoop(lane)
+          const resFace = await lane.faceApi.turnOnCamera(lane.face.currentIp)
+          if (!resFace?.success) {
+            alert(resFace?.message || "Không thể khởi tạo Face")
+            return
+          }
+          lane.face.cameraRunning = true
+          lane.face.message = resFace.message || "Khởi tạo Face thành công"
+        } else {
+          const resFace = await lane.faceApi.resetCameraState()
+          lane.face.message = resFace?.message || "Đã reset Face"
+        }
+
+        if (!lane.plate.cameraRunning) {
+          this.stopPlateLoop(lane)
+          const resPlate = await lane.plateApi.turnOnCamera(lane.plate.currentIp)
+          if (!resPlate?.success) {
+            alert(resPlate?.message || "Không thể khởi tạo Plate")
+            return
+          }
+          lane.plate.cameraRunning = true
+          lane.plate.sessionId = Number(resPlate.session_id || 0)
+          lane.plate.lastAppliedSessionId = lane.plate.sessionId
+          lane.plate.message = resPlate.message || "Khởi tạo Plate thành công"
+        } else {
+          const resPlate = await lane.plateApi.resetCameraState()
+          lane.plate.message = resPlate?.message || "Đã reset Plate"
+
+          const newSessionId = Number(resPlate?.session_id || 0)
+          if (newSessionId > 0) {
+            lane.plate.sessionId = newSessionId
+            lane.plate.lastAppliedSessionId = newSessionId
+          }
+        }
+
+        await this.refreshFace(lane)
+        await this.refreshPlate(lane)
+
+        if (!lane.face.resultTimer) this.startFaceLoop(lane)
+        if (!lane.plate.resultTimer) this.startPlateLoop(lane)
+      } catch (e) {
+        console.error("readAllLane error:", e)
+        alert(e?.message || "Lỗi đọc cả 2")
+      } finally {
+        lane.loading = false
+      }
+    },
+
+    async retryFace(lane) {
+      if (!lane.face.cameraIp.trim()) {
+        alert("Vui lòng nhập URL Face")
+        return
+      }
+
+      try {
+        lane.loading = true
+
+        lane.face.currentIp = lane.face.cameraIp.trim()
+        if (!lane.face.previewRunning) {
+          this.mountPreview(lane.face, lane.face.currentIp)
+        }
+
+        this.clearFaceState(lane.face)
+
+        if (!lane.face.cameraRunning) {
+          this.stopFaceLoop(lane)
+          const res = await lane.faceApi.turnOnCamera(lane.face.currentIp)
+          if (!res?.success) {
+            alert(res?.message || "Không thể khởi tạo Face")
+            return
+          }
+          lane.face.cameraRunning = true
+          lane.face.message = res.message || "Khởi tạo Face thành công"
+        } else {
+          const res = await lane.faceApi.resetCameraState()
+          lane.face.message = res?.message || "Đã reset Face"
+        }
+
+        await this.refreshFace(lane)
+        if (!lane.face.resultTimer) this.startFaceLoop(lane)
+      } catch (e) {
+        console.error("retryFace error:", e)
+        alert(e?.message || "Lỗi đọc lại Face")
+      } finally {
+        lane.loading = false
+      }
+    },
+
+    async retryPlate(lane) {
+      if (!lane.plate.cameraIp.trim()) {
+        alert("Vui lòng nhập URL Plate")
+        return
+      }
+
+      try {
+        lane.loading = true
+
+        lane.plate.currentIp = lane.plate.cameraIp.trim()
+        if (!lane.plate.previewRunning) {
+          this.mountPreview(lane.plate, lane.plate.currentIp)
+        }
+
+        this.clearPlateState(lane.plate)
+
+        if (!lane.plate.cameraRunning) {
+          this.stopPlateLoop(lane)
+          const res = await lane.plateApi.turnOnCamera(lane.plate.currentIp)
+          if (!res?.success) {
+            alert(res?.message || "Không thể khởi tạo Plate")
+            return
+          }
+          lane.plate.cameraRunning = true
+          lane.plate.sessionId = Number(res.session_id || 0)
+          lane.plate.lastAppliedSessionId = lane.plate.sessionId
+          lane.plate.message = res.message || "Khởi tạo Plate thành công"
+        } else {
+          const res = await lane.plateApi.resetCameraState()
+          lane.plate.message = res?.message || "Đã reset Plate"
+
+          const newSessionId = Number(res?.session_id || 0)
+          if (newSessionId > 0) {
+            lane.plate.sessionId = newSessionId
+            lane.plate.lastAppliedSessionId = newSessionId
+          }
+        }
+
+        await this.refreshPlate(lane)
+        if (!lane.plate.resultTimer) this.startPlateLoop(lane)
+      } catch (e) {
+        console.error("retryPlate error:", e)
+        alert(e?.message || "Lỗi đọc lại biển số")
+      } finally {
+        lane.loading = false
+      }
+    },
+
+    async stopLane(lane) {
+      try {
+        lane.loading = true
+
+        this.stopFaceLoop(lane)
+        this.stopPlateLoop(lane)
+
+        try {
+          const resFace = await lane.faceApi.turnOffCamera()
+          lane.face.message = resFace?.message || "Đã tắt Face"
+        } catch (e) {
+          console.warn("turnOff face warning:", e)
+        }
+
+        try {
+          const resPlate = await lane.plateApi.turnOffCamera()
+          lane.plate.message = resPlate?.message || "Đã tắt Plate"
+        } catch (e) {
+          console.warn("turnOff plate warning:", e)
+        }
+
+        this.hardResetFace(lane.face)
+        this.hardResetPlate(lane.plate)
+        this.resetPreview(lane.face)
+        this.resetPreview(lane.plate)
+      } catch (e) {
+        console.error("stopLane error:", e)
+        alert(e?.message || "Lỗi tắt làn")
+      } finally {
+        lane.loading = false
+      }
+    },
+
+    confirmLane(lane) {
+      alert(
+        `Xác nhận ${lane.name}\n\n` +
+        `Employee ID: ${lane.face.employeeId || "-----"}\n` +
+        `Biển số: ${lane.plate.confirmedPlate || "-----"}\n\n` +
+        `Nút này hiện là placeholder.`
+      )
+    }
   }
-
 }
-function startGateLoop(){
-
-  clearInterval(gateLoop)
-
-  gateLoop = setInterval(() => {
-    runGate()
-  }, 1000)
-
-}
-/* INIT */
-
-onMounted(()=>{
-
-loadCameras()
-
-faceCtx=faceCanvas.value.getContext("2d")
-plateCtx=plateCanvas.value.getContext("2d")
-startGateLoop()
-faceVideo.value.onload = () => {
-
-const w = faceVideo.value.clientWidth
-const h = faceVideo.value.clientHeight
-
-// vì rotate 90 độ → đảo lại
-faceCanvas.value.width = h
-faceCanvas.value.height = w
-
-}
-
-
-})
-
-
-onBeforeUnmount(()=>{
-
-clearInterval(faceLoop)
-clearInterval(plateLoop)
-clearInterval(gateLoop)
-})
-
 </script>
 
-
-<style>
-
-body{
-margin:0;
-background:#041424;
-color:white;
-font-family:Segoe UI;
+<style scoped>
+* {
+  box-sizing: border-box;
 }
 
-.topbar{
-display:flex;
-justify-content:space-between;
-padding:20px 40px;
-background:#0b223f;
+.page {
+  min-height: 100vh;
+  background: #f3f6fb;
+  padding: 20px;
+  font-family: Inter, Arial, sans-serif;
+  color: #0f172a;
 }
 
-.title{
-font-size:22px;
-font-weight:bold;
+.topbar {
+  margin-bottom: 18px;
 }
 
-.layout{
-display:grid;
-grid-template-columns:280px 1fr;
-height:calc(100vh - 80px);
-gap:16px;
-padding:16px;
+.topbar h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
 }
 
-.control{
-background:#0c2747;
-padding:16px;
-border-radius:8px;
-border-right:1px solid rgba(255,255,255,0.1);
+.topbar p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
 }
 
-.control select,
-.control input{
-width:100%;
-padding:10px;
-margin-bottom:10px;
+.lane-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
-.btn{
-width:100%;
-padding:10px;
-margin-bottom:8px;
-font-size:13px;
-border:none;
-border-radius:6px;
-font-weight:bold;
-cursor:pointer;
+.lane-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
-.start{background:#27ae60}
-.stop{background:#e74c3c}
-
-.video-wrapper{
-position:relative;
-border-radius:12px;
-overflow:hidden;
-background:black;
-border:2px solid var(--camColor);
-box-shadow:0 0 10px var(--camColor);
-transition:0.3s;
+.lane-card.ready {
+  border-color: #93c5fd;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.12);
 }
 
-.video{
-width:100%;
-height:100%;
-object-fit:cover;
-max-height:100%;
-transform-origin:center;
+.lane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
 }
 
-canvas{
-position:absolute;
-top:0;
-left:0;
-width:100%;
-height:100%;
-pointer-events:none;
-transform-origin:center;
+.lane-head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
 }
 
-.overlay{
-  position:absolute;
-  top:10px;
-  left:10px;
-
-  min-width:240px;
-  max-width:320px;   /* 🔥 FIX CỤT */
-
-  background:rgba(0,0,0,0.8);
-  padding:10px;
-  border-radius:8px;
-
-  font-size:13px;
-}
-/* STATUS ROW */
-.top-row{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:6px;
+.lane-head p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
 }
 
-.status-box{
-  text-align:left;
+.lane-final-status {
+  min-width: 180px;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
 }
 
-.label{
-  font-size:11px;
-  color:#aaa;
+.lane-final-status.ok {
+  background: #dcfce7;
+  color: #166534;
 }
 
-.value{
-  font-weight:bold;
-  font-size:14px;
+.lane-final-status.wait {
+  background: #fff7ed;
+  color: #c2410c;
 }
 
-/* MESSAGE */
-.main-message{
-  font-weight:bold;
-  font-size:14px;
-  margin:4px 0;
-  color:#00ff9c;
+.lane-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
-/* GRID INFO */
-.info-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:4px;
-  font-size:12px;
-  color:#ddd;
+.btn {
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-/* BADGES */
-.badges{
-  margin-top:6px;
-  display:flex;
-  gap:6px;
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.badge{
-  padding:2px 6px;
-  border-radius:4px;
-  font-size:11px;
-  font-weight:bold;
+.btn-preview {
+  background: #0f766e;
 }
 
-.badge.success{
-  background:#00ff9c;
-  color:black;
+.btn-main {
+  background: #2563eb;
 }
 
-.badge.alert{
-  background:red;
+.btn-sub {
+  background: #475569;
 }
 
-.plate-big{
-font-size:50px;
-text-align:center;
-color:#00ff9c;
-font-weight:bold;
+.btn-off {
+  background: #dc2626;
 }
 
-.confirm{
-color:#00ff9c;
-}
-.camera-panel{
-display:grid;
-grid-template-rows: 2fr 1fr;
-gap:16px;
-height:100%;
+.btn-confirm {
+  background: #111827;
 }
 
-.success-glow{
-box-shadow:0 0 30px #00ff9c !important;
-border-color:#00ff9c !important;
+.ip-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
-.alert-glow{
-box-shadow:0 0 40px red !important;
-border-color:red !important;
-}
-.status-line{
-display:flex;
-justify-content:space-between;
-margin-bottom:4px;
+.ip-box label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #334155;
 }
 
-.label{
-color:#aaa;
+.ip-box input {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
 }
 
-.value{
-font-weight:bold;
+.ip-box input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
-.main-message{
-margin-top:6px;
-font-size:16px;
-font-weight:bold;
-}
-.alarm-overlay{
-position:fixed;
-top:0;
-left:0;
-right:0;
-bottom:0;
-background:rgba(255,0,0,0.2);
-display:flex;
-justify-content:center;
-align-items:center;
-font-size:48px;
-font-weight:bold;
-color:red;
-z-index:999;
-animation: blink 1s infinite;
+.summary-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
-@keyframes blink{
-0%{opacity:1}
-50%{opacity:0.4}
-100%{opacity:1}
-}
-.camera-panel{
-display:grid;
-grid-template-rows: 2fr 1fr;
-gap:16px;
-height:100%;
-
-}
-.video-wrapper{
-height:100%;
-}
-.control{
-overflow:auto;
-}
-.row{
-  display:flex;
+.summary-item {
+  background: #f8fafc;
+  border: 1px solid #e9eef5;
+  border-radius: 12px;
+  padding: 10px 12px;
 }
 
-.space{
-  justify-content:space-between;
-  margin-bottom:6px;
+.summary-item .label {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 6px;
 }
 
-.label{
-  font-size:11px;
-  color:#bbbbbb;   /* 🔥 từ #aaa → sáng hơn */
-  letter-spacing:0.5px;
+.summary-item .value {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  word-break: break-word;
 }
 
-.value{
-  font-weight:bold;
+.strong {
+  font-size: 20px !important;
+  font-weight: 900 !important;
 }
 
-.main-message{
-  margin:4px 0;
-  font-weight:bold;
-  color:#00ff9c;
+.plate {
+  color: #15803d;
+  letter-spacing: 1px;
 }
 
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:4px;
-  font-size:12px;
+.ok-text {
+  color: #15803d;
 }
 
-.badge{
-  margin-top:6px;
-  padding:3px 6px;
-  font-size:11px;
-  border-radius:4px;
-  display:inline-block;
+.warn-text {
+  color: #c2410c;
 }
 
-.badge.success{
-  background:#00ff9c;
-  color:black;
-}
-.value{
-  font-weight:bold;
-  font-size:15px;
-  color:#ffffff;   /* 🔥 trắng hẳn */
-}
-.main-message{
-  margin:6px 0;
-  font-size:15px;
-  font-weight:bold;
-}
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:6px;
-  font-size:12px;
-  color:#ddd;
-}
-.g-label{
-  color:#66ccff;   /* 🔥 xanh nhẹ dễ đọc */
-  margin-right:4px;
-}
-.main-message{
-  margin:6px 0;
-  font-size:16px;
-  font-weight:bold;
-  text-shadow:0 0 6px rgba(255,255,255,0.3); /* 🔥 glow nhẹ */
-}
-.value{
-  font-weight:bold;
-  font-size:15px;
+.danger-text {
+  color: #b91c1c;
 }
 
-.row .value{
-  font-size:16px;
+.camera-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.grid div:nth-child(2){
-  color:#00ff9c;
-  font-weight:bold;
+
+.cam-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
+  background: #fcfdff;
 }
-.success-glow .overlay{
-  background:rgba(0,50,0,0.75);
+
+.cam-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mini-status {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mini-status.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.mini-status.wait {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.cam-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.cam-off {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  color: #cbd5e1;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.quick-result {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.result-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.result-pill.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.result-pill.wait {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.result-pill.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.result-pill.neutral {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.result-pill.off {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.evidence-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.evidence-box {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.evidence-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.evidence-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bottom-note {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+@media (max-width: 1200px) {
+  .lane-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .summary-bar,
+  .ip-row,
+  .evidence-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lane-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lane-final-status {
+    min-width: unset;
+    width: 100%;
+  }
 }
 </style>
