@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 python lpr\_ipcam.py
 
-uvicorn FaceID:app --reload --port 8000
+uvicorn docbien:app --reload --port 8000
 
 
 
@@ -45,4 +45,6 @@ lpr\_gpu\\Scripts\\activate
 pip cache purge
 
 pip install pyodbc
+
+pip install flask flask-cors
 
