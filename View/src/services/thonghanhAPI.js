@@ -1,5 +1,12 @@
 import axios from "axios"
 
-export function scanGate(){
-    return axios.get("https://localhost:7107/api/Gate/scan")
+const api = axios.create({
+  baseURL: "https://localhost:7107/api",
+  headers: {
+    "Content-Type": "application/json"
+  }
+})
+
+export function scanGate(payload) {
+  return api.post("/Gate/scan", payload)
 }

@@ -1,10 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Net.Http;
-using System.Threading.Tasks;
-using API.Data;
+﻿using API.Data;
 using API.Models;
-using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
 {
@@ -13,150 +10,360 @@ namespace API.Controllers
     public class GateController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly HttpClient _client;
-
-        string faceApi = "http://127.0.0.1:8000";
 
         public GateController(ApplicationDbContext context)
         {
             _context = context;
-            _client = new HttpClient();
         }
 
-        // ======================================
-        // API DUY NHẤT
-        // ======================================
-
-        [HttpGet("scan")]
-        public async Task<IActionResult> Scan()
+        /// <summary>
+        /// Nhận biển số + employeeId
+        /// - Nếu đúng biển số + đúng employee đã tồn tại => toggle IN/OUT
+        /// - Nếu chưa có đúng cặp đó:
+        ///     + Nếu biển đang thuộc người khác và đang IN => fail
+        ///     + Ngược lại => thêm mới với trạng thái IN
+        /// </summary>
+        [HttpPost("scan")]
+        public async Task<IActionResult> ScanVehicle([FromBody] GateScanRequest request)
         {
+            if (request == null)
+            {
+                return BadRequest(GateApiResponse.CreateError("Dữ liệu gửi lên không hợp lệ."));
+            }
+
+            var normalizedPlate = NormalizeLicensePlate(request.LicensePlate);
+
+            if (string.IsNullOrWhiteSpace(normalizedPlate))
+            {
+                return BadRequest(GateApiResponse.CreateError("Biển số không được để trống."));
+            }
+
+            if (request.EmployeeId <= 0)
+            {
+                return BadRequest(GateApiResponse.CreateError("EmployeeId không hợp lệ."));
+            }
+
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == request.EmployeeId);
+
+            if (employee == null)
+            {
+                return NotFound(GateApiResponse.CreateError($"Không tìm thấy nhân viên có id = {request.EmployeeId}."));
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
-                // =========================
-                // 1. Lấy dữ liệu FaceAI
-                // =========================
+                // Lấy tất cả xe có cùng biển số sau khi normalize
+                var samePlateVehicles = await _context.Vehicles
+                    .Where(v => v.LicensePlate != null)
+                    .ToListAsync();
 
-                var res = await _client.GetAsync($"{faceApi}/camera/status");
+                samePlateVehicles = samePlateVehicles
+                    .Where(v => NormalizeLicensePlate(v.LicensePlate) == normalizedPlate)
+                    .ToList();
 
-                if (!res.IsSuccessStatusCode)
-                    return BadRequest("Face AI not running");
+                // 1. Tìm đúng cặp biển số + employeeId
+                var currentVehicle = samePlateVehicles
+                    .FirstOrDefault(v => v.EmployeeId == request.EmployeeId);
 
-                var json = await res.Content.ReadAsStringAsync();
-
-                var data = JObject.Parse(json);
-
-                bool confirmed = data["session_confirmed"]?.Value<bool>() ?? false;
-
-                if (!confirmed)
+                if (currentVehicle != null)
                 {
-                    return Ok(new
+                    var oldStatus = NormalizeParkingStatus(currentVehicle.ParkingStatus);
+                    var newStatus = oldStatus == "IN" ? "OUT" : "IN";
+
+                    currentVehicle.ParkingStatus = newStatus;
+
+                    _context.AccessLogs.Add(new AccessLog
                     {
-                        status = "WAIT_FACE"
+                        Timestamp = DateTime.Now,
+                        Direction = newStatus,
+                        GateId = request.GateId,
+                        CameraId = request.CameraId,
+                        CapturedLicensePlate = currentVehicle.LicensePlate,
+                        EmployeeId = request.EmployeeId,
+                        ResultStatus = "SUCCESS",
+                        IsBypass = false,
+                        Note = $"Đổi trạng thái xe từ {oldStatus} sang {newStatus}"
                     });
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return Ok(GateApiResponse.CreateSuccess(
+                        $"Cập nhật trạng thái thành công: {oldStatus} -> {newStatus}.",
+                        new
+                        {
+                            currentVehicle.VehicleId,
+                            currentVehicle.LicensePlate,
+                            currentVehicle.EmployeeId,
+                            currentVehicle.VehicleTypeId,
+                            currentVehicle.Description,
+                            currentVehicle.ParkingStatus
+                        }));
                 }
 
-                int employeeId = int.Parse(data["employee_id"]?.ToString() ?? "0");
+                // 2. Nếu chưa có đúng cặp đó, kiểm tra biển có đang thuộc người khác và đang IN không
+                var conflictVehicle = samePlateVehicles.FirstOrDefault(v =>
+                    v.EmployeeId != request.EmployeeId &&
+                    NormalizeParkingStatus(v.ParkingStatus) == "IN");
 
-                if (employeeId == 0)
+                if (conflictVehicle != null)
                 {
-                    return Ok(new
+                    _context.AccessLogs.Add(new AccessLog
                     {
-                        status = "NO_EMPLOYEE"
+                        Timestamp = DateTime.Now,
+                        Direction = "IN",
+                        GateId = request.GateId,
+                        CameraId = request.CameraId,
+                        CapturedLicensePlate = request.LicensePlate,
+                        EmployeeId = request.EmployeeId,
+                        ResultStatus = "FAILED",
+                        IsBypass = false,
+                        Note = $"Biển số đang được gửi bởi nhân viên có id là {conflictVehicle.EmployeeId}"
                     });
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return Conflict(GateApiResponse.CreateError(
+                        $"Biển số đang được gửi bởi 1 nhân viên có id là {conflictVehicle.EmployeeId}."));
                 }
 
-                // =========================
-                // 2. Lấy biển hiện tại
-                // =========================
-
-                var plate = await _context.CameraPlates
-                    .OrderByDescending(x => x.LastUpdate)
-                    .FirstOrDefaultAsync();
-
-                if (plate == null || string.IsNullOrEmpty(plate.PlateNumber))
+                // 3. Không có đúng cặp, không bị conflict => thêm mới với trạng thái IN
+                var newVehicle = new Vehicle
                 {
-                    return Ok(new
-                    {
-                        status = "WAIT_PLATE"
-                    });
-                }
-
-                string plateNumber = plate.PlateNumber.Trim();
-
-                // =========================
-                // 3. Kiểm tra xe
-                // =========================
-
-                var vehicle = await _context.Vehicles
-                    .FirstOrDefaultAsync(x =>
-                        x.EmployeeId == employeeId &&
-                        x.LicensePlate == plateNumber);
-
-                string action;
-
-                if (vehicle == null)
-                {
-                    vehicle = new Vehicle
-                    {
-                        EmployeeId = employeeId,
-                        LicensePlate = plateNumber,
-                        ParkingStatus = "IN"
-                    };
-
-                    _context.Vehicles.Add(vehicle);
-
-                    action = "REGISTER_AND_IN";
-                }
-                else
-                {
-                    if (vehicle.ParkingStatus == "IN")
-                    {
-                        vehicle.ParkingStatus = "OUT";
-                        action = "VEHICLE_OUT";
-                    }
-                    else
-                    {
-                        vehicle.ParkingStatus = "IN";
-                        action = "VEHICLE_IN";
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-
-                // =========================
-                // 4. Ghi log
-                // =========================
-
-                var log = new AccessLog
-                {
-                    EmployeeId = employeeId,
-                    CapturedLicensePlate = plateNumber,
-                    Direction = vehicle.ParkingStatus,
-                    ResultStatus = "SUCCESS",
-                    Timestamp = DateTime.Now
+                    LicensePlate = normalizedPlate,
+                    EmployeeId = request.EmployeeId,
+                    VehicleTypeId = request.VehicleTypeId,
+                    Description = request.Description,
+                    ParkingStatus = "IN"
                 };
 
-                _context.AccessLogs.Add(log);
+                _context.Vehicles.Add(newVehicle);
+
+                _context.AccessLogs.Add(new AccessLog
+                {
+                    Timestamp = DateTime.Now,
+                    Direction = "IN",
+                    GateId = request.GateId,
+                    CameraId = request.CameraId,
+                    CapturedLicensePlate = normalizedPlate,
+                    EmployeeId = request.EmployeeId,
+                    ResultStatus = "SUCCESS",
+                    IsBypass = false,
+                    Note = "Thêm mới phương tiện và cho vào bãi với trạng thái IN"
+                });
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
-                // =========================
-                // 5. trả kết quả
-                // =========================
-
-                return Ok(new
-                {
-                    status = "SUCCESS",
-                    employeeId = employeeId,
-                    plate = plateNumber,
-                    action = action,
-                    parkingStatus = vehicle.ParkingStatus
-                });
+                return Ok(GateApiResponse.CreateSuccess(
+                    "Chưa có dữ liệu trước đó. Đã thêm mới phương tiện với trạng thái IN.",
+                    new
+                    {
+                        newVehicle.VehicleId,
+                        newVehicle.LicensePlate,
+                        newVehicle.EmployeeId,
+                        newVehicle.VehicleTypeId,
+                        newVehicle.Description,
+                        newVehicle.ParkingStatus
+                    }));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                await transaction.RollbackAsync();
+
+                return StatusCode(500, GateApiResponse.CreateError(
+                    "Có lỗi xảy ra khi xử lý dữ liệu.",
+                    ex.Message));
             }
+        }
+
+        [HttpGet("vehicle-by-employee/{employeeId:int}")]
+        public async Task<IActionResult> GetVehiclesByEmployee(int employeeId)
+        {
+            var employeeExists = await _context.Employees
+                .AnyAsync(e => e.EmployeeId == employeeId);
+
+            if (!employeeExists)
+            {
+                return NotFound(GateApiResponse.CreateError($"Không tìm thấy nhân viên có id = {employeeId}."));
+            }
+
+            var vehicles = await _context.Vehicles
+                .Where(v => v.EmployeeId == employeeId)
+                .Select(v => new
+                {
+                    v.VehicleId,
+                    v.LicensePlate,
+                    v.VehicleTypeId,
+                    v.EmployeeId,
+                    v.Description,
+                    v.ParkingStatus
+                })
+                .ToListAsync();
+
+            return Ok(GateApiResponse.CreateSuccess("Lấy danh sách xe thành công.", vehicles));
+        }
+
+        [HttpGet("vehicle-by-plate/{licensePlate}")]
+        public async Task<IActionResult> GetVehicleByPlate(string licensePlate)
+        {
+            var normalizedPlate = NormalizeLicensePlate(licensePlate);
+
+            if (string.IsNullOrWhiteSpace(normalizedPlate))
+            {
+                return BadRequest(GateApiResponse.CreateError("Biển số không hợp lệ."));
+            }
+
+            var vehicles = await _context.Vehicles
+                .Where(v => v.LicensePlate != null)
+                .ToListAsync();
+
+            var result = vehicles
+                .Where(v => NormalizeLicensePlate(v.LicensePlate) == normalizedPlate)
+                .Select(v => new
+                {
+                    v.VehicleId,
+                    v.LicensePlate,
+                    v.VehicleTypeId,
+                    v.EmployeeId,
+                    v.Description,
+                    v.ParkingStatus
+                })
+                .ToList();
+
+            if (!result.Any())
+            {
+                return NotFound(GateApiResponse.CreateError("Không tìm thấy biển số này."));
+            }
+
+            return Ok(GateApiResponse.CreateSuccess("Lấy thông tin xe thành công.", result));
+        }
+
+        [HttpGet("logs-by-plate/{licensePlate}")]
+        public async Task<IActionResult> GetLogsByPlate(string licensePlate)
+        {
+            var normalizedPlate = NormalizeLicensePlate(licensePlate);
+
+            if (string.IsNullOrWhiteSpace(normalizedPlate))
+            {
+                return BadRequest(GateApiResponse.CreateError("Biển số không hợp lệ."));
+            }
+
+            var logs = await _context.AccessLogs
+                .Where(x => x.CapturedLicensePlate != null)
+                .OrderByDescending(x => x.Timestamp)
+                .ToListAsync();
+
+            var result = logs
+                .Where(x => NormalizeLicensePlate(x.CapturedLicensePlate) == normalizedPlate)
+                .Select(x => new
+                {
+                    x.LogId,
+                    x.Timestamp,
+                    x.Direction,
+                    x.GateId,
+                    x.CameraId,
+                    x.CapturedLicensePlate,
+                    x.EmployeeId,
+                    x.ResultStatus,
+                    x.IsBypass,
+                    x.Note
+                })
+                .ToList();
+
+            return Ok(GateApiResponse.CreateSuccess("Lấy lịch sử theo biển số thành công.", result));
+        }
+
+        [HttpGet("logs-by-employee/{employeeId:int}")]
+        public async Task<IActionResult> GetLogsByEmployee(int employeeId)
+        {
+            var employeeExists = await _context.Employees
+                .AnyAsync(e => e.EmployeeId == employeeId);
+
+            if (!employeeExists)
+            {
+                return NotFound(GateApiResponse.CreateError($"Không tìm thấy nhân viên có id = {employeeId}."));
+            }
+
+            var result = await _context.AccessLogs
+                .Where(x => x.EmployeeId == employeeId)
+                .OrderByDescending(x => x.Timestamp)
+                .Select(x => new
+                {
+                    x.LogId,
+                    x.Timestamp,
+                    x.Direction,
+                    x.GateId,
+                    x.CameraId,
+                    x.CapturedLicensePlate,
+                    x.EmployeeId,
+                    x.ResultStatus,
+                    x.IsBypass,
+                    x.Note
+                })
+                .ToListAsync();
+
+            return Ok(GateApiResponse.CreateSuccess("Lấy lịch sử theo nhân viên thành công.", result));
+        }
+
+        private static string NormalizeLicensePlate(string? plate)
+        {
+            if (string.IsNullOrWhiteSpace(plate))
+                return string.Empty;
+
+            return plate.Trim()
+                        .ToUpper()
+                        .Replace(" ", "")
+                        .Replace("-", "");
+        }
+
+        private static string NormalizeParkingStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return "OUT";
+
+            return status.Trim().ToUpper() == "IN" ? "IN" : "OUT";
+        }
+    }
+
+    public class GateScanRequest
+    {
+        public string LicensePlate { get; set; } = string.Empty;
+        public int EmployeeId { get; set; }
+        public int? VehicleTypeId { get; set; }
+        public string? Description { get; set; }
+        public int? GateId { get; set; }
+        public int? CameraId { get; set; }
+    }
+
+    public class GateApiResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public object? Data { get; set; }
+
+        public static GateApiResponse CreateSuccess(string message, object? data = null)
+        {
+            return new GateApiResponse
+            {
+                Success = true,
+                Message = message,
+                Data = data
+            };
+        }
+
+        public static GateApiResponse CreateError(string message, object? data = null)
+        {
+            return new GateApiResponse
+            {
+                Success = false,
+                Message = message,
+                Data = data
+            };
         }
     }
 }

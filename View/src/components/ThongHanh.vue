@@ -58,9 +58,13 @@
             {{ lane.loading ? "Đang xử lý..." : "Tắt" }}
           </button>
 
-          <button class="btn btn-confirm" :disabled="lane.loading" @click="confirmLane(lane)">
-            Xác nhận
-          </button>
+          <button
+  class="btn btn-confirm"
+  :disabled="lane.loading || !lane.face.employeeId || !lane.plate.confirmedPlate"
+  @click="confirmLane(lane)"
+>
+  Xác nhận
+</button>
         </div>
 
         <div class="ip-row">
@@ -254,6 +258,7 @@ import * as faceLane1Api from "../services/faceApi"
 import * as plateLane1Api from "../services/biensoApi"
 import * as faceLane2Api from "../services/faceApi"
 import * as plateLane2Api from "../services/biensoApi"
+import { scanGate } from "../services/thonghanhAPI"
 
 function createFaceModule() {
   return {
@@ -969,14 +974,47 @@ export default {
       }
     },
 
-    confirmLane(lane) {
-      alert(
-        `Xác nhận ${lane.name}\n\n` +
-        `Employee ID: ${lane.face.employeeId || "-----"}\n` +
-        `Biển số: ${lane.plate.confirmedPlate || "-----"}\n\n` +
-        `Nút này hiện là placeholder.`
-      )
+    async confirmLane(lane) {
+  const employeeId = Number(lane.face.employeeId || 0)
+  const licensePlate = String(lane.plate.confirmedPlate || "").trim()
+
+  if (!employeeId) {
+    alert(`${lane.name}: chưa có Employee ID`)
+    return
+  }
+
+  if (!licensePlate) {
+    alert(`${lane.name}: chưa có biển số`)
+    return
+  }
+
+  try {
+    lane.loading = true
+
+    const payload = {
+      employeeId: employeeId,
+      licensePlate: licensePlate
     }
+
+    const res = await scanGate(payload)
+    const data = res.data
+
+    if (data?.success) {
+      alert(`${lane.name}: ${data.message}`)
+    } else {
+      alert(`${lane.name}: ${data?.message || "Xử lý thất bại"}`)
+    }
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Không gọi được API Gate"
+
+    alert(`${lane.name}: ${message}`)
+  } finally {
+    lane.loading = false
+  }
+}
   }
 }
 </script>
