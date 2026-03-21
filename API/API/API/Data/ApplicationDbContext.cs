@@ -239,7 +239,100 @@ public partial class ApplicationDbContext : DbContext
                   .HasConstraintName("FK_EmployeeFaceModel_Employee");
         });
 
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(e => e.DepartmentId).HasName("PK__Departme__B2079BED22FBEE13");
 
+            entity.HasData(
+                new Department { DepartmentId = 1, Name = "Phòng Kỹ thuật" },
+                new Department { DepartmentId = 2, Name = "Phòng Nhân sự" },
+                new Department { DepartmentId = 3, Name = "Phòng Bảo vệ" }
+            );
+        });
+
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.HasKey(e => e.PositionId).HasName("PK__Position__60BB9A79F338CF82");
+
+            entity.HasData(
+                new Position { PositionId = 1, Name = "Nhân viên" },
+                new Position { PositionId = 2, Name = "Trưởng nhóm" },
+                new Position { PositionId = 3, Name = "Bảo vệ" }
+            );
+        });
+
+        modelBuilder.Entity<Employee>(entity =>
+        {
+            entity.HasKey(e => e.EmployeeId).HasName("PK__Employee__7AD04F1101CCCAF2");
+
+            entity.Property(e => e.Status).HasDefaultValue(true);
+
+            entity.HasOne(d => d.Department)
+                  .WithMany(p => p.Employees)
+                  .HasConstraintName("FK_Employee_Department");
+
+            entity.HasOne(d => d.Position)
+                  .WithMany(p => p.Employees)
+                  .HasConstraintName("FK_Employee_Position");
+
+            entity.HasData(
+                new Employee
+                {
+                    EmployeeId = 1,
+                    DepartmentId = 1,
+                    PositionId = 1,
+                    FullName = "Phạm Ngọc Hoài Anh",
+                    Phone = "0900000001",
+                    Email = "a@company.local",
+                    FaceImageUrl = "/images/employees/a.jpg",
+                    Status = true
+                },
+                new Employee
+                {
+                    EmployeeId = 2,
+                    DepartmentId = 1,
+                    PositionId = 2,
+                    FullName = "Phạm Văn Thành",
+                    Phone = "0900000002",
+                    Email = "b@company.local",
+                    FaceImageUrl = "/images/employees/b.jpg",
+                    Status = true
+                },
+                new Employee
+                {
+                    EmployeeId = 3,
+                    DepartmentId = 2,
+                    PositionId = 1,
+                    FullName = "Hà Mạnh Hùng",
+                    Phone = "0900000003",
+                    Email = "c@company.local",
+                    FaceImageUrl = "/images/employees/c.jpg",
+                    Status = true
+                },
+                new Employee
+                {
+                    EmployeeId = 4,
+                    DepartmentId = 3,
+                    PositionId = 3,
+                    FullName = "Vũ Tiến Đạt",
+                    Phone = "0900000004",
+                    Email = "d@company.local",
+                    FaceImageUrl = "/images/employees/d.jpg",
+                    Status = true
+                },
+                new Employee
+                {
+                    EmployeeId = 5,
+                    DepartmentId = 3,
+                    PositionId = 3,
+                    FullName = "Nguyễn Quốc Việt",
+                    Phone = "0900000005",
+                    Email = "e@company.local",
+                    FaceImageUrl = "/images/employees/e.jpg",
+                    Status = true
+                }
+            );
+        });
         OnModelCreatingPartial(modelBuilder);
     }
 

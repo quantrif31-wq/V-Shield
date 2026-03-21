@@ -1,0 +1,9 @@
+{
+  "watch": {
+    "exclude": [
+      "wwwroot/uploads/**",
+      "wwwroot/uploads/VideoFace/**",
+      "wwwroot/uploads/VideoFace/video_notok/**"
+    ]
+  }
+}

@@ -161,7 +161,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$cGRk8CMj/N.LJGtA7QmFQ.8sBq7QV60DgEKD9RBhOTABydj2yAjAW",
+                            PasswordHash = "$2a$11$W5dyrBTt.oG27kvQFcX0ouMCinsEOqrpI5JpmnYkNqK1X447ztVR6",
                             Role = "Admin",
                             Username = "admin"
                         });
@@ -241,6 +241,23 @@ namespace API.Migrations
                         .HasName("PK__Departme__B2079BED22FBEE13");
 
                     b.ToTable("Department");
+
+                    b.HasData(
+                        new
+                        {
+                            DepartmentId = 1,
+                            Name = "Phòng Kỹ thuật"
+                        },
+                        new
+                        {
+                            DepartmentId = 2,
+                            Name = "Phòng Nhân sự"
+                        },
+                        new
+                        {
+                            DepartmentId = 3,
+                            Name = "Phòng Bảo vệ"
+                        });
                 });
 
             modelBuilder.Entity("API.Models.Employee", b =>
@@ -288,6 +305,63 @@ namespace API.Migrations
                     b.HasIndex("PositionId");
 
                     b.ToTable("Employee");
+
+                    b.HasData(
+                        new
+                        {
+                            EmployeeId = 1,
+                            DepartmentId = 1,
+                            Email = "a@company.local",
+                            FaceImageUrl = "/images/employees/a.jpg",
+                            FullName = "Phạm Ngọc Hoài Anh",
+                            Phone = "0900000001",
+                            PositionId = 1,
+                            Status = true
+                        },
+                        new
+                        {
+                            EmployeeId = 2,
+                            DepartmentId = 1,
+                            Email = "b@company.local",
+                            FaceImageUrl = "/images/employees/b.jpg",
+                            FullName = "Phạm Văn Thành",
+                            Phone = "0900000002",
+                            PositionId = 2,
+                            Status = true
+                        },
+                        new
+                        {
+                            EmployeeId = 3,
+                            DepartmentId = 2,
+                            Email = "c@company.local",
+                            FaceImageUrl = "/images/employees/c.jpg",
+                            FullName = "Hà Mạnh Hùng",
+                            Phone = "0900000003",
+                            PositionId = 1,
+                            Status = true
+                        },
+                        new
+                        {
+                            EmployeeId = 4,
+                            DepartmentId = 3,
+                            Email = "d@company.local",
+                            FaceImageUrl = "/images/employees/d.jpg",
+                            FullName = "Vũ Tiến Đạt",
+                            Phone = "0900000004",
+                            PositionId = 3,
+                            Status = true
+                        },
+                        new
+                        {
+                            EmployeeId = 5,
+                            DepartmentId = 3,
+                            Email = "e@company.local",
+                            FaceImageUrl = "/images/employees/e.jpg",
+                            FullName = "Nguyễn Quốc Việt",
+                            Phone = "0900000005",
+                            PositionId = 3,
+                            Status = true
+                        });
                 });
 
             modelBuilder.Entity("API.Models.EmployeeFaceModel", b =>
@@ -459,6 +533,23 @@ namespace API.Migrations
                         .HasName("PK__Position__60BB9A79F338CF82");
 
                     b.ToTable("Position");
+
+                    b.HasData(
+                        new
+                        {
+                            PositionId = 1,
+                            Name = "Nhân viên"
+                        },
+                        new
+                        {
+                            PositionId = 2,
+                            Name = "Trưởng nhóm"
+                        },
+                        new
+                        {
+                            PositionId = 3,
+                            Name = "Bảo vệ"
+                        });
                 });
 
             modelBuilder.Entity("API.Models.PreRegistration", b =>
