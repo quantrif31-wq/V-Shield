@@ -135,8 +135,29 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
         return parts.Length == 4 ? $"{parts[0]}.{parts[1]}.{parts[2]}" : string.Empty;
     }
 
-    private static string BuildDisplayName(string ip, string? title)
+    private static bool LooksLikeIpCameraLite(string body)
     {
+        return body.Contains("IP Camera Lite", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("audio.opus", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("live.flv", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("RTSP Server Closed", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("Set to close camera when no client connected", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildDisplayName(string ip, string? title, string body)
+    {
+        if (LooksLikeIpCameraLite(body))
+        {
+            if (string.IsNullOrWhiteSpace(title) ||
+                title.Contains("Server", StringComparison.OrdinalIgnoreCase) ||
+                title.Contains("IP Camera", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"IP Camera Lite {ip}";
+            }
+
+            return title.Trim();
+        }
+
         if (string.IsNullOrWhiteSpace(title) || title.Contains("IP Webcam", StringComparison.OrdinalIgnoreCase))
         {
             return $"IP Webcam {ip}";
@@ -164,6 +185,11 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
                body.Contains("browserfs.html", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool LooksLikeSupportedLanCamera(string body)
+    {
+        return LooksLikeIpWebcam(body) || LooksLikeIpCameraLite(body);
+    }
+
     private static IReadOnlyList<string> BuildRtspUrls(string ip, int port, string body)
     {
         var candidates = new List<string>();
@@ -174,6 +200,13 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
             {
                 candidates.Add(url);
             }
+        }
+
+        if (LooksLikeIpCameraLite(body) &&
+            body.Contains("RTSP Server Closed", StringComparison.OrdinalIgnoreCase) &&
+            !body.Contains(".sdp", StringComparison.OrdinalIgnoreCase))
+        {
+            return candidates;
         }
 
         if (body.Contains("h264.sdp", StringComparison.OrdinalIgnoreCase))
@@ -191,9 +224,12 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
             Add("h264_pcm.sdp");
         }
 
-        Add("h264.sdp");
-        Add("h264_ulaw.sdp");
-        Add("h264_pcm.sdp");
+        if (LooksLikeIpWebcam(body))
+        {
+            Add("h264.sdp");
+            Add("h264_ulaw.sdp");
+            Add("h264_pcm.sdp");
+        }
 
         return candidates;
     }
@@ -201,14 +237,15 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
     private static IpWebcamCandidate BuildCandidate(string ip, int port, string body)
     {
         var baseUrl = $"http://{ip}:{port}";
+        var isIpCameraLite = LooksLikeIpCameraLite(body);
         return new IpWebcamCandidate
         {
-            Name = BuildDisplayName(ip, ExtractTitle(body)),
+            Name = BuildDisplayName(ip, ExtractTitle(body), body),
             IpAddress = ip,
             Port = port,
             BaseUrl = baseUrl,
-            PreviewUrl = $"{baseUrl}/videofeed",
-            SnapshotUrl = $"{baseUrl}/shot.jpg",
+            PreviewUrl = isIpCameraLite ? $"{baseUrl}/video" : $"{baseUrl}/videofeed",
+            SnapshotUrl = isIpCameraLite ? string.Empty : $"{baseUrl}/shot.jpg",
             RtspUrls = BuildRtspUrls(ip, port, body)
         };
     }
@@ -235,7 +272,7 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
             }
 
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (!LooksLikeIpWebcam(body))
+            if (!LooksLikeSupportedLanCamera(body))
             {
                 return;
             }

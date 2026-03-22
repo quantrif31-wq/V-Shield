@@ -20,13 +20,13 @@
 
         <div class="bento-card quick-connect">
             <div class="bento-header-mini">
-                <h3 class="bento-title">Kết nối điện thoại / IP Webcam</h3>
+                <h3 class="bento-title">Kết nối điện thoại / camera LAN</h3>
                 <span class="badge minimal">LAN</span>
             </div>
 
             <div class="quick-grid">
                 <input v-model="phoneCamName" class="minimal-input" placeholder="Tên hiển thị" />
-                <input v-model="phoneCamUrl" class="minimal-input" placeholder="rtsp://user:pass@ip:554/stream" />
+                <input v-model="phoneCamUrl" class="minimal-input" placeholder="RTSP hoặc MJPEG/HTTP, ví dụ: http://192.168.101.40:8081/video" />
                 <select v-model="selectedManualSlotId" class="minimal-select slot-select">
                     <option value="auto">Gán vào: Tự động</option>
                     <option v-for="slot in cameras" :key="slot.id" :value="String(slot.id)">
@@ -34,7 +34,7 @@
                     </option>
                 </select>
                 <button class="btn-ghost" :disabled="discoveryLoading" @click="discoverPhoneCams">
-                    {{ discoveryLoading ? "Đang quét IP Webcam..." : "Tự tìm IP Webcam" }}
+                    {{ discoveryLoading ? "Đang quét camera LAN..." : "Tự tìm camera LAN" }}
                 </button>
                 <button class="btn-primary" :disabled="connectLoading" @click="connectPhoneCam">
                     {{ connectLoading ? "Đang kết nối..." : "Bật camera" }}
@@ -63,7 +63,7 @@
                                     {{ slot.slotName }}
                                 </option>
                             </select>
-                            <button class="btn-primary mini" @click="connectDiscoveredCamera(camera, getPrimaryRtspUrl(camera))">Kết nối ngay</button>
+                            <button class="btn-primary mini" @click="connectDiscoveredCamera(camera, getPrimaryConnectUrl(camera))">Kết nối ngay</button>
                         </div>
                     </div>
 
@@ -71,6 +71,13 @@
                     <div class="discovery-url">MJPEG: {{ camera.previewUrl }}</div>
 
                     <div class="rtsp-actions">
+                        <button
+                            v-if="camera.previewUrl"
+                            class="rtsp-chip"
+                            @click="applyDiscoveredCamera(camera, camera.previewUrl)"
+                        >
+                            MJPEG
+                        </button>
                         <button
                             v-for="rtspUrl in camera.rtspUrls"
                             :key="rtspUrl"
@@ -87,7 +94,7 @@
             <p v-if="discoveryError" class="hint danger">{{ discoveryError }}</p>
             <p v-if="connectMessage" class="hint success">{{ connectMessage }}</p>
             <p v-if="connectError" class="hint danger">{{ connectError }}</p>
-            <p class="hint shortcut-hint">Desktop: nhấp đúp để mở toàn màn hình, chuột phải hoặc Esc để quay lại. Mobile: dùng nút Toàn màn hình / Quay lại trên camera.</p>
+            <p class="hint shortcut-hint">iPhone IP Camera Lite: dùng URL `http://IP:8081/video`. Desktop: nhấp đúp để mở toàn màn hình, chuột phải hoặc Esc để quay lại. Mobile: dùng nút Toàn màn hình / Quay lại trên camera.</p>
         </div>
 
         <div v-if="expandedCameraId" class="camera-modal-backdrop" @click="toggleCameraExpand(null)"></div>
@@ -345,6 +352,7 @@ const getCameraStatusText = (cam) => {
 }
 
 const getPrimaryRtspUrl = (camera) => camera?.rtspUrls?.[0] || ""
+const getPrimaryConnectUrl = (camera) => getPrimaryRtspUrl(camera) || camera?.previewUrl || camera?.baseUrl || ""
 const getCameraKey = (camera) => `${camera.ipAddress}:${camera.port}`
 
 const getRtspLabel = (url) => {
@@ -354,11 +362,24 @@ const getRtspLabel = (url) => {
     return "RTSP H264"
 }
 
+const isHttpCameraUrl = (url) => /^https?:\/\//i.test(url || "")
+
 const getPreviewUrlFromStream = (streamUrl) => {
     try {
         const parsedUrl = new URL(streamUrl)
-        const port = parsedUrl.port || "8080"
-        return `http://${parsedUrl.hostname}:${port}/videofeed`
+        const protocol = parsedUrl.protocol.toLowerCase()
+        const port = parsedUrl.port ? `:${parsedUrl.port}` : ""
+
+        if (protocol === "http:" || protocol === "https:") {
+            const path = parsedUrl.pathname || "/"
+            if (path === "/" || !path.trim()) {
+                return `${parsedUrl.protocol}//${parsedUrl.hostname}${port}/video`
+            }
+
+            return `${parsedUrl.protocol}//${parsedUrl.hostname}${port}${parsedUrl.pathname}${parsedUrl.search}`
+        }
+
+        return `http://${parsedUrl.hostname}${port || ":8080"}/videofeed`
     } catch {
         return ""
     }
@@ -375,6 +396,10 @@ const getBaseUrlFromStream = (streamUrl) => {
 }
 
 const getSnapshotUrlFromStream = (streamUrl) => {
+    if (isHttpCameraUrl(streamUrl)) {
+        return ""
+    }
+
     const baseUrl = getBaseUrlFromStream(streamUrl)
     return baseUrl ? `${baseUrl}/shot.jpg` : ""
 }
@@ -424,7 +449,7 @@ const assignCameraToSlot = (payload, preferredSlotId = "auto") => {
     const slot = cameras.value[targetIndex]
     cameras.value[targetIndex] = {
         ...slot,
-        sourceName: payload.name || `IP Webcam ${targetIndex + 1}`,
+        sourceName: payload.name || `Camera LAN ${targetIndex + 1}`,
         baseUrl: payload.baseUrl,
         streamUrl: payload.streamUrl,
         previewUrl: payload.previewUrl,
@@ -464,8 +489,9 @@ const handlePreviewLoad = (cameraId) => {
 
 const applyDiscoveredCamera = (camera, rtspUrl) => {
     phoneCamName.value = camera.name || ""
-    phoneCamUrl.value = rtspUrl || ""
-    phoneCamPreviewUrl.value = camera.previewUrl || getPreviewUrlFromStream(rtspUrl || "")
+    const connectUrl = rtspUrl || getPrimaryConnectUrl(camera)
+    phoneCamUrl.value = connectUrl || ""
+    phoneCamPreviewUrl.value = camera.previewUrl || getPreviewUrlFromStream(connectUrl || "")
     selectedManualSlotId.value = slotSelections.value[getCameraKey(camera)] || "auto"
     clearConnectState()
 }
@@ -630,13 +656,13 @@ const discoverPhoneCams = async () => {
         slotSelections.value = nextSelections
 
         if (!discoveredCameras.value.length) {
-            discoveryError.value = "Chưa tìm thấy IP Webcam trong cùng mạng LAN."
+            discoveryError.value = "Chưa tìm thấy camera LAN phù hợp trong cùng mạng."
             return
         }
 
-        discoveryMessage.value = `Tìm thấy ${discoveredCameras.value.length} thiết bị IP Webcam.`
+        discoveryMessage.value = `Tìm thấy ${discoveredCameras.value.length} thiết bị camera LAN.`
     } catch (err) {
-        discoveryError.value = err?.response?.data?.message || err?.message || "Quét IP Webcam thất bại."
+        discoveryError.value = err?.response?.data?.message || err?.message || "Quét camera LAN thất bại."
     } finally {
         discoveryLoading.value = false
     }
@@ -646,7 +672,7 @@ const connectPhoneCam = async () => {
     clearConnectState()
 
     if (!phoneCamUrl.value.trim()) {
-        connectError.value = "Nhập URL RTSP của điện thoại."
+        connectError.value = "Nhập URL camera. Với iPhone IP Camera Lite, dùng dạng http://IP:8081/video."
         return
     }
 
@@ -672,18 +698,19 @@ const connectDiscoveredCamera = async (camera, rtspUrl) => {
     connectLoading.value = true
 
     try {
-        applyDiscoveredCamera(camera, rtspUrl)
+        const connectUrl = rtspUrl || getPrimaryConnectUrl(camera)
+        applyDiscoveredCamera(camera, connectUrl)
 
         const payload = buildCameraPayload(
             camera.name,
-            rtspUrl || getPrimaryRtspUrl(camera),
+            connectUrl,
             camera.previewUrl,
             camera.snapshotUrl,
             camera.baseUrl
         )
 
         if (!payload.streamUrl) {
-            connectError.value = `Thiết bị ${camera.name} không có RTSP hợp lệ.`
+            connectError.value = `Thiết bị ${camera.name} chưa có URL camera hợp lệ.`
             return
         }
 
@@ -707,7 +734,7 @@ const connectAllDiscoveredCameras = async () => {
     clearConnectState()
 
     if (!discoveredCameras.value.length) {
-        connectError.value = "Hãy quét IP Webcam trước khi kết nối tất cả."
+        connectError.value = "Hãy quét camera LAN trước khi kết nối tất cả."
         return
     }
 
@@ -718,14 +745,14 @@ const connectAllDiscoveredCameras = async () => {
         const skippedNames = []
 
         for (const camera of discoveredCameras.value) {
-            const rtspUrl = getPrimaryRtspUrl(camera)
+            const connectUrl = getPrimaryConnectUrl(camera)
 
-            if (!rtspUrl) {
+            if (!connectUrl) {
                 skippedNames.push(camera.name || `${camera.ipAddress}:${camera.port}`)
                 continue
             }
 
-            const payload = buildCameraPayload(camera.name, rtspUrl, camera.previewUrl, camera.snapshotUrl, camera.baseUrl)
+            const payload = buildCameraPayload(camera.name, connectUrl, camera.previewUrl, camera.snapshotUrl, camera.baseUrl)
             const result = await connectCameraPayload(
                 payload,
                 slotSelections.value[getCameraKey(camera)] || "auto"
@@ -747,7 +774,7 @@ const connectAllDiscoveredCameras = async () => {
         let finalMessage = `Đã gắn ${assignedSlots.length} thiết bị vào ${assignedSlots.join(", ")}.`
 
         if (skippedNames.length) {
-            finalMessage += ` Bỏ qua ${skippedNames.length} thiết bị chưa có RTSP hoặc không còn ô trống.`
+            finalMessage += ` Bỏ qua ${skippedNames.length} thiết bị chưa có URL phù hợp hoặc không còn ô trống.`
         }
 
         connectMessage.value = finalMessage
