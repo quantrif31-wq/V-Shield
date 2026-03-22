@@ -1,4 +1,5 @@
 .vs/
+.dotnet-cli/
 # ===== Python =====
 __pycache__/
 *.pyc
@@ -23,6 +24,7 @@ dist/
 # ===== ASP.NET =====
 bin/
 obj/
+API/API/API/wwwroot/uploads/faces/
 
 # ===== VSCode =====
 .vscode/

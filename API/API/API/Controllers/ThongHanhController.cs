@@ -17,11 +17,11 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// Nhận biển số + employeeId
-        /// - Nếu đúng biển số + đúng employee đã tồn tại => toggle IN/OUT
+        /// Nhận biển số + employeeId.
+        /// - Nếu đúng biển số + đúng employee đã tồn tại => toggle IN/OUT.
         /// - Nếu chưa có đúng cặp đó:
-        ///     + Nếu biển đang thuộc người khác và đang IN => fail
-        ///     + Ngược lại => thêm mới với trạng thái IN
+        ///     + Nếu biển đang thuộc người khác và đang IN => fail.
+        ///     + Ngược lại => thêm mới với trạng thái IN.
         /// </summary>
         [HttpPost("scan")]
         public async Task<IActionResult> ScanVehicle([FromBody] GateScanRequest request)
@@ -55,7 +55,6 @@ namespace API.Controllers
 
             try
             {
-                // Lấy tất cả xe có cùng biển số sau khi normalize
                 var samePlateVehicles = await _context.Vehicles
                     .Where(v => v.LicensePlate != null)
                     .ToListAsync();
@@ -64,7 +63,6 @@ namespace API.Controllers
                     .Where(v => NormalizeLicensePlate(v.LicensePlate) == normalizedPlate)
                     .ToList();
 
-                // 1. Tìm đúng cặp biển số + employeeId
                 var currentVehicle = samePlateVehicles
                     .FirstOrDefault(v => v.EmployeeId == request.EmployeeId);
 
@@ -131,7 +129,6 @@ namespace API.Controllers
                         $"Biển số đang được gửi bởi 1 nhân viên có id là {conflictVehicle.EmployeeId}."));
                 }
 
-                // 3. Không có đúng cặp, không bị conflict => thêm mới với trạng thái IN
                 var newVehicle = new Vehicle
                 {
                     LicensePlate = normalizedPlate,
@@ -313,18 +310,22 @@ namespace API.Controllers
         private static string NormalizeLicensePlate(string? plate)
         {
             if (string.IsNullOrWhiteSpace(plate))
+            {
                 return string.Empty;
+            }
 
             return plate.Trim()
-                        .ToUpper()
-                        .Replace(" ", "")
-                        .Replace("-", "");
+                .ToUpper()
+                .Replace(" ", string.Empty)
+                .Replace("-", string.Empty);
         }
 
         private static string NormalizeParkingStatus(string? status)
         {
             if (string.IsNullOrWhiteSpace(status))
+            {
                 return "OUT";
+            }
 
             return status.Trim().ToUpper() == "IN" ? "IN" : "OUT";
         }

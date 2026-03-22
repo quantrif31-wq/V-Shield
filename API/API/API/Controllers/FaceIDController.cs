@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
+using API.Services;
+using System.Text;
 
 namespace API.Controllers
 {
@@ -12,11 +14,18 @@ namespace API.Controllers
         private static readonly HttpClient client = new HttpClient();
 
         private static Process? pythonProcess;
+        private static readonly StringBuilder pythonLogBuffer = new StringBuilder();
+        private readonly ILanCameraDiscoveryService _lanCameraDiscoveryService;
 
         string pythonApi = "http://127.0.0.1:8000";
         string pythonFolder = Path.GetFullPath(
     Path.Combine("..", "..", "..", "AI_Project", "face_recognition")
 );
+
+        public FaceIDController(ILanCameraDiscoveryService lanCameraDiscoveryService)
+        {
+            _lanCameraDiscoveryService = lanCameraDiscoveryService;
+        }
 
         // =========================
 
@@ -32,7 +41,30 @@ namespace API.Controllers
 
             StartPythonServer();
 
-            await Task.Delay(3000);
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                if (pythonProcess != null && pythonProcess.HasExited)
+                {
+                    var log = pythonLogBuffer.ToString().Trim();
+                    throw new InvalidOperationException(
+                        string.IsNullOrWhiteSpace(log)
+                            ? "Python FaceID server da thoat truoc khi khoi dong xong."
+                            : $"Python FaceID server khoi dong that bai: {log}"
+                    );
+                }
+
+                try
+                {
+                    var res = await client.GetAsync($"{pythonApi}/");
+                    if (res.IsSuccessStatusCode)
+                        return;
+                }
+                catch { }
+
+                await Task.Delay(1000);
+            }
+
+            throw new InvalidOperationException("Khong the ket noi toi Python FaceID server tai 127.0.0.1:8000.");
         }
 
         // =========================
@@ -42,16 +74,40 @@ namespace API.Controllers
             if (pythonProcess != null && !pythonProcess.HasExited)
                 return;
 
+            pythonLogBuffer.Clear();
+            var pythonExe = Path.Combine(pythonFolder, "venv", "Scripts", "python.exe");
+
+            if (!System.IO.File.Exists(pythonExe))
+                throw new FileNotFoundException($"Khong tim thay Python venv: {pythonExe}");
+
             ProcessStartInfo psi = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
+                FileName = pythonExe,
                 WorkingDirectory = pythonFolder,
-                Arguments = "/c venv\\Scripts\\activate && uvicorn FaceID:app --port 8000",
+                Arguments = "-m uvicorn FaceID:app --port 8000",
                 CreateNoWindow = true,
-                UseShellExecute = false
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
             };
 
             pythonProcess = Process.Start(psi);
+
+            if (pythonProcess == null)
+                throw new InvalidOperationException("Khong the khoi dong Python FaceID process.");
+
+            pythonProcess.OutputDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    pythonLogBuffer.AppendLine(e.Data);
+            };
+            pythonProcess.ErrorDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    pythonLogBuffer.AppendLine(e.Data);
+            };
+            pythonProcess.BeginOutputReadLine();
+            pythonProcess.BeginErrorReadLine();
         }
 
         // =========================
@@ -77,12 +133,19 @@ namespace API.Controllers
         [HttpGet("status")]
         public async Task<IActionResult> Status()
         {
-            await EnsurePythonRunning();
+            try
+            {
+                await EnsurePythonRunning();
 
-            var res = await client.GetAsync($"{pythonApi}/camera/status");
-            var data = await res.Content.ReadAsStringAsync();
+                var res = await client.GetAsync($"{pythonApi}/camera/status");
+                var data = await res.Content.ReadAsStringAsync();
 
-            return Content(data, "application/json");
+                return Content(data, "application/json");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = ex.Message });
+            }
         }
 
         // =========================
@@ -92,12 +155,25 @@ namespace API.Controllers
         [HttpPost("start")]
         public async Task<IActionResult> StartCamera(string ip)
         {
-            await EnsurePythonRunning();
+            try
+            {
+                await EnsurePythonRunning();
 
-            var res = await client.PostAsync($"{pythonApi}/camera/start?ip_url={ip}", null);
-            var data = await res.Content.ReadAsStringAsync();
+                var encodedIp = Uri.EscapeDataString(ip);
+                var res = await client.PostAsync($"{pythonApi}/camera/start?ip_url={encodedIp}", null);
+                var data = await res.Content.ReadAsStringAsync();
 
-            return Content(data, "application/json");
+                return new ContentResult
+                {
+                    StatusCode = (int)res.StatusCode,
+                    Content = data,
+                    ContentType = "application/json"
+                };
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = ex.Message });
+            }
         }
 
         // =========================
@@ -107,12 +183,40 @@ namespace API.Controllers
         [HttpPost("stop")]
         public async Task<IActionResult> StopCamera()
         {
-            await EnsurePythonRunning();
+            try
+            {
+                await EnsurePythonRunning();
 
-            var res = await client.PostAsync($"{pythonApi}/camera/stop", null);
-            var data = await res.Content.ReadAsStringAsync();
+                var res = await client.PostAsync($"{pythonApi}/camera/stop", null);
+                var data = await res.Content.ReadAsStringAsync();
 
-            return Content(data, "application/json");
+                return new ContentResult
+                {
+                    StatusCode = (int)res.StatusCode,
+                    Content = data,
+                    ContentType = "application/json"
+                };
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(503, new { message = ex.Message });
+            }
+        }
+
+        // =========================
+        // DISCOVER IP WEBCAM
+        // =========================
+
+        [HttpGet("discover-ipwebcam")]
+        public async Task<IActionResult> DiscoverIpWebcam(CancellationToken cancellationToken)
+        {
+            var cameras = await _lanCameraDiscoveryService.DiscoverIpWebcamsAsync(cancellationToken);
+
+            return Ok(new
+            {
+                count = cameras.Count,
+                cameras
+            });
         }
 
         // =========================

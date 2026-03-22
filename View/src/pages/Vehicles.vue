@@ -194,12 +194,76 @@
 
                         <div class="input-pane">
                             <label>Chủ sở hữu (Nhân viên) <span class="req">*</span></label>
-                            <select v-model="form.employeeId" class="sleek-select" required>
-                                <option :value="null">-- Chọn nhân viên --</option>
-                                <option v-for="emp in employeeList" :key="emp.employeeId" :value="emp.employeeId">
-                                    {{ emp.fullName }} - ID: {{ emp.employeeId }}
-                                </option>
-                            </select>
+                            <div class="combobox-wrapper" v-click-outside="closeOwnerDropdown">
+                                <div class="input-with-avatar">
+                                    <div v-if="selectedOwnerEmployee && !showOwnerDropdown" class="selected-avatar-preview">
+                                        <img
+                                            v-if="canShowOwnerAvatar(selectedOwnerEmployee)"
+                                            :src="getOwnerAvatarSrc(selectedOwnerEmployee)"
+                                            class="avatar-img avatar-mini-inline"
+                                            @error="markOwnerAvatarBroken(selectedOwnerEmployee.employeeId)"
+                                        />
+                                        <div
+                                            v-else
+                                            class="avatar mini avatar-mini-inline"
+                                            :style="{ background: getAvatarColor(selectedOwnerEmployee.employeeId || 0) }"
+                                        >
+                                            {{ getInitials(selectedOwnerEmployee.fullName) }}
+                                        </div>
+                                    </div>
+
+                                    <input
+                                        v-model="ownerSearchQuery"
+                                        type="text"
+                                        class="sleek-input combobox-input"
+                                        :class="{ 'has-avatar': selectedOwnerEmployee && !showOwnerDropdown }"
+                                        placeholder="-- Chọn nhân viên --"
+                                        required
+                                        @focus="onOwnerInputFocus"
+                                        @input="onOwnerInputChange"
+                                    />
+                                </div>
+
+                                <svg class="dropdown-icon" :class="{ rotated: showOwnerDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+
+                                <div v-if="showOwnerDropdown" class="combobox-dropdown">
+                                    <div v-if="filteredOwnerEmployees.length === 0" class="no-results">
+                                        Không tìm thấy nhân viên
+                                    </div>
+
+                                    <div
+                                        v-for="emp in filteredOwnerEmployees"
+                                        :key="emp.employeeId"
+                                        class="combobox-item"
+                                        :class="{ selected: form.employeeId === emp.employeeId }"
+                                        @click="selectOwner(emp)"
+                                    >
+                                        <img
+                                            v-if="canShowOwnerAvatar(emp)"
+                                            :src="getOwnerAvatarSrc(emp)"
+                                            class="avatar-img avatar-img-mini"
+                                            @error="markOwnerAvatarBroken(emp.employeeId)"
+                                        />
+                                        <div
+                                            v-else
+                                            class="avatar mini"
+                                            :style="{ background: getAvatarColor(emp.employeeId || 0) }"
+                                        >
+                                            {{ getInitials(emp.fullName) }}
+                                        </div>
+
+                                        <div class="emp-details">
+                                            <span class="emp-name">{{ emp.fullName }}</span>
+                                            <span class="emp-meta">
+                                                ID: {{ emp.employeeId }}
+                                                <span v-if="emp.departmentName">• {{ emp.departmentName }}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="input-pane">
@@ -270,6 +334,9 @@ const editingVehicle = ref(null)
 const saving = ref(false)
 const modalError = ref('')
 const deleteConfirm = ref(null)
+const showOwnerDropdown = ref(false)
+const ownerSearchQuery = ref('')
+const brokenOwnerAvatarIds = ref({})
 
 const form = ref({ licensePlate: '', vehicleTypeId: null, employeeId: null, description: '' })
 
@@ -321,6 +388,28 @@ const vehicleTypes = computed(() => {
 })
 
 const vehicleTypeCount = computed(() => vehicleTypes.value.length)
+
+const selectedOwnerEmployee = computed(() => {
+    if (!form.value.employeeId) return null
+    return employeeList.value.find(e => e.employeeId === form.value.employeeId) || null
+})
+
+const filteredOwnerEmployees = computed(() => {
+    const list = employeeList.value || []
+    if (!ownerSearchQuery.value) return list
+
+    const selectedEmp = selectedOwnerEmployee.value
+    if (selectedEmp && ownerSearchQuery.value === selectedEmp.fullName) {
+        return list
+    }
+
+    const q = ownerSearchQuery.value.toLowerCase()
+    return list.filter(emp =>
+        emp?.fullName?.toLowerCase().includes(q) ||
+        String(emp?.employeeId || '').includes(q) ||
+        emp?.departmentName?.toLowerCase().includes(q)
+    )
+})
 
 let filterTimer = null
 function debouncedFilter() {
@@ -379,6 +468,7 @@ function openModal(v = null) {
             employeeId: v.employeeId || null,
             description: v.description || ''
         }
+        ownerSearchQuery.value = v.employeeFullName || ''
         // Validate existing plate
         if (v.licensePlate) {
             plateValidation.touched = true
@@ -391,7 +481,9 @@ function openModal(v = null) {
         }
     } else {
         form.value = { licensePlate: '', vehicleTypeId: null, employeeId: null, description: '' }
+        ownerSearchQuery.value = ''
     }
+    showOwnerDropdown.value = false
     showModal.value = true
 }
 
@@ -399,6 +491,8 @@ function closeModal() {
     showModal.value = false
     modalError.value = ''
     editingVehicle.value = null
+    showOwnerDropdown.value = false
+    ownerSearchQuery.value = ''
 }
 
 async function saveVehicle() {
@@ -474,10 +568,67 @@ async function executeDelete() {
 }
 
 // ─── Helpers ────────────────────────────────────────────────
+const vClickOutside = {
+    mounted(el, binding) {
+        el.clickOutsideEvent = function (event) {
+            if (!(el === event.target || el.contains(event.target))) {
+                binding.value(event, el)
+            }
+        }
+        document.addEventListener('click', el.clickOutsideEvent)
+    },
+    unmounted(el) {
+        document.removeEventListener('click', el.clickOutsideEvent)
+    }
+}
+
+function onOwnerInputFocus() {
+    showOwnerDropdown.value = true
+}
+
+function onOwnerInputChange() {
+    showOwnerDropdown.value = true
+
+    if (!selectedOwnerEmployee.value) return
+    if (ownerSearchQuery.value !== selectedOwnerEmployee.value.fullName) {
+        form.value.employeeId = null
+    }
+}
+
+function selectOwner(emp) {
+    form.value.employeeId = emp.employeeId
+    ownerSearchQuery.value = emp.fullName
+    showOwnerDropdown.value = false
+}
+
+function closeOwnerDropdown() {
+    showOwnerDropdown.value = false
+
+    if (selectedOwnerEmployee.value) {
+        ownerSearchQuery.value = selectedOwnerEmployee.value.fullName
+    } else {
+        ownerSearchQuery.value = ''
+    }
+}
+
 function getEmployeeFace(empId) {
     if (!empId) return null;
     const emp = employeeList.value.find(e => e.employeeId === empId);
     return emp ? emp.faceImageUrl : null;
+}
+
+function canShowOwnerAvatar(employee) {
+    return !!employee?.faceImageUrl && !brokenOwnerAvatarIds.value[employee.employeeId]
+}
+
+function getOwnerAvatarSrc(employee) {
+    if (!employee?.faceImageUrl) return ''
+    return employee.faceImageUrl.startsWith('http') ? employee.faceImageUrl : `${API_BASE}${employee.faceImageUrl}`
+}
+
+function markOwnerAvatarBroken(employeeId) {
+    if (!employeeId || brokenOwnerAvatarIds.value[employeeId]) return
+    brokenOwnerAvatarIds.value = { ...brokenOwnerAvatarIds.value, [employeeId]: true }
 }
 
 function getInitials(name) {
@@ -555,6 +706,7 @@ onMounted(async () => {
 
 .user-cell { display: flex; align-items: center; gap: 14px; }
 .avatar, .avatar-img { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; font-size: 0.8rem; object-fit: cover; }
+.avatar.mini, .avatar-img-mini { width: 32px; height: 32px; font-size: 0.78rem; flex-shrink: 0; }
 .user-info { display: flex; flex-direction: column; }
 .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
 .user-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
@@ -593,6 +745,25 @@ onMounted(async () => {
 
 .sleek-input, .sleek-select { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.9rem; }
 .sleek-input:focus, .sleek-select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
+
+/* Owner Combobox */
+.combobox-wrapper { position: relative; width: 100%; border-radius: 8px; }
+.input-with-avatar { position: relative; width: 100%; display: flex; align-items: center; }
+.selected-avatar-preview { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 2; }
+.avatar-mini-inline { width: 24px; height: 24px; font-size: 0.7rem; }
+.combobox-input { padding-right: 40px; background: #fff !important; cursor: text; }
+.combobox-input.has-avatar { padding-left: 52px; }
+.dropdown-icon { position: absolute; right: 14px; top: 14px; width: 18px; height: 18px; color: var(--accent-primary); pointer-events: none; transition: transform 0.2s; }
+.dropdown-icon.rotated { transform: rotate(180deg); }
+.combobox-dropdown { position: absolute; top: calc(100% + 4px); left: 0; width: 100%; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 100; padding: 4px 0; }
+.combobox-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color); }
+.combobox-item:last-child { border-bottom: none; }
+.combobox-item:hover { background: rgba(16, 121, 196, 0.03); }
+.combobox-item.selected { background: rgba(16, 121, 196, 0.06); }
+.emp-details { display: flex; flex-direction: column; min-width: 0; }
+.emp-name { font-size: 0.95rem; font-weight: 500; color: var(--text-primary); }
+.emp-meta { font-size: 0.83rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.no-results { padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.9rem; font-style: italic; }
 
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .modal-actions:not(.centered) .btn { width: auto; flex: 0 0 auto; }
