@@ -161,7 +161,7 @@
                     </div>
                     
                     <form @submit.prevent="saveVehicle" class="modal-body">
-                        <div class="grid-2">
+                        <div class="grid-2" :class="{ 'grid-1': !editingVehicle }">
                             <div class="input-pane">
                                 <label>Biển số xe <span class="req">*</span></label>
                                 <input v-model="form.licensePlate" type="text" class="sleek-input" 
@@ -180,15 +180,22 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="input-pane">
+                            <div v-if="editingVehicle" class="input-pane">
                                 <label>Loại xe</label>
                                 <select v-model="form.vehicleTypeId" class="sleek-select">
                                     <option :value="null">-- Chọn loại xe --</option>
-                                    <option :value="1">Ô tô</option>
-                                    <option :value="2">Xe máy</option>
-                                    <option :value="3">Xe đạp</option>
-                                    <option :value="4">Xe tải</option>
+                                    <option v-for="type in vehicleTypeOptions" :key="type.vehicleTypeId" :value="type.vehicleTypeId">
+                                        {{ type.typeName }}
+                                    </option>
                                 </select>
+                                <small class="field-note">Chỉ chỉnh tay loại xe khi cập nhật phương tiện.</small>
+                            </div>
+                            <div v-else class="input-pane">
+                                <label>Loại xe</label>
+                                <div class="auto-detected-type" :class="{ ready: !!inferredVehicleTypeId }">
+                                    <strong>{{ inferredVehicleTypeLabel }}</strong>
+                                    <span>Tự động nhận diện từ biển số khi đăng ký mới.</span>
+                                </div>
                             </div>
                         </div>
 
@@ -337,6 +344,7 @@ const deleteConfirm = ref(null)
 const showOwnerDropdown = ref(false)
 const ownerSearchQuery = ref('')
 const brokenOwnerAvatarIds = ref({})
+const vehicleTypeOptions = ref([])
 
 const form = ref({ licensePlate: '', vehicleTypeId: null, employeeId: null, description: '' })
 
@@ -355,6 +363,9 @@ function onPlateInput() {
     if (!val) {
         plateValidation.touched = false
         plateValidation.isValid = false
+        if (!editingVehicle.value) {
+            form.value.vehicleTypeId = null
+        }
         return
     }
     plateValidation.touched = true
@@ -364,6 +375,9 @@ function onPlateInput() {
     plateValidation.typeLabel = getVehicleTypeLabel(result.type)
     plateValidation.cleanedPlate = result.cleanedPlate
     plateValidation.corrected = result.cleanedPlate !== result.rawInput
+    if (!editingVehicle.value) {
+        form.value.vehicleTypeId = result.isValid ? (resolveVehicleTypeIdByPlateType(result.type) || null) : null
+    }
 }
 
 const toast = ref(null)
@@ -392,6 +406,41 @@ const vehicleTypeCount = computed(() => vehicleTypes.value.length)
 const selectedOwnerEmployee = computed(() => {
     if (!form.value.employeeId) return null
     return employeeList.value.find(e => e.employeeId === form.value.employeeId) || null
+})
+
+const normalizeVehicleTypeName = (name) =>
+    String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+
+const resolveVehicleTypeIdByPlateType = (plateType) => {
+    const aliases = plateType === 'Car'
+        ? ['o to', 'xe hoi', 'car']
+        : plateType === 'Motorcycle'
+            ? ['xe may', 'motorcycle', 'motorbike', 'moto']
+            : []
+
+    if (!aliases.length) return null
+
+    const matchedType = vehicleTypeOptions.value.find((item) => {
+        const normalizedName = normalizeVehicleTypeName(item.typeName)
+        return aliases.some((alias) => normalizedName.includes(alias))
+    })
+
+    return matchedType?.vehicleTypeId || null
+}
+
+const inferredVehicleTypeId = computed(() => {
+    if (!plateValidation.isValid) return null
+    return resolveVehicleTypeIdByPlateType(plateValidation.type)
+})
+
+const inferredVehicleTypeLabel = computed(() => {
+    if (!plateValidation.touched) return 'Sẽ tự nhận diện sau khi nhập biển số'
+    if (!plateValidation.isValid || !inferredVehicleTypeId.value) return 'Chưa xác định được loại xe'
+    return getVehicleTypeLabel(plateValidation.type)
 })
 
 const filteredOwnerEmployees = computed(() => {
@@ -440,6 +489,15 @@ async function fetchVehicles() {
         loadError.value = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra API.'
     } finally {
         loading.value = false
+    }
+}
+
+async function fetchVehicleTypes() {
+    try {
+        const res = await vehicleApi.getTypes()
+        vehicleTypeOptions.value = Array.isArray(res.data) ? res.data : []
+    } catch {
+        vehicleTypeOptions.value = []
     }
 }
 
@@ -510,6 +568,11 @@ async function saveVehicle() {
     if (plateResult.cleanedPlate !== plateResult.rawInput) {
         form.value.licensePlate = plateResult.cleanedPlate
     }
+    const inferredTypeId = resolveVehicleTypeIdByPlateType(plateResult.type)
+    if (!editingVehicle.value && !inferredTypeId) {
+        modalError.value = 'Không thể đối chiếu loại xe từ danh mục trong hệ thống. Vui lòng kiểm tra lại bảng VehicleType.'
+        return
+    }
     if (!form.value.employeeId) {
         modalError.value = 'Vui lòng chọn nhân viên sở hữu.'
         return
@@ -531,7 +594,7 @@ async function saveVehicle() {
             // Tạo mới
             await vehicleApi.create({
                 licensePlate: form.value.licensePlate.trim(),
-                vehicleTypeId: form.value.vehicleTypeId,
+                vehicleTypeId: inferredTypeId,
                 employeeId: form.value.employeeId,
                 description: form.value.description || null
             })
@@ -655,7 +718,7 @@ function getTypeIcon(typeName) {
 
 // ─── Init ───────────────────────────────────────────────────
 onMounted(async () => {
-    await Promise.all([fetchVehicles(), fetchEmployees()])
+    await Promise.all([fetchVehicles(), fetchEmployees(), fetchVehicleTypes()])
 })
 </script>
 
@@ -738,13 +801,39 @@ onMounted(async () => {
 
 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-1 { grid-template-columns: 1fr; }
 .input-pane { display: flex; flex-direction: column; gap: 8px; }
 .input-pane label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
 .req { color: var(--accent-danger); }
 .char-count { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+.field-note { font-size: 0.8rem; color: var(--text-muted); }
 
 .sleek-input, .sleek-select { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.9rem; }
 .sleek-input:focus, .sleek-select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
+.auto-detected-type {
+    min-height: 92px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px dashed var(--border-color);
+    background: linear-gradient(180deg, rgba(16, 121, 196, 0.04), rgba(16, 121, 196, 0.01));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+}
+.auto-detected-type strong {
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.auto-detected-type span {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+.auto-detected-type.ready {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02));
+}
 
 /* Owner Combobox */
 .combobox-wrapper { position: relative; width: 100%; border-radius: 8px; }

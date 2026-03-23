@@ -18,6 +18,7 @@ runs/
 # ===== Build files =====
 build/
 dist/
+.tmp-api-build/
 *.exe
 *.pkg
 

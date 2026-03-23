@@ -1,133 +1,212 @@
 <template>
-    <div class="bento-dashboard animate-in">
-        <!-- Bento Header -->
-        <header class="bento-header">
-            <div class="greeting">
-                <h1 class="page-title">Tổng quan Hệ thống</h1>
-                <p class="page-subtitle">Hôm nay là {{ currentDate }}. Hệ thống V-Shield đang hoạt động ổn định.</p>
+    <div class="page-container dashboard-shell animate-in">
+        <header class="dashboard-hero">
+            <div class="hero-copy">
+                <span class="hero-kicker">V-Shield overview</span>
+                <h1 class="page-title">Bảng điều phối an ninh tập trung cho con người, phương tiện và camera.</h1>
+                <p class="page-subtitle">
+                    Từ đây đội vận hành có thể nhìn ngay những gì đang diễn ra, khu vực nào cần phản ứng
+                    và luồng truy cập nào đang tăng tải trong ngày.
+                </p>
+
+                <div class="hero-actions">
+                    <router-link to="/monitoring" class="btn btn-primary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 16px; height: 16px;">
+                            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                        Mở giám sát trực tiếp
+                    </router-link>
+                    <router-link to="/access-logs" class="btn btn-secondary">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width: 16px; height: 16px;">
+                            <path d="M12 8v4l3 3" />
+                            <circle cx="12" cy="12" r="9" />
+                        </svg>
+                        Xem dòng sự kiện
+                    </router-link>
+                </div>
             </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary btn-icon" title="Cài đặt">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
-                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-                    </svg>
-                </button>
-                <button class="btn btn-primary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    Báo cáo
-                </button>
+
+            <div class="hero-board">
+                <div class="board-top">
+                    <div>
+                        <span class="board-label">Ca trực hiện tại</span>
+                        <strong>{{ currentDate }}</strong>
+                    </div>
+                    <span class="board-pill">
+                        <span class="pill-dot"></span>
+                        Đồng bộ dữ liệu
+                    </span>
+                </div>
+
+                <div class="board-metrics">
+                    <div class="board-metric">
+                        <span>Tổng lượt tuần</span>
+                        <strong>{{ weeklyTraffic }}</strong>
+                    </div>
+                    <div class="board-metric">
+                        <span>Ngày cao điểm</span>
+                        <strong>{{ peakDay }}</strong>
+                    </div>
+                    <div class="board-metric">
+                        <span>Tỷ lệ hiện diện</span>
+                        <strong>{{ occupancyRate }}%</strong>
+                    </div>
+                </div>
+
+                <div class="board-alert">
+                    <span class="alert-tag">Focus</span>
+                    <p>Khung 08:00 - 09:00 đang là giờ cao điểm ra vào. Ưu tiên theo dõi Cổng A và luồng khách đăng ký trước.</p>
+                </div>
             </div>
         </header>
 
-        <!-- Bento Grid Layout -->
-        <div class="bento-grid">
-            <!-- Main Stats (Spans 2 columns) -->
-            <div class="bento-card col-span-2 row-span-1 stats-overview">
-                <div class="stats-header">
-                    <h3>Tổng quan nhân sự</h3>
-                    <span class="live-badge"><span class="pulse-dot"></span> Đang cập nhật</span>
-                </div>
-                <div class="stats-content">
-                    <div class="stat-highlight">
-                        <div class="stat-value">{{ totalEmployees }}</div>
-                        <div class="stat-label">Tổng nhân viên</div>
+        <div class="dashboard-grid">
+            <section class="dashboard-card metrics-card">
+                <div class="section-head">
+                    <div>
+                        <span class="section-kicker">Nhân sự nội bộ</span>
+                        <h2>Tình trạng hiện diện</h2>
                     </div>
-                    <div class="stat-divider"></div>
-                    <div class="stat-highlight">
-                        <div class="stat-value green">{{ activeEmployees }}</div>
-                        <div class="stat-label">Đang hoạt động</div>
-                    </div>
+                    <span class="live-badge">
+                        <span class="live-dot"></span>
+                        Đang cập nhật
+                    </span>
                 </div>
-            </div>
 
-            <!-- Focus Quick Action 1 -->
-            <router-link to="/pre-registrations" class="bento-card interactive-card action-primary">
-                <div class="action-icon-large">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
-                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                        <path d="M9 14l2 2 4-4"/>
+                <div class="metrics-main">
+                    <div class="metric-spotlight">
+                        <span>Tổng nhân sự</span>
+                        <strong>{{ totalEmployees }}</strong>
+                    </div>
+                    <div class="metric-spotlight success">
+                        <span>Đang hoạt động</span>
+                        <strong>{{ activeEmployees }}</strong>
+                    </div>
+                </div>
+
+                <div class="occupancy-track">
+                    <div class="occupancy-copy">
+                        <span>Hiện diện trong hệ thống</span>
+                        <strong>{{ occupancyRate }}%</strong>
+                    </div>
+                    <div class="track-shell">
+                        <div class="track-fill" :style="{ width: `${occupancyRate}%` }"></div>
+                    </div>
+                </div>
+
+                <div class="metrics-foot">
+                    <div>
+                        <span class="mini-label">Mức độ ổn định</span>
+                        <strong>Ổn định</strong>
+                    </div>
+                    <div>
+                        <span class="mini-label">Khuyến nghị</span>
+                        <strong>Duy trì xác minh khuôn mặt tại các cổng chính</strong>
+                    </div>
+                </div>
+            </section>
+
+            <router-link to="/pre-registrations" class="dashboard-card action-card accent-teal action-guest">
+                <div class="action-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+                        <rect x="8" y="2" width="8" height="4" rx="1.5" />
+                        <path d="M9 14l2 2 4-4" />
                     </svg>
                 </div>
-                <h3>Đăng ký khách</h3>
-                <p>Tạo link QR trước cho khách</p>
-                <div class="arrow-indicator">→</div>
+                <span class="section-kicker">Quick action</span>
+                <h2>Đăng ký khách trước</h2>
+                <p>Tạo luồng tiếp đón nhanh với liên kết QR, giảm ma sát tại điểm vào.</p>
+                <span class="action-link">Tạo lượt mới</span>
             </router-link>
 
-            <!-- Focus Quick Action 2 -->
-            <router-link to="/monitoring" class="bento-card interactive-card action-secondary">
-                <div class="action-icon-large">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
+            <router-link to="/employees" class="dashboard-card action-card accent-gold action-employees">
+                <div class="action-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                        <path d="M16 3.13a4 4 0 010 7.75" />
                     </svg>
                 </div>
-                <h3>Live Camera</h3>
-                <p>Giám sát ra vào trực tiếp</p>
-                <div class="arrow-indicator">→</div>
+                <span class="section-kicker">Quick action</span>
+                <h2>Hồ sơ nhân sự</h2>
+                <p>Quản lý định danh, Face ID, phòng ban và tình trạng truy cập từ cùng một luồng.</p>
+                <span class="action-link">Mở danh sách</span>
             </router-link>
 
-            <!-- Chart Activity -->
-            <div class="bento-card col-span-2 row-span-2 activity-chart">
-                <div class="card-header">
-                    <h3>Lưu lượng ra/vào tuần này</h3>
+            <section class="dashboard-card traffic-card">
+                <div class="section-head">
+                    <div>
+                        <span class="section-kicker">Traffic</span>
+                        <h2>Lưu lượng ra vào trong tuần</h2>
+                    </div>
                     <div class="chart-legend">
-                        <span class="legend-item"><span class="legend-dot in"></span> Vào (187)</span>
-                        <span class="legend-item"><span class="legend-dot out"></span> Ra (142)</span>
+                        <span><i class="legend-dot in"></i> Vào</span>
+                        <span><i class="legend-dot out"></i> Ra</span>
                     </div>
                 </div>
-                <!-- Mini Minimalist Chart -->
-                <div class="minimal-chart">
-                    <div v-for="day in weekData" :key="day.label" class="chart-col">
-                        <div class="bar-stack">
-                            <div class="bar in" :style="{ height: day.inPercent + '%' }"><div class="tt">{{day.checkIn}}</div></div>
-                            <div class="bar out" :style="{ height: day.outPercent + '%' }"><div class="tt">{{day.checkOut}}</div></div>
-                        </div>
-                        <div class="col-lbl">{{ day.label }}</div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Recent Logs list (Spans height) -->
-            <div class="bento-card col-span-2 row-span-2 recent-logs-card">
-                <div class="card-header">
-                    <h3>Hoạt động mới nhất</h3>
-                    <router-link to="/access-logs" class="link-muted">Xem tất cả</router-link>
-                </div>
-                <div class="logs-feed">
-                    <div v-for="log in recentLogs" :key="log.id" class="feed-item">
-                        <div class="feed-marker" :class="log.type"></div>
-                        <div class="feed-time">{{ log.time }}</div>
-                        <div class="feed-content">
-                            <strong>{{ log.name }}</strong>
-                            <span>{{ log.detail }}</span>
+                <div class="traffic-chart">
+                    <div v-for="day in weekData" :key="day.label" class="chart-column">
+                        <div class="bar-wrap">
+                            <div class="bar-stack in" :style="{ height: `${day.inPercent}%` }">
+                                <span>{{ day.checkIn }}</span>
+                            </div>
+                            <div class="bar-stack out" :style="{ height: `${day.outPercent}%` }">
+                                <span>{{ day.checkOut }}</span>
+                            </div>
                         </div>
+                        <strong>{{ day.label }}</strong>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="dashboard-card feed-card">
+                <div class="section-head">
+                    <div>
+                        <span class="section-kicker">Live feed</span>
+                        <h2>Hoạt động mới nhất</h2>
+                    </div>
+                    <router-link to="/access-logs" class="feed-link">Xem toàn bộ</router-link>
+                </div>
+
+                <div class="feed-list">
+                    <article v-for="log in dashboardRecentLogs" :key="log.id" class="feed-item">
+                        <div class="feed-marker" :class="log.type"></div>
+                        <div class="feed-meta">
+                            <strong>{{ log.time }}</strong>
+                            <span>{{ log.type === 'in' ? 'Vào' : 'Ra' }}</span>
+                        </div>
+                        <div class="feed-copy">
+                            <strong>{{ log.name }}</strong>
+                            <p>{{ log.detail }}</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { getSummary } from '../services/statisticsApi'
 
-// Date
 const currentDate = computed(() => {
     const d = new Date()
-    return d.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    return d.toLocaleDateString('vi-VN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    })
 })
 
-// Stats
 const totalEmployees = ref('...')
 const activeEmployees = ref('...')
-let eventSource = null;
+let eventSource = null
 
 onMounted(async () => {
     try {
@@ -141,9 +220,11 @@ onMounted(async () => {
                 const data = JSON.parse(event.data)
                 totalEmployees.value = data.totalEmployees.toString()
                 activeEmployees.value = data.activeEmployees.toString()
-            } catch (err) {}
+            } catch {
+                // Ignore malformed stream messages.
+            }
         }
-    } catch (error) {
+    } catch {
         totalEmployees.value = '--'
         activeEmployees.value = '--'
     }
@@ -167,251 +248,634 @@ const recentLogs = ref([
     { id: 1, name: 'Nguyễn Văn An', detail: 'Vào cổng A - Đi bộ', type: 'in', time: '08:05' },
     { id: 2, name: 'Trần Thị Bình', detail: 'Ra cổng B', type: 'out', time: '08:12' },
     { id: 3, name: 'Lê Hoàng Cường', detail: 'Vào cổng A - Xe 30H-567.89', type: 'in', time: '08:20' },
-    { id: 4, name: 'Phạm Minh Đức', detail: 'Vào cổng A - Máy khách KH29', type: 'in', time: '08:25' },
+    { id: 4, name: 'Phạm Minh Đức', detail: 'Khách đăng ký trước đã check-in', type: 'in', time: '08:25' },
     { id: 5, name: 'Võ Thị Em', detail: 'Ra cổng C', type: 'out', time: '08:30' },
-    { id: 6, name: 'Khách VIP', detail: 'Đã check-in mã QR', type: 'in', time: '08:35' },
+    { id: 6, name: 'Khách VIP', detail: 'Đã xác thực qua mã QR', type: 'in', time: '08:35' },
 ])
+
+const dashboardRecentLogs = computed(() => recentLogs.value.slice(0, 4))
+
+const totalEmployeesNumber = computed(() => Number.parseInt(totalEmployees.value, 10) || 0)
+const activeEmployeesNumber = computed(() => Number.parseInt(activeEmployees.value, 10) || 0)
+
+const occupancyRate = computed(() => {
+    if (!totalEmployeesNumber.value) return 0
+    return Math.round((activeEmployeesNumber.value / totalEmployeesNumber.value) * 100)
+})
+
+const weeklyTraffic = computed(() =>
+    weekData.value.reduce((sum, day) => sum + day.checkIn + day.checkOut, 0)
+)
+
+const peakDay = computed(() => {
+    const topDay = weekData.value.reduce((max, day) => {
+        const traffic = day.checkIn + day.checkOut
+        return traffic > max.traffic ? { label: day.label, traffic } : max
+    }, { label: '--', traffic: 0 })
+
+    return topDay.label
+})
 </script>
 
 <style scoped>
-.bento-dashboard {
-    padding: 0;
-    max-width: 1400px;
-    margin: 0 auto;
+.dashboard-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-.bento-header {
-    display: flex;
-    justify-content: space-between;
+.dashboard-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(360px, 430px);
+    gap: 20px;
+}
+
+.hero-copy,
+.hero-board,
+.dashboard-card {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.84);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-sm);
+}
+
+.hero-copy {
+    padding: 30px;
+    border-radius: 30px;
+}
+
+.hero-kicker,
+.section-kicker {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 2rem;
-    gap: 16px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(15, 124, 130, 0.08);
+    color: var(--accent-primary);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.hero-copy .page-title {
+    max-width: 14ch;
+    margin-top: 16px;
+}
+
+.hero-copy .page-subtitle {
+    margin-top: 14px;
+    max-width: 58ch;
+}
+
+.hero-actions {
+    margin-top: 26px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
-.bento-header .greeting h1 {
-    font-size: 1.8rem;
+.hero-board {
+    padding: 24px;
+    border-radius: 30px;
+    background:
+        radial-gradient(circle at top right, rgba(84, 196, 211, 0.2), transparent 34%),
+        linear-gradient(180deg, rgba(16, 32, 51, 0.98), rgba(24, 49, 77, 0.96));
+    color: #eefbfc;
+    border-color: rgba(84, 196, 211, 0.12);
+}
+
+.board-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.board-label {
+    display: block;
+    color: rgba(215, 251, 255, 0.7);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.board-top strong {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    line-height: 1.3;
+}
+
+.board-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(84, 196, 211, 0.14);
+    color: #c0fbff;
+    font-size: 0.76rem;
     font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 4px;
 }
 
-.bento-header .greeting p {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
+.pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #5de3c7;
 }
 
-.bento-grid {
+.board-metrics {
+    margin-top: 20px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: 180px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.board-metric {
+    padding: 16px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.board-metric span {
+    display: block;
+    color: rgba(215, 251, 255, 0.72);
+    font-size: 0.76rem;
+}
+
+.board-metric strong {
+    display: block;
+    margin-top: 8px;
+    color: #fff;
+    font-family: var(--font-heading);
+    font-size: 1.12rem;
+}
+
+.board-alert {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.alert-tag {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(216, 155, 55, 0.16);
+    color: #ffd89d;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.board-alert p {
+    color: rgba(239, 251, 252, 0.86);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+        "metrics metrics action-guest action-employees"
+        "traffic traffic feed feed";
     gap: 20px;
 }
 
-/* Card Base */
-.bento-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
+.dashboard-card {
     padding: 24px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: hidden;
-    transition: all var(--transition-normal);
+    border-radius: 28px;
 }
 
-.col-span-2 { grid-column: span 2; }
-.row-span-1 { grid-row: span 1; }
-.row-span-2 { grid-row: span 2; }
+.metrics-card { grid-area: metrics; }
+.action-guest { grid-area: action-guest; }
+.action-employees { grid-area: action-employees; }
+.traffic-card {
+    grid-area: traffic;
+    align-self: start;
+}
+.feed-card { grid-area: feed; }
 
-/* Interactive Cards */
-.interactive-card {
-    cursor: pointer;
-    text-decoration: none;
+.section-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.section-head h2 {
+    margin-top: 10px;
+    font-family: var(--font-heading);
+    font-size: 1.28rem;
+    font-weight: 700;
+    line-height: 1.08;
     color: var(--text-primary);
 }
-.interactive-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--border-color-hover);
+
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(20, 134, 109, 0.1);
+    color: var(--accent-success);
+    font-size: 0.76rem;
+    font-weight: 700;
 }
-.interactive-card.action-primary {
-    background: linear-gradient(145deg, var(--bg-card), var(--bg-card-hover));
+
+.live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
 }
-.interactive-card.action-secondary {
-    background: var(--bg-card);
+
+.metrics-main {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
 }
-.action-icon-large {
-    width: 48px;
-    height: 48px;
-    background: rgba(16, 121, 196, 0.1); /* lochmara accent */
-    color: var(--accent-primary);
-    border-radius: var(--border-radius-sm);
+
+.metric-spotlight {
+    padding: 20px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(236, 244, 246, 0.82));
+    border: 1px solid rgba(24, 49, 77, 0.08);
+}
+
+.metric-spotlight span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+}
+
+.metric-spotlight strong {
+    display: block;
+    margin-top: 10px;
+    font-family: var(--font-heading);
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+}
+
+.metric-spotlight.success strong {
+    color: var(--accent-success);
+}
+
+.occupancy-track {
+    margin-top: 20px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    background: rgba(236, 244, 246, 0.68);
+    border: 1px solid rgba(24, 49, 77, 0.08);
+}
+
+.occupancy-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.occupancy-copy span {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+}
+
+.occupancy-copy strong {
+    color: var(--text-primary);
+    font-family: var(--font-heading);
+    font-size: 1.06rem;
+}
+
+.track-shell {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(16, 32, 51, 0.08);
+    overflow: hidden;
+}
+
+.track-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent-gradient);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.metrics-foot {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.mini-label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.metrics-foot strong {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.action-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text-primary);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal);
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.accent-teal {
+    background:
+        radial-gradient(circle at top right, rgba(84, 196, 211, 0.2), transparent 34%),
+        rgba(255, 255, 255, 0.88);
+}
+
+.accent-gold {
+    background:
+        radial-gradient(circle at top right, rgba(216, 155, 55, 0.2), transparent 30%),
+        rgba(255, 255, 255, 0.88);
+}
+
+.action-icon {
+    width: 54px;
+    height: 54px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: auto;
-}
-.action-icon-large svg { width: 24px; height: 24px; }
-.interactive-card h3 { font-size: 1.1rem; margin-bottom: 4px; font-weight: 600; }
-.interactive-card p { font-size: 0.85rem; color: var(--text-secondary); }
-.arrow-indicator {
-    position: absolute;
-    bottom: 24px;
-    right: 24px;
-    font-size: 1.2rem;
-    color: var(--text-muted);
-    transition: transform var(--transition-fast);
-}
-.interactive-card:hover .arrow-indicator {
-    transform: translateX(4px);
+    border-radius: 18px;
+    background: rgba(15, 124, 130, 0.1);
     color: var(--accent-primary);
 }
 
-/* Stats Overview */
-.stats-overview {
-    justify-content: space-between;
+.accent-gold .action-icon {
+    background: rgba(216, 155, 55, 0.12);
+    color: var(--accent-warning);
 }
-.stats-header {
+
+.action-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.action-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.18rem;
+    font-weight: 700;
+}
+
+.action-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.action-link {
+    margin-top: auto;
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+.chart-legend {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.stats-header h3 { font-size: 1rem; color: var(--text-secondary); font-weight: 500;}
-.live-badge {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--accent-success);
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
     font-weight: 600;
-    display: flex;
+}
+
+.chart-legend span {
+    display: inline-flex;
     align-items: center;
     gap: 6px;
 }
-.pulse-dot {
-    width: 6px; height: 6px; background: currentColor; border-radius: 50%;
-    animation: pulse 2s infinite;
-}
-@keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
 
-.stats-content {
+.legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.legend-dot.in {
+    background: var(--accent-primary);
+}
+
+.legend-dot.out {
+    background: var(--accent-secondary);
+}
+
+.traffic-chart {
+    margin-top: 22px;
     display: flex;
     align-items: flex-end;
-    gap: 32px;
-}
-.stat-highlight { flex: 1; }
-.stat-value { font-size: 3rem; font-weight: 700; line-height: 1; margin-bottom: 8px; color: var(--text-primary); }
-.stat-value.green { color: var(--accent-success); }
-.stat-label { font-size: 0.9rem; color: var(--text-muted); }
-.stat-divider { width: 1px; height: 60px; background: var(--border-color); }
-
-/* Chart Area */
-.activity-chart .card-header {
-    display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: auto;
-}
-.activity-chart h3 { font-size: 1.1rem; font-weight: 600; }
-.chart-legend { display: flex; gap: 12px; }
-.legend-item { font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;}
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-.legend-dot.in { background: var(--accent-primary); }
-.legend-dot.out { background: var(--accent-secondary); }
-
-.minimal-chart {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    height: 100%;
-    padding-top: 40px;
-}
-.chart-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     gap: 12px;
-    flex: 1;
+    min-height: 224px;
 }
-.bar-stack {
-    height: 180px;
+
+.chart-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.bar-wrap {
+    width: 100%;
+    height: 184px;
     display: flex;
     align-items: flex-end;
-    gap: 4px;
-    width: 100%;
     justify-content: center;
+    gap: 6px;
 }
-.bar {
-    width: 16px;
-    border-radius: 4px 4px 0 0;
-    position: relative;
-    cursor: pointer;
-    transition: height 0.6s ease;
-}
-.bar.in { background: var(--accent-primary); }
-.bar.out { background: var(--accent-secondary); }
-.bar .tt {
-    position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
-    background: var(--bg-secondary); color: var(--text-primary);
-    font-size: 0.7rem; padding: 2px 6px; border-radius: 4px;
-    opacity: 0; transition: opacity 0.2s; pointer-events: none;
-    border: 1px solid var(--border-color);
-}
-.bar:hover { filter: brightness(1.2); }
-.bar:hover .tt { opacity: 1; }
-.col-lbl { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
 
-/* Logs Feed */
-.recent-logs-card {
-    display: flex;
-    flex-direction: column;
+.bar-stack {
+    position: relative;
+    width: min(22px, 100%);
+    border-radius: 12px 12px 4px 4px;
+    transition: transform var(--transition-fast), filter var(--transition-fast);
 }
-.recent-logs-card .card-header {
-    display: flex; justify-content: space-between; margin-bottom: 24px;
+
+.bar-stack span {
+    position: absolute;
+    left: 50%;
+    top: -28px;
+    transform: translateX(-50%);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
 }
-.link-muted { color: var(--text-muted); font-size: 0.85rem; text-decoration: none; transition: color 0.2s;}
-.link-muted:hover { color: var(--accent-primary); }
-.logs-feed {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    overflow-y: auto;
-    padding-right: 8px;
+
+.bar-stack.in {
+    background: linear-gradient(180deg, rgba(84, 196, 211, 0.26), var(--accent-primary));
 }
+
+.bar-stack.out {
+    background: linear-gradient(180deg, rgba(43, 109, 138, 0.26), var(--accent-secondary));
+}
+
+.chart-column:hover .bar-stack {
+    transform: translateY(-2px);
+    filter: brightness(1.02);
+}
+
+.chart-column strong {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+
+.feed-list {
+    margin-top: 18px;
+    display: grid;
+    gap: 12px;
+}
+
 .feed-item {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 12px 70px 1fr;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 20px;
+    background: rgba(236, 244, 246, 0.72);
+    border: 1px solid rgba(24, 49, 77, 0.08);
 }
-.feed-marker {
-    width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
-    position: relative;
-}
-.feed-marker.in { background: var(--accent-primary); box-shadow: 0 0 10px rgba(16, 121, 196, 0.4); }
-.feed-marker.out { background: var(--accent-secondary); box-shadow: 0 0 10px rgba(139, 92, 246, 0.4); }
-/* connected line */
-.feed-marker::after {
-    content: ''; position: absolute; top: 14px; left: 4px; width: 2px; height: 40px;
-    background: var(--border-color);
-}
-.feed-item:last-child .feed-marker::after { display: none; }
-.feed-time {
-    font-size: 0.8rem; color: var(--text-muted); font-weight: 600; width: 45px; flex-shrink: 0;
-}
-.feed-content {
-    display: flex; flex-direction: column; gap: 2px;
-}
-.feed-content strong { font-size: 0.9rem; color: var(--text-primary); font-weight: 500;}
-.feed-content span { font-size: 0.8rem; color: var(--text-secondary); }
 
-@media (max-width: 1200px) {
-    .bento-grid { grid-template-columns: repeat(2, 1fr); }
+.feed-link {
+    color: var(--accent-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
 }
+
+.feed-item {
+    grid-template-columns: 12px 70px 1fr;
+    align-items: start;
+}
+
+.feed-marker {
+    width: 12px;
+    height: 12px;
+    margin-top: 5px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px rgba(15, 124, 130, 0.08);
+}
+
+.feed-marker.in {
+    background: var(--accent-success);
+    box-shadow: 0 0 0 6px rgba(20, 134, 109, 0.1);
+}
+
+.feed-marker.out {
+    background: var(--accent-warning);
+    box-shadow: 0 0 0 6px rgba(184, 111, 33, 0.1);
+}
+
+.feed-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.feed-meta strong {
+    color: var(--text-primary);
+    font-size: 0.88rem;
+}
+
+.feed-meta span {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+@media (max-width: 1280px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+            "metrics metrics"
+            "action-guest action-employees"
+            "traffic traffic"
+            "feed feed";
+    }
+}
+
+@media (max-width: 1080px) {
+    .dashboard-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-copy .page-title {
+        max-width: none;
+    }
+}
+
 @media (max-width: 768px) {
-    .bento-grid { grid-template-columns: 1fr; grid-auto-rows: min-content; }
-    .col-span-2, .row-span-1, .row-span-2 { grid-column: span 1; grid-row: auto; }
-    .bar-stack { height: 120px; }
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "metrics"
+            "action-guest"
+            "action-employees"
+            "traffic"
+            "feed";
+    }
+
+    .hero-copy,
+    .hero-board,
+    .dashboard-card {
+        padding: 20px;
+        border-radius: 24px;
+    }
+
+    .metrics-main,
+    .metrics-foot,
+    .board-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .feed-item {
+        grid-template-columns: 12px 1fr;
+    }
+
+    .feed-meta {
+        grid-column: 2;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .feed-copy {
+        grid-column: 2;
+    }
 }
 </style>

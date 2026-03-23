@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -16,6 +17,10 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
 {
     private static readonly int[] CommonPorts = [8080, 8081];
     private static readonly Regex TitleRegex = new("<title>(.*?)</title>", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.Compiled);
+    private const int DiscoveryParallelism = 96;
+    private const int PortProbeTimeoutMs = 120;
+    private const int HttpProbeTimeoutMs = 650;
+    private const int RootBodySnippetLength = 4096;
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
@@ -29,7 +34,9 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
     public async Task<IReadOnlyList<IpWebcamCandidate>> DiscoverIpWebcamsAsync(CancellationToken cancellationToken = default)
     {
         const string cacheKey = "ip-webcam-discovery";
-        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<IpWebcamCandidate>? cached) && cached is not null)
+        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<IpWebcamCandidate>? cached) &&
+            cached is not null &&
+            cached.Count > 0)
         {
             return cached;
         }
@@ -39,6 +46,7 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
             .Select(ToSubnetPrefix)
             .Where(prefix => !string.IsNullOrWhiteSpace(prefix))
             .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(prefix => prefix.StartsWith("192.168.137.", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ToArray();
 
         if (subnetPrefixes.Length == 0)
@@ -47,10 +55,10 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
         }
 
         var client = _httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromMilliseconds(1200);
+        client.Timeout = TimeSpan.FromMilliseconds(HttpProbeTimeoutMs);
 
         var results = new ConcurrentBag<IpWebcamCandidate>();
-        using var semaphore = new SemaphoreSlim(48);
+        using var semaphore = new SemaphoreSlim(DiscoveryParallelism);
         var probeTasks = new List<Task>();
 
         foreach (var subnetPrefix in subnetPrefixes)
@@ -79,7 +87,15 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
             .ThenBy(camera => camera.Port)
             .ToArray();
 
-        _cache.Set(cacheKey, cameras, TimeSpan.FromSeconds(20));
+        if (cameras.Length > 0)
+        {
+            _cache.Set(cacheKey, cameras, TimeSpan.FromSeconds(10));
+        }
+        else
+        {
+            _cache.Remove(cacheKey);
+        }
+
         return cameras;
     }
 
@@ -95,7 +111,19 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
                 continue;
             }
 
-            foreach (var address in networkInterface.GetIPProperties().UnicastAddresses)
+            var ipProperties = networkInterface.GetIPProperties();
+            var hasIpv4Gateway = ipProperties.GatewayAddresses.Any(gateway =>
+                gateway?.Address is not null &&
+                gateway.Address.AddressFamily == AddressFamily.InterNetwork &&
+                !IPAddress.Any.Equals(gateway.Address) &&
+                !IPAddress.None.Equals(gateway.Address));
+
+            if (!hasIpv4Gateway && !LooksLikeHotspotInterface(networkInterface))
+            {
+                continue;
+            }
+
+            foreach (var address in ipProperties.UnicastAddresses)
             {
                 if (address.Address.AddressFamily != AddressFamily.InterNetwork ||
                     IPAddress.IsLoopback(address.Address))
@@ -112,6 +140,15 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
         }
 
         return ips;
+    }
+
+    private static bool LooksLikeHotspotInterface(NetworkInterface networkInterface)
+    {
+        var signature = $"{networkInterface.Name} {networkInterface.Description}";
+
+        return signature.Contains("Local Area Connection*", StringComparison.OrdinalIgnoreCase) ||
+               signature.Contains("Wi-Fi Direct", StringComparison.OrdinalIgnoreCase) ||
+               signature.Contains("Mobile Hotspot", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsPrivateIpv4(string ip)
@@ -190,6 +227,18 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
         return LooksLikeIpWebcam(body) || LooksLikeIpCameraLite(body);
     }
 
+    private static bool LooksLikePreviewContentType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return false;
+        }
+
+        return contentType.Contains("multipart/x-mixed-replace", StringComparison.OrdinalIgnoreCase) ||
+               contentType.Contains("image/jpeg", StringComparison.OrdinalIgnoreCase) ||
+               contentType.Contains("image/jpg", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IReadOnlyList<string> BuildRtspUrls(string ip, int port, string body)
     {
         var candidates = new List<string>();
@@ -250,6 +299,75 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
         };
     }
 
+    private static IpWebcamCandidate BuildPreviewCandidate(string ip, int port, string previewPath)
+    {
+        var baseUrl = $"http://{ip}:{port}";
+        var normalizedPreviewPath = previewPath.StartsWith('/') ? previewPath : $"/{previewPath}";
+        var isIpCameraLite = normalizedPreviewPath.Equals("/video", StringComparison.OrdinalIgnoreCase);
+
+        return new IpWebcamCandidate
+        {
+            Name = isIpCameraLite ? $"IP Camera Lite {ip}" : $"IP Webcam {ip}",
+            IpAddress = ip,
+            Port = port,
+            BaseUrl = baseUrl,
+            PreviewUrl = $"{baseUrl}{normalizedPreviewPath}",
+            SnapshotUrl = isIpCameraLite ? string.Empty : $"{baseUrl}/shot.jpg",
+            RtspUrls = Array.Empty<string>()
+        };
+    }
+
+    private static async Task<bool> CanOpenPortAsync(string ip, int port, CancellationToken cancellationToken)
+    {
+        using var tcpClient = new TcpClient();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(PortProbeTimeoutMs));
+
+        try
+        {
+            await tcpClient.ConnectAsync(ip, port, timeoutCts.Token);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static async Task<string> ReadBodySnippetAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        await using var stream = await content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: RootBodySnippetLength, leaveOpen: false);
+        var buffer = new char[RootBodySnippetLength];
+        var read = await reader.ReadBlockAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+        return read <= 0 ? string.Empty : new string(buffer, 0, read);
+    }
+
+    private static async Task<IpWebcamCandidate?> ProbePreviewEndpointAsync(
+        HttpClient client,
+        string ip,
+        int port,
+        string previewPath,
+        CancellationToken cancellationToken)
+    {
+        var previewUrl = $"http://{ip}:{port}{previewPath}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, previewUrl);
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        if (!LooksLikePreviewContentType(contentType))
+        {
+            return null;
+        }
+
+        return BuildPreviewCandidate(ip, port, previewPath);
+    }
+
     private async Task ProbeIpWebcamAsync(
         HttpClient client,
         SemaphoreSlim semaphore,
@@ -262,22 +380,32 @@ public sealed class LanCameraDiscoveryService : ILanCameraDiscoveryService
 
         try
         {
+            if (!await CanOpenPortAsync(ip, port, cancellationToken))
+            {
+                return;
+            }
+
             var baseUrl = $"http://{ip}:{port}";
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/");
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
-                return;
+                var body = await ReadBodySnippetAsync(response.Content, cancellationToken);
+                if (LooksLikeSupportedLanCamera(body))
+                {
+                    results.Add(BuildCandidate(ip, port, body));
+                    return;
+                }
             }
 
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (!LooksLikeSupportedLanCamera(body))
-            {
-                return;
-            }
+            var previewCandidate = await ProbePreviewEndpointAsync(client, ip, port, "/video", cancellationToken) ??
+                                   await ProbePreviewEndpointAsync(client, ip, port, "/videofeed", cancellationToken);
 
-            results.Add(BuildCandidate(ip, port, body));
+            if (previewCandidate is not null)
+            {
+                results.Add(previewCandidate);
+            }
         }
         catch
         {

@@ -1,435 +1,1086 @@
-<template>
-    <div class="page-container animate-in">
-        <!-- Header -->
-        <header class="page-header bento-header">
-            <div class="greeting">
-                <h1 class="page-title">Cài đặt Hệ thống</h1>
-                <p class="page-subtitle">Tùy chỉnh nền tảng & quản lý thông báo AI</p>
+﻿<template>
+  <div class="page-container animate-in">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title">Cài đặt Hệ thống</h1>
+        <p class="page-subtitle">
+          Quản lý camera tại đây, còn trang Giám sát chỉ hiển thị camera đã cấu hình.
+        </p>
+      </div>
+      <button class="save-btn" @click="saveSettings">Lưu cài đặt</button>
+    </header>
+
+    <div class="settings-layout">
+      <aside class="settings-nav bento-card">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="settings-tab"
+          :class="{ active: activeTab === tab.id }"
+          @click="activeTab = tab.id"
+        >
+          {{ tab.label }}
+        </button>
+      </aside>
+
+      <section class="settings-content">
+        <div v-if="activeTab === 'general'" class="bento-card section-card">
+          <h2 class="section-title">Cài đặt chung</h2>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>Tên cơ sở / công ty</label>
+              <input v-model="settings.companyName" class="field" type="text" />
             </div>
-            <div class="header-actions">
-               <button class="btn btn-primary action-btn" @click="saveSettings">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                        <polyline stroke-linecap="round" stroke-linejoin="round" points="17 21 17 13 7 13 7 21" />
-                        <polyline stroke-linecap="round" stroke-linejoin="round" points="7 3 7 8 15 8" />
-                    </svg>
-                    Lưu cài đặt
-                </button>
+            <div class="two-col">
+              <div class="input-group">
+                <label>Giờ mở cổng</label>
+                <input v-model="settings.openTime" class="field" type="time" />
+              </div>
+              <div class="input-group">
+                <label>Giờ đóng cổng</label>
+                <input v-model="settings.closeTime" class="field" type="time" />
+              </div>
             </div>
-        </header>
-
-        <div class="settings-layout">
-            <!-- Sidebar Navigation -->
-            <div class="settings-nav bento-card">
-                <button v-for="tab in tabs" :key="tab.id" class="settings-tab" :class="{ active: activeTab === tab.id }" @click="activeTab = tab.id">
-                    <span class="tab-icon" v-html="tab.icon"></span>
-                    <span class="tab-label">{{ tab.label }}</span>
-                </button>
+            <div class="two-col">
+              <div class="input-group">
+                <label>Ngôn ngữ</label>
+                <select v-model="settings.language" class="field">
+                  <option value="vi">Tiếng Việt</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Múi giờ</label>
+                <select v-model="settings.timezone" class="field">
+                  <option value="UTC+7">UTC+7</option>
+                  <option value="UTC+8">UTC+8</option>
+                  <option value="UTC+9">UTC+9</option>
+                </select>
+              </div>
             </div>
-
-            <!-- Main Content Area -->
-            <div class="settings-content">
-                <!-- General Settings -->
-                <transition name="fade-up" mode="out-in">
-                    <div v-if="activeTab === 'general'" key="general" class="settings-section">
-                        <div class="bento-card">
-                            <h2 class="bento-title mb-1">Cài đặt chung</h2>
-                            <p class="text-secondary text-sm mb-4">Quản lý và thiết lập thông tin cơ sở kinh doanh</p>
-
-                            <div class="form-grid">
-                                <div class="input-pane full-width">
-                                    <label>Tên cơ sở / Công ty</label>
-                                    <input v-model="settings.companyName" type="text" class="sleek-input" />
-                                </div>
-                                <div class="form-row grid-2">
-                                    <div class="input-pane">
-                                        <label>Giờ mở cổng</label>
-                                        <input v-model="settings.openTime" type="time" class="sleek-input" />
-                                    </div>
-                                    <div class="input-pane">
-                                        <label>Giờ đóng cổng</label>
-                                        <input v-model="settings.closeTime" type="time" class="sleek-input" />
-                                    </div>
-                                </div>
-                                <div class="form-row grid-2">
-                                    <div class="input-pane">
-                                        <label>Ngôn ngữ</label>
-                                        <select v-model="settings.language" class="sleek-select">
-                                            <option value="vi">Tiếng Việt</option>
-                                            <option value="en">English (US)</option>
-                                        </select>
-                                    </div>
-                                    <div class="input-pane">
-                                        <label>Múi giờ</label>
-                                        <select v-model="settings.timezone" class="sleek-select">
-                                            <option value="UTC+7">UTC+7 (Hanoi, Bangkok)</option>
-                                            <option value="UTC+8">UTC+8 (Singapore)</option>
-                                            <option value="UTC+9">UTC+9 (Tokyo)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Camera Settings -->
-                    <div v-else-if="activeTab === 'camera'" key="camera" class="settings-section">
-                        <div class="bento-card bg-transparent border-0 p-0" style="background:transparent; border:none; padding:0; box-shadow:none;">
-                            <h2 class="bento-title mb-1 px-1">Danh sách Camera</h2>
-                            <p class="text-secondary text-sm mb-4 px-1">Cấu hình luồng kỹ thuật số và điểm lắp đặt</p>
-                            
-                            <div class="camera-grid">
-                                <div v-for="cam in cameraSettings" :key="cam.id" class="bento-card cam-card">
-                                    <div class="cam-header">
-                                        <div class="cam-info">
-                                            <h4>{{ cam.name }}</h4>
-                                            <span class="status-pill minimal" :class="cam.online ? 'active' : 'inactive'">
-                                                <span class="pill-dot"></span>
-                                                {{ cam.online ? 'Trực tuyến' : 'Ngoại tuyến' }}
-                                            </span>
-                                        </div>
-                                        <label class="modern-toggle">
-                                            <input type="checkbox" v-model="cam.enabled" />
-                                            <span class="toggle-track"></span>
-                                        </label>
-                                    </div>
-                                    <div class="cam-form">
-                                        <div class="input-pane">
-                                            <label>RTSP Stream URL</label>
-                                            <input v-model="cam.url" type="text" class="sleek-input text-mono text-sm" />
-                                        </div>
-                                        <div class="input-pane">
-                                            <label>Vị trí lắp đặt</label>
-                                            <input v-model="cam.location" type="text" class="sleek-input" />
-                                        </div>
-                                        <div class="grid-2">
-                                            <div class="input-pane">
-                                                <label>Loại giám sát gốc</label>
-                                                <select v-model="cam.recognitionType" class="sleek-select text-sm">
-                                                    <option value="face">Khuôn mặt (Face)</option>
-                                                    <option value="plate">Biển số (LPR)</option>
-                                                    <option value="both">Hỗn hợp (Face + LPR)</option>
-                                                </select>
-                                            </div>
-                                            <div class="input-pane">
-                                                <label>Phân giải AI</label>
-                                                <select v-model="cam.resolution" class="sleek-select text-sm">
-                                                    <option value="1080p">FHD 1080p</option>
-                                                    <option value="720p">HD 720p</option>
-                                                    <option value="480p">SD 480p</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Recognition Settings -->
-                    <div v-else-if="activeTab === 'recognition'" key="recognition" class="settings-section">
-                        <div class="bento-card mb-4">
-                            <h2 class="bento-title mb-4 flex-center gap-2">
-                                <span class="icon-box blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 0-10 10c0 5.52 4.48 10 10 10s10-4.48 10-10A10 10 0 0 0 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></span>
-                                Nhận diện Khuôn mặt (Face ID)
-                            </h2>
-                            
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Kích hoạt Face ID Engine</span>
-                                        <span class="t-desc">Phân tích luồng video và đối chiếu CSDL trong thời gian thực</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="recognitionSettings.faceEnabled" />
-                                        <span class="toggle-track"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Công nghệ liveness (Anti-spoofing)</span>
-                                        <span class="t-desc">Chống giả mạo qua hình ảnh tĩnh, video phát lại qua điện thoại</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="recognitionSettings.antiSpoofing" />
-                                        <span class="toggle-track"></span>
-                                    </label>
-                                </div>
-                                <div class="slider-item mt-2">
-                                    <div class="slider-header flex-between mb-2">
-                                        <label class="t-label font-medium mb-0">Ngưỡng tin cậy (Confidence Threshold)</label>
-                                        <span class="slider-val text-primary font-bold">{{ recognitionSettings.faceThreshold }}%</span>
-                                    </div>
-                                    <input v-model.number="recognitionSettings.faceThreshold" type="range" min="50" max="100" class="modern-range" />
-                                    <div class="flex-between text-xs text-muted mt-1"><span>Linh hoạt (50%)</span><span>Nghiêm ngặt (100%)</span></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bento-card">
-                            <h2 class="bento-title mb-4 flex-center gap-2">
-                                <span class="icon-box purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2" ry="2"/><line x1="7" y1="12" x2="7.01" y2="12"/><path d="M12 12h4"/></svg></span>
-                                Nhận diện Biển số (LPR)
-                            </h2>
-                            
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Kích hoạt LPR Engine</span>
-                                        <span class="t-desc">Hỗ trợ nhận diện tự động ô tô/xe máy với biển số Việt Nam</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="recognitionSettings.plateEnabled" />
-                                        <span class="toggle-track"></span>
-                                    </label>
-                                </div>
-                                <div class="slider-item mt-2">
-                                    <div class="slider-header flex-between mb-2">
-                                        <label class="t-label font-medium mb-0">Ngưỡng tin cậy LPR</label>
-                                        <span class="slider-val text-purple font-bold">{{ recognitionSettings.plateThreshold }}%</span>
-                                    </div>
-                                    <input v-model.number="recognitionSettings.plateThreshold" type="range" min="50" max="100" class="modern-range purple-range" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Notification Settings -->
-                    <div v-else-if="activeTab === 'notifications'" key="notifications" class="settings-section">
-                        <div class="bento-card">
-                            <h2 class="bento-title mb-1">Cảnh báo & Giao tiếp</h2>
-                            <p class="text-secondary text-sm mb-4">Thiết lập các Rule cảnh báo hành vi ngoại lệ</p>
-
-                            <div class="toggle-list">
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Khuôn mặt người lạ (Stranger Alert)</span>
-                                        <span class="t-desc">Gửi cảnh báo nếu có đối tượng lảng vảng khuôn viên không có trong DB</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="notifSettings.strangerAlert" />
-                                        <span class="toggle-track warning"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Phương tiện không đăng ký</span>
-                                        <span class="t-desc">Cảnh báo khi cổng vào mở cho một xe chui lọt lưới trái phép</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="notifSettings.unregisteredVehicle" />
-                                        <span class="toggle-track danger"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Mất dòng Video (Camera Offline)</span>
-                                        <span class="t-desc">Kích hoạt lỗi Critical ngay khi RTSP drop hoặc camera đóng điện</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="notifSettings.cameraOffline" />
-                                        <span class="toggle-track danger"></span>
-                                    </label>
-                                </div>
-                                <div class="toggle-item">
-                                    <div class="toggle-text">
-                                        <span class="t-label">Xâm nhập ngoài giờ (After-hours)</span>
-                                        <span class="t-desc">Cảnh báo bất kỳ check-in/out nào ngoài cung giờ mở cửa thiết lập ở tab Chung</span>
-                                    </div>
-                                    <label class="modern-toggle lg">
-                                        <input type="checkbox" v-model="notifSettings.afterHours" />
-                                        <span class="toggle-track warning"></span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </transition>
-            </div>
+          </div>
         </div>
-        
-        <!-- Toast UI -->
-        <transition name="toast-slide">
-            <div v-if="toast" class="modern-toast success">
-                <div class="toast-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                </div>
-                <span>{{ toast.message }}</span>
-            </div>
-        </transition>
 
+        <div v-else-if="activeTab === 'camera'" class="camera-panel">
+          <div class="bento-card section-card">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Mạng lưới Camera</h2>
+                <p class="muted">
+                  Nạp camera điện thoại hoặc camera LAN vào mạng lưới, sau đó xem tại trang Giám sát.
+                </p>
+              </div>
+              <router-link to="/monitoring" class="link-btn">Mở trang Giám sát</router-link>
+            </div>
+
+            <div class="toolbar-grid">
+              <input v-model="manualCameraName" class="field" placeholder="Tên hiển thị, ví dụ: iPhone cổng phụ" />
+              <input v-model="manualCameraUrl" class="field" placeholder="http://IP:8081/video" />
+              <select v-model="manualTargetId" class="field">
+                <option value="auto">Nạp vào: Tự động</option>
+                <option v-for="camera in cameraSettings" :key="camera.id" :value="String(camera.id)">
+                  {{ camera.name }}
+                </option>
+              </select>
+              <button class="ghost-btn" :disabled="discoveryLoading" @click="discoverLanCameras">
+                {{ discoveryLoading ? "Đang quét camera LAN..." : "Tự tìm camera LAN" }}
+              </button>
+              <button class="primary-btn" :disabled="connectLoading" @click="applyManualCamera">
+                {{ connectLoading ? "Đang nạp..." : "Nạp vào mạng lưới" }}
+              </button>
+              <button class="secondary-btn" :disabled="connectLoading || !discoveredCameras.length" @click="applyAllDiscoveredCameras">
+                {{ connectLoading ? "Đang nạp..." : "Nạp tất cả" }}
+              </button>
+            </div>
+
+            <p class="muted inline-note">
+              iPhone IP Camera Lite nên dùng <code>http://IP:8081/video</code>. Nếu bạn chỉ nhập <code>IP:8081</code>, hệ thống sẽ tự bổ sung.
+            </p>
+            <p v-if="discoveryMessage" class="message success">{{ discoveryMessage }}</p>
+            <p v-if="discoveryError" class="message danger">{{ discoveryError }}</p>
+            <p v-if="connectMessage" class="message success">{{ connectMessage }}</p>
+            <p v-if="connectError" class="message danger">{{ connectError }}</p>
+
+            <div v-if="discoveredCameras.length" class="discovery-list">
+              <div v-for="camera in discoveredCameras" :key="`${camera.ipAddress}:${camera.port}`" class="discovery-card">
+                <div>
+                  <strong>{{ camera.name }}</strong>
+                  <p class="muted small">{{ camera.ipAddress }}:{{ camera.port }}</p>
+                  <p class="small">URL chính: {{ getPreferredConnectUrl(camera) || "Chưa có" }}</p>
+                </div>
+                <div class="discovery-actions">
+                  <select v-model="discoveredTargetIds[getCameraKey(camera)]" class="field mini-field">
+                    <option value="auto">Tự động</option>
+                    <option v-for="item in cameraSettings" :key="item.id" :value="String(item.id)">
+                      {{ item.name }}
+                    </option>
+                  </select>
+                  <button class="primary-btn small-btn" @click="applyDiscoveredCamera(camera)">Nạp vào camera</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="camera-grid">
+            <article v-for="camera in cameraSettings" :key="camera.id" class="bento-card camera-card">
+              <div class="camera-card-head">
+                <div>
+                  <h3>{{ camera.name }}</h3>
+                  <p class="muted">{{ camera.label || "Chưa đặt tên hiển thị" }}</p>
+                </div>
+                <label class="toggle">
+                  <input v-model="camera.enabled" type="checkbox" @change="handleCameraToggle(camera)" />
+                  <span></span>
+                </label>
+              </div>
+
+              <div class="status-line">
+                <span class="status-pill" :class="getCameraStatusClass(camera)">
+                  {{ getCameraStatusText(camera) }}
+                </span>
+              </div>
+
+              <div class="form-grid">
+                <div class="input-group">
+                  <label>Tên hiển thị trên Giám sát</label>
+                  <input v-model="camera.label" class="field" type="text" placeholder="Ví dụ: iPhone cổng phụ" @blur="persistCameraSettingsOnly" />
+                </div>
+                <div class="input-group">
+                  <label>URL stream</label>
+                  <input v-model="camera.url" class="field mono" type="text" placeholder="http://IP:8081/video" @blur="normalizeCameraCardUrl(camera.id)" />
+                  <small class="muted">Web ưu tiên MJPEG/HTTP để xem trực tiếp. RTSP vẫn lưu được nhưng sẽ cần gateway để hiển thị.</small>
+                </div>
+                <div class="input-group">
+                  <label>Vị trí lắp đặt</label>
+                  <input v-model="camera.location" class="field" type="text" @blur="persistCameraSettingsOnly" />
+                </div>
+              </div>
+
+              <div class="camera-card-actions">
+                <button class="ghost-btn small-btn" :disabled="checkingIds.includes(camera.id)" @click="refreshSingleCameraStatus(camera.id)">
+                  {{ checkingIds.includes(camera.id) ? "Đang kiểm tra..." : "Kiểm tra lại" }}
+                </button>
+                <button class="danger-btn small-btn" @click="clearCamera(camera.id)">Xóa camera</button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div v-else-if="activeTab === 'recognition'" class="bento-card section-card">
+          <h2 class="section-title">Hệ thống AI</h2>
+          <div class="toggle-list">
+            <label class="toggle-row"><span>Bật Face ID</span><input v-model="recognitionSettings.faceEnabled" type="checkbox" /></label>
+            <label class="toggle-row"><span>Chống giả mạo hình ảnh</span><input v-model="recognitionSettings.antiSpoofing" type="checkbox" /></label>
+            <label class="toggle-row"><span>Bật LPR</span><input v-model="recognitionSettings.plateEnabled" type="checkbox" /></label>
+            <div class="input-group">
+              <label>Ngưỡng khuôn mặt: {{ recognitionSettings.faceThreshold }}%</label>
+              <input v-model.number="recognitionSettings.faceThreshold" type="range" min="50" max="100" />
+            </div>
+            <div class="input-group">
+              <label>Ngưỡng biển số: {{ recognitionSettings.plateThreshold }}%</label>
+              <input v-model.number="recognitionSettings.plateThreshold" type="range" min="50" max="100" />
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="bento-card section-card">
+          <h2 class="section-title">Cảnh báo tự động</h2>
+          <div class="toggle-list">
+            <label class="toggle-row"><span>Cảnh báo người lạ</span><input v-model="notifSettings.strangerAlert" type="checkbox" /></label>
+            <label class="toggle-row"><span>Phương tiện chưa đăng ký</span><input v-model="notifSettings.unregisteredVehicle" type="checkbox" /></label>
+            <label class="toggle-row"><span>Camera mất kết nối</span><input v-model="notifSettings.cameraOffline" type="checkbox" /></label>
+            <label class="toggle-row"><span>Hoạt động ngoài giờ</span><input v-model="notifSettings.afterHours" type="checkbox" /></label>
+          </div>
+        </div>
+      </section>
     </div>
+
+    <transition name="toast-slide">
+      <div v-if="toast" class="toast">{{ toast.message }}</div>
+    </transition>
+  </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import axios from "axios"
+import { onMounted, onUnmounted, reactive, ref } from "vue"
+import {
+  createDefaultCameraSettings,
+  loadCameraNetworkSettings,
+  saveCameraNetworkSettings,
+} from "../utils/cameraNetwork"
 
-const activeTab = ref('general')
+const SYSTEM_SETTINGS_STORAGE_KEY = "vshield-system-settings-v1"
+const DISCOVERY_API_BASE = "https://localhost:7107/api/FaceID"
+const CAMERA_PROBE_TIMEOUT_MS = 3500
 
+const activeTab = ref("general")
 const tabs = [
-    { id: 'general', label: 'Cài đặt chung', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>' },
-    { id: 'camera', label: 'Mạng lưới Camera', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>' },
-    { id: 'recognition', label: 'Hệ thống AI', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
-    { id: 'notifications', label: 'Cảnh báo tự động', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>' },
+  { id: "general", label: "Cài đặt chung" },
+  { id: "camera", label: "Mạng lưới Camera" },
+  { id: "recognition", label: "Hệ thống AI" },
+  { id: "notifications", label: "Cảnh báo tự động" },
 ]
 
-const settings = ref({
-    companyName: 'V-Shield Security Group',
-    openTime: '06:00',
-    closeTime: '22:00',
-    language: 'vi',
-    timezone: 'UTC+7',
+const settings = reactive({
+  companyName: "V-Shield Security Group",
+  openTime: "06:00",
+  closeTime: "22:00",
+  language: "vi",
+  timezone: "UTC+7",
 })
 
-const cameraSettings = ref([
-    { id: 1, name: 'CAM-01 (Gate Alpha)', url: 'rtsp://10.0.1.11:554/cam/realmonitor', location: 'Cổng chính - Luồng vào', online: true, enabled: true, recognitionType: 'both', resolution: '1080p' },
-    { id: 2, name: 'CAM-02 (Gate Beta)', url: 'rtsp://10.0.1.12:554/cam/realmonitor', location: 'Cổng phụ - Luồng ra', online: true, enabled: true, recognitionType: 'plate', resolution: '1080p' },
-    { id: 3, name: 'CAM-03 (Lobby Front)', url: 'rtsp://10.0.1.13:554/cam/realmonitor', location: 'Cửa xoay sảnh chính', online: true, enabled: true, recognitionType: 'face', resolution: '720p' },
-    { id: 4, name: 'CAM-04 (Basement B1)', url: 'rtsp://10.0.1.14:554/cam/realmonitor', location: 'Hầm gửi xe B1', online: false, enabled: false, recognitionType: 'plate', resolution: '720p' },
-])
-
-const recognitionSettings = ref({
-    faceEnabled: true,
-    faceThreshold: 88,
-    antiSpoofing: true,
-    plateEnabled: true,
-    plateThreshold: 85,
+const recognitionSettings = reactive({
+  faceEnabled: true,
+  faceThreshold: 88,
+  antiSpoofing: true,
+  plateEnabled: true,
+  plateThreshold: 85,
 })
 
-const notifSettings = ref({
-    strangerAlert: true,
-    unregisteredVehicle: true,
-    cameraOffline: true,
-    afterHours: false,
+const notifSettings = reactive({
+  strangerAlert: true,
+  unregisteredVehicle: true,
+  cameraOffline: true,
+  afterHours: false,
 })
 
+const cameraSettings = ref(createDefaultCameraSettings())
+const manualCameraName = ref("")
+const manualCameraUrl = ref("")
+const manualTargetId = ref("auto")
+const discoveredCameras = ref([])
+const discoveredTargetIds = ref({})
+const discoveryLoading = ref(false)
+const connectLoading = ref(false)
+const discoveryMessage = ref("")
+const discoveryError = ref("")
+const connectMessage = ref("")
+const connectError = ref("")
+const checkingIds = ref([])
 const toast = ref(null)
+
 let toastTimer = null
 
-const saveSettings = () => {
-    if(toastTimer) clearTimeout(toastTimer)
-    toast.value = { message: 'Đã lưu cấu hình hệ thống thành công!' }
-    toastTimer = setTimeout(() => { toast.value = null }, 3500)
+const showToast = (message) => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { message }
+  toastTimer = setTimeout(() => {
+    toast.value = null
+  }, 3500)
 }
+
+const loadSystemSettings = () => {
+  cameraSettings.value = loadCameraNetworkSettings()
+  const rawValue = localStorage.getItem(SYSTEM_SETTINGS_STORAGE_KEY)
+  if (!rawValue) return
+
+  try {
+    const parsed = JSON.parse(rawValue)
+    Object.assign(settings, parsed.settings || {})
+    Object.assign(recognitionSettings, parsed.recognitionSettings || {})
+    Object.assign(notifSettings, parsed.notifSettings || {})
+  } catch {
+    // Giữ giá trị mặc định.
+  }
+}
+
+const persistSystemSettings = () => {
+  localStorage.setItem(
+    SYSTEM_SETTINGS_STORAGE_KEY,
+    JSON.stringify({
+      settings: { ...settings },
+      recognitionSettings: { ...recognitionSettings },
+      notifSettings: { ...notifSettings },
+    })
+  )
+}
+
+const persistCameraSettingsOnly = () => {
+  cameraSettings.value = saveCameraNetworkSettings(cameraSettings.value)
+}
+
+const isHttpCameraUrl = (url) => /^https?:\/\//i.test(url || "")
+const isRtspCameraUrl = (url) => /^rtsp:\/\//i.test(url || "")
+const looksLikeHostInput = (value) =>
+  /^[\w.-]+(?::\d+)?(?:\/.*)?$/i.test((value || "").trim())
+
+const normalizeCameraUrl = (rawValue) => {
+  let value = (rawValue || "").trim()
+  if (!value) return ""
+
+  value = value.replace(/^\/+/, "")
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value) && looksLikeHostInput(value)) {
+    value = `http://${value}`
+  }
+
+  try {
+    const parsedUrl = new URL(value)
+    if (
+      (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") &&
+      (!parsedUrl.pathname || parsedUrl.pathname === "/")
+    ) {
+      if (parsedUrl.port === "8081") {
+        parsedUrl.pathname = "/video"
+      } else if (parsedUrl.port === "8080") {
+        parsedUrl.pathname = "/videofeed"
+      }
+    }
+
+    return parsedUrl.toString()
+  } catch {
+    return (rawValue || "").trim()
+  }
+}
+
+const probeHttpCameraUrl = async (url, timeoutMs = CAMERA_PROBE_TIMEOUT_MS) => {
+  if (!url) {
+    return false
+  }
+
+  const controller = new AbortController()
+  const timerId = window.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+      method: "GET",
+      mode: "no-cors",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+    return true
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timerId)
+  }
+}
+
+const markChecking = (cameraId, value) => {
+  if (value && !checkingIds.value.includes(cameraId)) {
+    checkingIds.value = [...checkingIds.value, cameraId]
+    return
+  }
+  if (!value) {
+    checkingIds.value = checkingIds.value.filter((id) => id !== cameraId)
+  }
+}
+
+const refreshSingleCameraStatus = async (cameraId) => {
+  const camera = cameraSettings.value.find((item) => item.id === cameraId)
+  if (!camera) return
+
+  markChecking(cameraId, true)
+  try {
+    if (!camera.url || !camera.enabled) {
+      camera.online = false
+    } else if (isHttpCameraUrl(camera.url)) {
+      camera.online = await probeHttpCameraUrl(camera.url)
+    } else {
+      camera.online = true
+    }
+    persistCameraSettingsOnly()
+  } finally {
+    markChecking(cameraId, false)
+  }
+}
+
+const refreshAllCameraStatuses = async () => {
+  for (const camera of cameraSettings.value) {
+    await refreshSingleCameraStatus(camera.id)
+  }
+}
+
+const getCameraStatusText = (camera) => {
+  if (!camera.url) return "Chưa gắn"
+  if (!camera.enabled) return "Đã tắt"
+  if (checkingIds.value.includes(camera.id)) return "Đang kiểm tra"
+  if (isRtspCameraUrl(camera.url)) return "RTSP"
+  return camera.online ? "Trực tuyến" : "Ngoại tuyến"
+}
+
+const getCameraStatusClass = (camera) => {
+  if (!camera.url || !camera.enabled) return "neutral"
+  if (checkingIds.value.includes(camera.id)) return "info"
+  if (isRtspCameraUrl(camera.url)) return "info"
+  return camera.online ? "success" : "danger"
+}
+
+const clearDiscoveryState = () => {
+  discoveryMessage.value = ""
+  discoveryError.value = ""
+}
+
+const clearConnectState = () => {
+  connectMessage.value = ""
+  connectError.value = ""
+}
+
+const getCameraKey = (camera) => `${camera.ipAddress}:${camera.port}`
+const getPreferredConnectUrl = (camera) =>
+  camera?.previewUrl || camera?.rtspUrls?.[0] || camera?.baseUrl || ""
+
+const guessCameraLabel = (url) => {
+  try {
+    return `Camera ${new URL(url).hostname}`
+  } catch {
+    return "Camera LAN"
+  }
+}
+
+const resolveTargetCameraId = (preferredId = "auto", preferredUrl = "") => {
+  if (preferredId !== "auto") return Number(preferredId)
+
+  const existing = cameraSettings.value.find((camera) => camera.url === preferredUrl)
+  if (existing) return existing.id
+
+  const empty = cameraSettings.value.find((camera) => !camera.url)
+  if (empty) return empty.id
+
+  const disabled = cameraSettings.value.find((camera) => !camera.enabled)
+  if (disabled) return disabled.id
+
+  return null
+}
+
+const applyCameraToNetwork = async (payload, preferredId = "auto") => {
+  const normalizedUrl = normalizeCameraUrl(payload.url)
+  if (!normalizedUrl) {
+    return { ok: false, error: "Hãy nhập URL camera hợp lệ trước khi nạp." }
+  }
+
+  const targetId = resolveTargetCameraId(preferredId, normalizedUrl)
+  if (!targetId) {
+    return {
+      ok: false,
+      error: "Mạng lưới camera đã đầy. Hãy chọn một ô cụ thể hoặc xóa bớt camera cũ.",
+    }
+  }
+
+  const index = cameraSettings.value.findIndex((camera) => camera.id === targetId)
+  if (index < 0) {
+    return { ok: false, error: "Không tìm thấy ô camera phù hợp." }
+  }
+
+  const current = cameraSettings.value[index]
+  cameraSettings.value[index] = {
+    ...current,
+    label: payload.label?.trim() || current.label || guessCameraLabel(normalizedUrl),
+    url: normalizedUrl,
+    enabled: true,
+    online: false,
+    location: payload.location?.trim() || current.location,
+    recognitionType: payload.recognitionType || current.recognitionType,
+    resolution: payload.resolution || current.resolution,
+  }
+
+  persistCameraSettingsOnly()
+  await refreshSingleCameraStatus(targetId)
+
+  return {
+    ok: true,
+    camera: cameraSettings.value[index],
+    message: `Đã nạp ${cameraSettings.value[index].label} vào ${cameraSettings.value[index].name}.`,
+  }
+}
+
+const applyManualCamera = async () => {
+  clearConnectState()
+  connectLoading.value = true
+  try {
+    const result = await applyCameraToNetwork(
+      { label: manualCameraName.value, url: manualCameraUrl.value },
+      manualTargetId.value
+    )
+
+    if (!result.ok) {
+      connectError.value = result.error
+      return
+    }
+
+    manualCameraUrl.value = normalizeCameraUrl(manualCameraUrl.value)
+    connectMessage.value = result.message
+  } finally {
+    connectLoading.value = false
+  }
+}
+
+const discoverLanCameras = async () => {
+  discoveryLoading.value = true
+  clearDiscoveryState()
+  try {
+    const { data } = await axios.get(`${DISCOVERY_API_BASE}/discover-ipwebcam`)
+    discoveredCameras.value = Array.isArray(data?.cameras) ? data.cameras : []
+
+    const nextSelections = { ...discoveredTargetIds.value }
+    for (const camera of discoveredCameras.value) {
+      const key = getCameraKey(camera)
+      if (!nextSelections[key]) nextSelections[key] = "auto"
+    }
+    discoveredTargetIds.value = nextSelections
+
+    if (!discoveredCameras.value.length) {
+      discoveryError.value = "Chưa tìm thấy camera LAN phù hợp trong cùng mạng."
+      return
+    }
+
+    discoveryMessage.value = `Tìm thấy ${discoveredCameras.value.length} thiết bị camera LAN.`
+  } catch (error) {
+    discoveryError.value =
+      error?.response?.data?.message || error?.message || "Quét camera LAN thất bại."
+  } finally {
+    discoveryLoading.value = false
+  }
+}
+
+const applyDiscoveredCamera = async (camera) => {
+  clearConnectState()
+  connectLoading.value = true
+  try {
+    const connectUrl = getPreferredConnectUrl(camera)
+    if (!connectUrl) {
+      connectError.value = `Thiết bị ${camera.name} chưa có URL phù hợp để nạp.`
+      return
+    }
+
+    const result = await applyCameraToNetwork(
+      { label: camera.name, url: connectUrl },
+      discoveredTargetIds.value[getCameraKey(camera)] || "auto"
+    )
+
+    if (!result.ok) {
+      connectError.value = result.error
+      return
+    }
+
+    connectMessage.value = result.message
+  } finally {
+    connectLoading.value = false
+  }
+}
+
+const applyAllDiscoveredCameras = async () => {
+  clearConnectState()
+  if (!discoveredCameras.value.length) {
+    connectError.value = "Hãy quét camera LAN trước khi nạp toàn bộ."
+    return
+  }
+
+  connectLoading.value = true
+  try {
+    const assigned = []
+    const skipped = []
+
+    for (const camera of discoveredCameras.value) {
+      const connectUrl = getPreferredConnectUrl(camera)
+      if (!connectUrl) {
+        skipped.push(camera.name || `${camera.ipAddress}:${camera.port}`)
+        continue
+      }
+
+      const result = await applyCameraToNetwork(
+        { label: camera.name, url: connectUrl },
+        discoveredTargetIds.value[getCameraKey(camera)] || "auto"
+      )
+
+      if (!result.ok) {
+        skipped.push(camera.name || `${camera.ipAddress}:${camera.port}`)
+        continue
+      }
+
+      assigned.push(result.camera.name)
+    }
+
+    if (!assigned.length) {
+      connectError.value = "Không thể nạp camera nào vào mạng lưới."
+      return
+    }
+
+    connectMessage.value = `Đã nạp ${assigned.length} camera vào ${assigned.join(", ")}${
+      skipped.length ? `. Bỏ qua ${skipped.length} thiết bị.` : "."
+    }`
+  } finally {
+    connectLoading.value = false
+  }
+}
+
+const normalizeCameraCardUrl = async (cameraId) => {
+  const camera = cameraSettings.value.find((item) => item.id === cameraId)
+  if (!camera) return
+
+  camera.url = normalizeCameraUrl(camera.url)
+  if (!camera.url) {
+    camera.enabled = false
+    camera.online = false
+    persistCameraSettingsOnly()
+    return
+  }
+
+  persistCameraSettingsOnly()
+  await refreshSingleCameraStatus(cameraId)
+}
+
+const handleCameraToggle = async (camera) => {
+  clearConnectState()
+  if (!camera.url && camera.enabled) {
+    camera.enabled = false
+    connectError.value = `Hãy nhập URL trước khi bật ${camera.name}.`
+    persistCameraSettingsOnly()
+    return
+  }
+
+  if (!camera.enabled) {
+    camera.online = false
+    persistCameraSettingsOnly()
+    return
+  }
+
+  persistCameraSettingsOnly()
+  await refreshSingleCameraStatus(camera.id)
+}
+
+const clearCamera = (cameraId) => {
+  const index = cameraSettings.value.findIndex((camera) => camera.id === cameraId)
+  if (index < 0) return
+
+  const current = cameraSettings.value[index]
+  cameraSettings.value[index] = {
+    ...current,
+    url: "",
+    enabled: false,
+    online: false,
+  }
+
+  persistCameraSettingsOnly()
+  clearConnectState()
+  connectMessage.value = `Đã xóa cấu hình khỏi ${current.name}.`
+}
+
+const saveSettings = async () => {
+  clearDiscoveryState()
+  clearConnectState()
+  persistSystemSettings()
+  persistCameraSettingsOnly()
+  await refreshAllCameraStatuses()
+  showToast("Đã lưu cấu hình hệ thống thành công.")
+}
+
+onMounted(async () => {
+  loadSystemSettings()
+  await refreshAllCameraStatuses()
+})
+
+onUnmounted(() => {
+  if (toastTimer) clearTimeout(toastTimer)
+})
 </script>
 
 <style scoped>
-/* Layout */
-.bento-header { margin-bottom: 24px; padding: 0 4px; display: flex; justify-content: space-between; align-items: center; }
-.bento-header .greeting h1 { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); }
-.bento-header .greeting p { color: var(--text-secondary); font-size: 0.95rem; }
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
 
-.settings-layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+.save-btn,
+.primary-btn,
+.secondary-btn,
+.ghost-btn,
+.danger-btn,
+.link-btn {
+  border-radius: 12px;
+  font-weight: 700;
+  transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+}
 
-/* Navigation Sidebar */
-.settings-nav { padding: 12px; position: sticky; top: calc(var(--header-height) + 24px); display: flex; flex-direction: column; gap: 4px;}
-.settings-tab { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; background: transparent; border: none; color: var(--text-secondary); border-radius: 12px; font-size: 0.95rem; font-weight: 600; transition: all 0.2s; text-align: left; cursor: pointer; }
-.settings-tab:hover { background: var(--bg-card-hover); color: var(--text-primary); }
-.settings-tab.active { background: rgba(16, 121, 196, 0.1); color: var(--accent-primary); box-shadow: inset 4px 0 0 var(--accent-primary);}
-.tab-icon { width: 22px; height: 22px; flex-shrink: 0;}
-.tab-icon :deep(svg) { width: 100%; height: 100%; }
+.save-btn:hover,
+.primary-btn:hover,
+.secondary-btn:hover,
+.ghost-btn:hover,
+.danger-btn:hover,
+.link-btn:hover {
+  transform: translateY(-1px);
+}
 
-/* Card Components */
-.bento-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 24px; }
-.bento-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0; }
-.text-secondary { color: var(--text-secondary); }
-.text-muted { color: var(--text-muted); }
-.text-sm { font-size: 0.85rem; }
-.text-xs { font-size: 0.75rem; }
-.mb-1 { margin-bottom: 8px; }
-.mb-4 { margin-bottom: 24px; }
-.mb-2 { margin-bottom: 12px; }
-.mt-1 { margin-top: 4px; }
-.mt-2 { margin-top: 16px; }
+.save-btn,
+.primary-btn {
+  padding: 12px 16px;
+  border: none;
+  background: var(--accent-primary);
+  color: #fff;
+  cursor: pointer;
+}
 
-/* Forms */
-.form-grid { display: flex; flex-direction: column; gap: 20px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.input-pane { display: flex; flex-direction: column; gap: 8px; }
-.input-pane label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
+.secondary-btn {
+  padding: 12px 16px;
+  border: none;
+  background: linear-gradient(135deg, #0f766e, #0ea5a4);
+  color: #fff;
+  cursor: pointer;
+}
 
-.sleek-input, .sleek-select { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.95rem; }
-.sleek-input:focus, .sleek-select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
-.text-mono { font-family: 'JetBrains Mono', monospace; }
+.ghost-btn {
+  padding: 12px 16px;
+  border: 1px dashed var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
 
-/* Camera Grid */
-.camera-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.cam-card { padding: 20px; transition: transform 0.2s, box-shadow 0.2s; }
-.cam-card:hover { border-color: rgba(16, 121, 196,0.3); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-.cam-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
-.cam-info h4 { font-size: 1.05rem; font-weight: 600; margin: 0 0 6px 0; color: var(--text-primary);}
-.cam-form { display: flex; flex-direction: column; gap: 16px; }
+.danger-btn {
+  padding: 12px 16px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--accent-danger);
+  cursor: pointer;
+}
 
-/* Status Badges */
-.status-pill.minimal { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; border: 1px solid transparent; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;}
-.status-pill.active { background: rgba(16, 185, 129, 0.05); color: var(--accent-success); border-color: rgba(16, 185, 129, 0.2); }
-.status-pill.inactive { background: rgba(239, 68, 68, 0.05); color: var(--accent-danger); border-color: rgba(239, 68, 68, 0.2); }
-.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.small-btn {
+  padding: 9px 12px;
+  font-size: 0.84rem;
+}
 
-/* Icon Boxes */
-.flex-center { display: flex; align-items: center; }
-.gap-2 { gap: 12px; }
-.flex-between { display: flex; align-items: center; justify-content: space-between; }
-.icon-box { width: 32px; height: 32px; border-radius: 8px; display: flex; justify-content: center; align-items: center; }
-.icon-box.blue { background: rgba(16, 121, 196, 0.1); color: var(--accent-primary); }
-.icon-box.purple { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
-.icon-box svg { width: 18px; height: 18px; }
-.text-purple { color: #a855f7; }
-.font-medium { font-weight: 500; }
-.font-bold { font-weight: 700; }
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.ghost-btn:disabled,
+.danger-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
 
-/* Toggle List */
-.toggle-list { display: flex; flex-direction: column; gap: 16px; }
-.toggle-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: var(--bg-input); border-radius: 12px; border: 1px solid var(--border-color); transition: background 0.2s; }
-.toggle-item:hover { background: var(--bg-card-hover); }
-.toggle-text { display: flex; flex-direction: column; gap: 4px; padding-right: 20px;}
-.t-label { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
-.t-desc { font-size: 0.8rem; color: var(--text-secondary); }
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  text-decoration: none;
+  border: 1px solid rgba(16, 121, 196, 0.2);
+  background: rgba(16, 121, 196, 0.08);
+  color: var(--accent-primary);
+}
 
-/* Modern Modern Toggle Switch */
-.modern-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
-.modern-toggle.lg { width: 50px; height: 28px; }
-.modern-toggle input { opacity: 0; width: 0; height: 0; }
-.toggle-track { position: absolute; cursor: pointer; inset: 0; background: rgba(255,255,255,0.1); border-radius: 34px; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid var(--border-color); }
-.toggle-track::before { content: ''; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: #94a3b8; border-radius: 50%; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.modern-toggle.lg .toggle-track::before { height: 20px; width: 20px; left: 3px; bottom: 3px;}
+.settings-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
 
-.modern-toggle input:checked + .toggle-track { background: var(--accent-primary); border-color: var(--accent-primary); }
-.modern-toggle input:checked + .toggle-track.warning { background: var(--accent-warning); border-color: var(--accent-warning); }
-.modern-toggle input:checked + .toggle-track.danger { background: var(--accent-danger); border-color: var(--accent-danger); }
-.modern-toggle input:checked + .toggle-track::before { transform: translateX(20px); background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
-.modern-toggle.lg input:checked + .toggle-track::before { transform: translateX(22px); }
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: calc(var(--header-height) + 24px);
+}
 
-/* Modern Ranges */
-.slider-item { padding: 0 4px; }
-.modern-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; outline: none; transition: 0.2s; border: 1px solid rgba(255,255,255,0.05);}
-.modern-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: var(--accent-primary); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px rgba(16, 121, 196,0.6); border: 2px solid #fff; transition: transform 0.1s;}
-.modern-range::-webkit-slider-thumb:hover { transform: scale(1.1); }
-.purple-range::-webkit-slider-thumb { background: #a855f7; box-shadow: 0 0 10px rgba(168,85,247,0.6); }
+.settings-tab {
+  text-align: left;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+}
 
-/* Fade Transtions */
-.fade-up-enter-active, .fade-up-leave-active { transition: all 0.3s ease; }
-.fade-up-enter-from { opacity: 0; transform: translateY(10px); }
-.fade-up-leave-to { opacity: 0; transform: translateY(-10px); }
+.settings-tab.active {
+  background: rgba(16, 121, 196, 0.12);
+  color: var(--accent-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
 
-/* Toast */
-.modern-toast { position: fixed; bottom: 32px; right: 32px; padding: 14px 20px; border-radius: 12px; font-size: 0.95rem; font-weight: 500; z-index: 9999; box-shadow: var(--shadow-xl); display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg-card); color: var(--text-primary); }
-.toast-icon svg { width: 22px; height: 22px; }
-.modern-toast.success .toast-icon { color: var(--accent-success); }
-.toast-slide-enter-active, .toast-slide-leave-active { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateY(30px) scale(0.9); }
+.section-card,
+.camera-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.small {
+  font-size: 0.84rem;
+}
+
+.inline-note {
+  font-size: 0.9rem;
+}
+
+.inline-note code {
+  font-family: "JetBrains Mono", monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.toolbar-grid,
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.toolbar-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-group label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.field {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.field:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15);
+}
+
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.mini-field {
+  min-width: 130px;
+  padding: 9px 12px;
+  font-size: 0.84rem;
+}
+
+.message {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.message.success {
+  color: var(--accent-success);
+}
+
+.message.danger {
+  color: var(--accent-danger);
+}
+
+.discovery-list {
+  display: grid;
+  gap: 12px;
+}
+
+.discovery-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+}
+
+.discovery-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.camera-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.camera-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.camera-card-head,
+.camera-card-actions,
+.toggle-row,
+.status-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.camera-card-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: rgba(100, 116, 139, 0.08);
+  color: #64748b;
+}
+
+.status-pill.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-success);
+}
+
+.status-pill.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--accent-danger);
+}
+
+.status-pill.info {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.status-pill.neutral {
+  background: rgba(100, 116, 139, 0.08);
+  color: #64748b;
+}
+
+.toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.3);
+  border: 1px solid var(--border-color);
+}
+
+.toggle span::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.toggle input:checked + span {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.toggle input:checked + span::before {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: var(--shadow-xl);
+  color: var(--text-primary);
+}
+
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition: all 0.25s ease;
+}
+
+.toast-slide-enter-from,
+.toast-slide-leave-to {
+  opacity: 0;
+  transform: translateY(16px);
+}
 
 @media (max-width: 1024px) {
-    .settings-layout { grid-template-columns: 220px 1fr; }
-    .camera-grid { grid-template-columns: 1fr; }
+  .settings-layout,
+  .camera-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-    .settings-layout { grid-template-columns: 1fr; }
-    .settings-nav { position: static; flex-direction: row; overflow-x: auto; padding: 8px; border-radius: 8px; gap: 8px;}
-    .settings-tab { white-space: nowrap; padding: 10px 14px;}
-    .grid-2 { grid-template-columns: 1fr; }
-    .bento-header { flex-direction: column; align-items: flex-start; gap: 16px; }
-    .header-actions { width: 100%; display: flex; justify-content: flex-end;}
+  .page-header,
+  .section-head,
+  .discovery-card,
+  .discovery-actions,
+  .camera-card-actions,
+  .camera-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-nav {
+    position: static;
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
