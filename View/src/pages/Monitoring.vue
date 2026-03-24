@@ -9,7 +9,7 @@
       </div>
 
       <div class="header-actions">
-        <router-link to="/settings" class="manage-btn">Quản lý mạng lưới</router-link>
+        <router-link :to="cameraSettingsRoute" class="manage-btn">Quản lý mạng lưới</router-link>
         <div class="live-indicator">
           <span class="live-dot"></span>
           <span>LIVE</span>
@@ -29,7 +29,7 @@
           4 ô camera luôn hiển thị sẵn. Muốn đổi URL hoặc thêm camera điện thoại, hãy vào phần Cài đặt.
         </span>
       </div>
-      <router-link to="/settings" class="link-inline">Mở Cài đặt</router-link>
+      <router-link :to="cameraSettingsRoute" class="link-inline">Mở Cài đặt</router-link>
     </div>
 
     <Teleport to="body">
@@ -147,8 +147,13 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import {
+  buildCameraHealthProbeUrl,
   extractCameraDisplayParts,
+  isHttpCameraUrl,
+  isRtspCameraUrl,
   loadCameraNetworkSettings,
+  normalizeCameraUrl,
+  shouldAppendPreviewCacheBust,
 } from "../utils/cameraNetwork"
 
 const MONITORING_PREFERENCES_KEY = "vshield-monitoring-preferences-v2"
@@ -159,6 +164,7 @@ const layoutMode = ref(localStorage.getItem(MONITORING_PREFERENCES_KEY) || "2x2"
 const currentTime = ref("")
 const expandedCameraId = ref(null)
 const cameras = ref([])
+const cameraSettingsRoute = { name: "Settings", query: { tab: "camera" } }
 
 let timeTimer = null
 let healthTimer = null
@@ -168,26 +174,7 @@ const syncImmersiveMode = (isActive) => {
   document.body.classList.toggle("monitoring-immersive", isActive)
 }
 
-const isHttpCameraUrl = (url) => /^https?:\/\//i.test(url || "")
-const isRtspCameraUrl = (url) => /^rtsp:\/\//i.test(url || "")
-
-const normalizePreviewUrl = (url) => {
-  if (!isHttpCameraUrl(url)) return ""
-
-  try {
-    const parsedUrl = new URL(url)
-    if (!parsedUrl.pathname || parsedUrl.pathname === "/") {
-      if (parsedUrl.port === "8081") {
-        parsedUrl.pathname = "/video"
-      } else if (parsedUrl.port === "8080") {
-        parsedUrl.pathname = "/videofeed"
-      }
-    }
-    return parsedUrl.toString()
-  } catch {
-    return url || ""
-  }
-}
+const normalizePreviewUrl = (url) => (isHttpCameraUrl(url) ? normalizeCameraUrl(url) : "")
 
 const rebuildCameras = () => {
   const previousState = new Map(cameras.value.map((camera) => [camera.id, camera]))
@@ -204,8 +191,10 @@ const rebuildCameras = () => {
       enabled: Boolean(camera.enabled && camera.url),
       url: camera.url || "",
       previewUrl: normalizePreviewUrl(camera.url),
+      healthCheckUrl: buildCameraHealthProbeUrl(camera.url),
       isRtsp: isRtspCameraUrl(camera.url),
       isOffline: previous?.isOffline ?? false,
+      shouldCacheBustPreview: shouldAppendPreviewCacheBust(camera.url),
       previewNonce: previous?.previewNonce || Date.now(),
     }
   })
@@ -256,6 +245,10 @@ const canRenderLivePreview = (camera) =>
 
 const getCameraPreviewSrc = (camera) => {
   if (!camera.previewUrl) return ""
+  if (!camera.shouldCacheBustPreview) {
+    return camera.previewUrl
+  }
+
   const divider = camera.previewUrl.includes("?") ? "&" : "?"
   return `${camera.previewUrl}${divider}v=${camera.previewNonce || 0}`
 }
@@ -295,11 +288,16 @@ const probeHttpCameraUrl = async (url, timeoutMs = HEALTH_CHECK_TIMEOUT_MS) => {
     return false
   }
 
+  const probeUrl = buildCameraHealthProbeUrl(url)
+  if (!probeUrl) {
+    return false
+  }
+
   const controller = new AbortController()
   const timerId = window.setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+    await fetch(probeUrl, {
       method: "GET",
       mode: "no-cors",
       cache: "no-store",
@@ -326,7 +324,7 @@ const checkCameraHealth = async () => {
     const results = await Promise.all(
       liveHttpCameras.map(async (camera) => ({
         id: camera.id,
-        ok: await probeHttpCameraUrl(camera.previewUrl),
+        ok: await probeHttpCameraUrl(camera.healthCheckUrl || camera.previewUrl),
       }))
     )
 

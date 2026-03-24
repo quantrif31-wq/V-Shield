@@ -203,10 +203,15 @@
 
 <script setup>
 import axios from "axios"
-import { onMounted, onUnmounted, reactive, ref } from "vue"
+import { onMounted, onUnmounted, reactive, ref, watch } from "vue"
+import { useRoute } from "vue-router"
 import {
+  buildCameraHealthProbeUrl,
   createDefaultCameraSettings,
+  isHttpCameraUrl,
+  isRtspCameraUrl,
   loadCameraNetworkSettings,
+  normalizeCameraUrl,
   saveCameraNetworkSettings,
 } from "../utils/cameraNetwork"
 
@@ -221,6 +226,8 @@ const tabs = [
   { id: "recognition", label: "Hệ thống AI" },
   { id: "notifications", label: "Cảnh báo tự động" },
 ]
+const validTabIds = new Set(tabs.map((tab) => tab.id))
+const route = useRoute()
 
 const settings = reactive({
   companyName: "V-Shield Security Group",
@@ -262,6 +269,18 @@ const toast = ref(null)
 
 let toastTimer = null
 
+const syncActiveTabFromRoute = () => {
+  const requestedTab = typeof route.query.tab === "string" ? route.query.tab : ""
+  activeTab.value = validTabIds.has(requestedTab) ? requestedTab : "general"
+}
+
+watch(
+  () => route.query.tab,
+  () => {
+    syncActiveTabFromRoute()
+  }
+)
+
 const showToast = (message) => {
   if (toastTimer) clearTimeout(toastTimer)
   toast.value = { message }
@@ -300,41 +319,13 @@ const persistCameraSettingsOnly = () => {
   cameraSettings.value = saveCameraNetworkSettings(cameraSettings.value)
 }
 
-const isHttpCameraUrl = (url) => /^https?:\/\//i.test(url || "")
-const isRtspCameraUrl = (url) => /^rtsp:\/\//i.test(url || "")
-const looksLikeHostInput = (value) =>
-  /^[\w.-]+(?::\d+)?(?:\/.*)?$/i.test((value || "").trim())
-
-const normalizeCameraUrl = (rawValue) => {
-  let value = (rawValue || "").trim()
-  if (!value) return ""
-
-  value = value.replace(/^\/+/, "")
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value) && looksLikeHostInput(value)) {
-    value = `http://${value}`
-  }
-
-  try {
-    const parsedUrl = new URL(value)
-    if (
-      (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") &&
-      (!parsedUrl.pathname || parsedUrl.pathname === "/")
-    ) {
-      if (parsedUrl.port === "8081") {
-        parsedUrl.pathname = "/video"
-      } else if (parsedUrl.port === "8080") {
-        parsedUrl.pathname = "/videofeed"
-      }
-    }
-
-    return parsedUrl.toString()
-  } catch {
-    return (rawValue || "").trim()
-  }
-}
-
 const probeHttpCameraUrl = async (url, timeoutMs = CAMERA_PROBE_TIMEOUT_MS) => {
   if (!url) {
+    return false
+  }
+
+  const probeUrl = buildCameraHealthProbeUrl(url)
+  if (!probeUrl) {
     return false
   }
 
@@ -342,7 +333,7 @@ const probeHttpCameraUrl = async (url, timeoutMs = CAMERA_PROBE_TIMEOUT_MS) => {
   const timerId = window.setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+    await fetch(probeUrl, {
       method: "GET",
       mode: "no-cors",
       cache: "no-store",
@@ -666,6 +657,7 @@ const saveSettings = async () => {
 }
 
 onMounted(async () => {
+  syncActiveTabFromRoute()
   loadSystemSettings()
   await refreshAllCameraStatuses()
 })

@@ -1,5 +1,9 @@
 export const CAMERA_NETWORK_STORAGE_KEY = "vshield-camera-network-settings-v2"
 
+const HTTP_CAMERA_PROTOCOL_REGEX = /^https?:\/\//i
+const RTSP_CAMERA_PROTOCOL_REGEX = /^rtsp:\/\//i
+const STREAM_PREVIEW_PATHS = new Set(["/video", "/videofeed"])
+
 export const DEFAULT_CAMERA_SETTINGS = [
   {
     id: 1,
@@ -49,6 +53,73 @@ export const DEFAULT_CAMERA_SETTINGS = [
 
 export const createDefaultCameraSettings = () =>
   DEFAULT_CAMERA_SETTINGS.map((camera) => ({ ...camera }))
+
+export const isHttpCameraUrl = (url) => HTTP_CAMERA_PROTOCOL_REGEX.test(url || "")
+
+export const isRtspCameraUrl = (url) => RTSP_CAMERA_PROTOCOL_REGEX.test(url || "")
+
+export const looksLikeHostInput = (value) =>
+  /^[\w.-]+(?::\d+)?(?:\/.*)?$/i.test((value || "").trim())
+
+export const normalizeCameraUrl = (rawValue) => {
+  let value = (rawValue || "").trim()
+  if (!value) return ""
+
+  value = value.replace(/^\/+/, "")
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value) && looksLikeHostInput(value)) {
+    value = `http://${value}`
+  }
+
+  try {
+    const parsedUrl = new URL(value)
+    if (
+      (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") &&
+      (!parsedUrl.pathname || parsedUrl.pathname === "/")
+    ) {
+      if (parsedUrl.port === "8081") {
+        parsedUrl.pathname = "/video"
+      } else if (parsedUrl.port === "8080") {
+        parsedUrl.pathname = "/videofeed"
+      }
+    }
+
+    return parsedUrl.toString()
+  } catch {
+    return (rawValue || "").trim()
+  }
+}
+
+export const isKnownStreamPreviewUrl = (url) => {
+  if (!isHttpCameraUrl(url)) return false
+
+  try {
+    const parsedUrl = new URL(normalizeCameraUrl(url))
+    return STREAM_PREVIEW_PATHS.has(parsedUrl.pathname.toLowerCase())
+  } catch {
+    return false
+  }
+}
+
+export const buildCameraHealthProbeUrl = (url) => {
+  if (!isHttpCameraUrl(url)) return ""
+
+  try {
+    const parsedUrl = new URL(normalizeCameraUrl(url))
+    if (!STREAM_PREVIEW_PATHS.has(parsedUrl.pathname.toLowerCase())) {
+      return parsedUrl.toString()
+    }
+
+    parsedUrl.pathname = "/"
+    parsedUrl.search = ""
+    parsedUrl.hash = ""
+    return parsedUrl.toString()
+  } catch {
+    return (url || "").trim()
+  }
+}
+
+export const shouldAppendPreviewCacheBust = (url) =>
+  isHttpCameraUrl(url) && !isKnownStreamPreviewUrl(url)
 
 const parseLegacyCameraName = (value, fallbackName, fallbackLabel) => {
   const name = (value || "").trim()

@@ -459,7 +459,7 @@ async function handleLogin() {
     padding: 28px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 24px;
 }
 
@@ -508,6 +508,7 @@ async function handleLogin() {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    margin-top: 6px;
 }
 
 .label-row {
@@ -653,6 +654,7 @@ async function handleLogin() {
 }
 
 .login-footer {
+    margin-top: auto;
     padding-top: 8px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
