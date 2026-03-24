@@ -28,6 +28,9 @@ api.interceptors.response.use(
 /** Lấy danh sách tất cả phương tiện */
 export const getAll = () => api.get('/')
 
+/** Lấy danh mục loại xe */
+export const getTypes = () => api.get('/types')
+
 /** Lấy phương tiện theo ID */
 export const getById = (id) => api.get(`/${id}`)
 

@@ -8,6 +8,7 @@ namespace API.Services;
 // ==================== INTERFACE ====================
 public interface IVehicleService
 {
+    Task<IEnumerable<VehicleTypeDto>> GetVehicleTypesAsync();
     Task<IEnumerable<VehicleDto>> GetAllAsync();
     Task<VehicleDto?> GetByIdAsync(int vehicleId);
     Task<IEnumerable<VehicleDto>> GetByEmployeeIdAsync(int employeeId);
@@ -26,6 +27,21 @@ public class VehicleService : IVehicleService
     {
         _context = context;
     }
+
+    public async Task<IEnumerable<VehicleTypeDto>> GetVehicleTypesAsync()
+    {
+        await EnsureDefaultVehicleTypesAsync();
+
+        return await _context.VehicleTypes
+            .OrderBy(vt => vt.TypeName)
+            .Select(vt => new VehicleTypeDto
+            {
+                VehicleTypeId = vt.VehicleTypeId,
+                TypeName = vt.TypeName
+            })
+            .ToListAsync();
+    }
+
 
     // Lấy tất cả phương tiện
     public async Task<IEnumerable<VehicleDto>> GetAllAsync()
@@ -73,6 +89,8 @@ public class VehicleService : IVehicleService
     // Tạo mới phương tiện
     public async Task<VehicleDto> CreateAsync(CreateVehicleDto dto)
     {
+        await EnsureDefaultVehicleTypesAsync();
+
         // Kiểm tra biển số đã tồn tại chưa
         var existing = await _context.Vehicles
             .AnyAsync(v => v.LicensePlate == dto.LicensePlate);
@@ -115,6 +133,8 @@ public class VehicleService : IVehicleService
     // Cập nhật phương tiện
     public async Task<VehicleDto?> UpdateAsync(int vehicleId, UpdateVehicleDto dto)
     {
+        await EnsureDefaultVehicleTypesAsync();
+
         var vehicle = await _context.Vehicles
             .Include(v => v.Employee)
             .Include(v => v.VehicleType)
@@ -176,6 +196,27 @@ public class VehicleService : IVehicleService
         _context.Vehicles.Remove(vehicle);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    private async Task EnsureDefaultVehicleTypesAsync()
+    {
+        var defaults = new[] { "Ô tô", "Xe máy", "Xe đạp", "Xe tải" };
+        var existingNames = await _context.VehicleTypes
+            .Select(vt => vt.TypeName)
+            .ToListAsync();
+
+        var missing = defaults
+            .Where(name => !existingNames.Any(existing => string.Equals(existing, name, StringComparison.OrdinalIgnoreCase)))
+            .Select(name => new VehicleType { TypeName = name })
+            .ToList();
+
+        if (!missing.Any())
+        {
+            return;
+        }
+
+        _context.VehicleTypes.AddRange(missing);
+        await _context.SaveChangesAsync();
     }
 
     // Helper: Map Entity -> DTO

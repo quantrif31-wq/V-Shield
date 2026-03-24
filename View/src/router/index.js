@@ -4,6 +4,7 @@ import { isLoggedIn, hasRole } from '../stores/auth'
 import Login from '../pages/Login.vue'
 import MainLayout from '../components/Layout/MainLayout.vue'
 import Dashboard from '../pages/Dashboard.vue'
+import AboutProject from '../pages/AboutProject.vue'
 import Employees from '../pages/Employees.vue'
 import Vehicles from '../pages/Vehicles.vue'
 import AccessLogs from '../pages/AccessLogs.vue'
@@ -40,7 +41,9 @@ const routes = [
         component: MainLayout,
         meta: { requiresAuth: true },
         children: [
-            { path: '', name: 'Dashboard', component: Dashboard },
+            { path: '', redirect: { name: 'AboutProject' } },
+            { path: 'dashboard', name: 'Dashboard', component: Dashboard },
+            { path: 'about-project', name: 'AboutProject', component: AboutProject },
             { path: 'employees', name: 'Employees', component: Employees },
             { path: 'vehicles', name: 'Vehicles', component: Vehicles },
             { path: 'access-logs', name: 'AccessLogs', component: AccessLogs },
@@ -93,7 +96,7 @@ router.beforeEach((to, from, next) => {
     // Nếu đã đăng nhập mà vào trang login → redirect Dashboard
     // Nhưng cho phép truy cập trang đăng ký khách (GuestRegister) dù đã đăng nhập
     if (to.meta.guest && isLoggedIn() && to.name !== 'GuestRegister') {
-        return next({ name: 'Dashboard' })
+        return next({ name: 'AboutProject' })
     }
 
     next()

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
     <div class="page-container animate-in">
         <!-- Minimalist Header -->
         <header class="page-header bento-header">
@@ -269,8 +269,20 @@
                                 <label>Nhân sự Host đại diện <span class="req">*</span></label>
                                 <div class="combobox-wrapper" v-click-outside="closeHostDropdown">
                                     <div class="input-with-avatar">
-                                        <div v-if="linkForm.hostEmployeeId && !showHostDropdown" class="selected-avatar-preview avatar mini" :style="{ background: getAvatarColor(getInitials(hostSearchQuery)) }">
-                                            {{ getInitials(hostSearchQuery) }}
+                                        <div v-if="selectedHostEmployee && !showHostDropdown" class="selected-avatar-preview">
+                                            <img
+                                                v-if="canShowEmployeeAvatar(selectedHostEmployee)"
+                                                :src="getEmployeeAvatarSrc(selectedHostEmployee)"
+                                                class="avatar-img avatar-mini-inline"
+                                                @error="markEmployeeAvatarBroken(selectedHostEmployee.employeeId)"
+                                            />
+                                            <div
+                                                v-else
+                                                class="avatar mini avatar-mini-inline"
+                                                :style="{ background: getAvatarColor(getInitials(selectedHostEmployee.fullName)) }"
+                                            >
+                                                {{ getInitials(selectedHostEmployee.fullName) }}
+                                            </div>
                                         </div>
                                         <input 
                                             type="text" 
@@ -295,7 +307,13 @@
                                             :class="{ 'selected': linkForm.hostEmployeeId === emp.employeeId }"
                                             @click="selectHost(emp)"
                                         >
-                                            <div class="avatar mini" :style="{ background: getAvatarColor(getInitials(emp.fullName)) }">
+                                            <img
+                                                v-if="canShowEmployeeAvatar(emp)"
+                                                :src="getEmployeeAvatarSrc(emp)"
+                                                class="avatar-img avatar-img-mini"
+                                                @error="markEmployeeAvatarBroken(emp.employeeId)"
+                                            />
+                                            <div v-else class="avatar mini" :style="{ background: getAvatarColor(getInitials(emp.fullName)) }">
                                                 {{ getInitials(emp.fullName) }}
                                             </div>
                                             <div class="emp-details">
@@ -355,6 +373,8 @@ import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { getAll, getDetail, updateStatus, createLink } from '../services/preRegistrationApi'
 import { getAll as getAllEmployees } from '../services/employeeApi'
 
+const API_BASE = 'https://localhost:7107'
+
 const registrations = ref([])
 const totalItems = ref(0)
 const currentPage = ref(1)
@@ -396,6 +416,13 @@ const vClickOutside = {
 // Combobox logic
 const showHostDropdown = ref(false)
 const hostSearchQuery = ref('')
+const brokenEmployeeAvatarIds = ref({})
+
+const selectedHostEmployee = computed(() => {
+    if (!linkForm.hostEmployeeId) return null
+    return (employees.value || []).find(e => e.employeeId === linkForm.hostEmployeeId) || null
+})
+
 
 const filteredEmployees = computed(() => {
     if (!hostSearchQuery.value) return employees.value || []
@@ -436,8 +463,22 @@ const closeHostDropdown = () => {
 }
 
 const getInitials = (name) => {
-    if (!name) return '??'
-    return name.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase()
+    if (!name || !name.trim()) return '??'
+    return name.trim().split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(-2).toUpperCase()
+}
+
+const canShowEmployeeAvatar = (employee) => {
+    return !!employee?.faceImageUrl && !brokenEmployeeAvatarIds.value[employee.employeeId]
+}
+
+const getEmployeeAvatarSrc = (employee) => {
+    if (!employee?.faceImageUrl) return ''
+    return employee.faceImageUrl.startsWith('http') ? employee.faceImageUrl : `${API_BASE}${employee.faceImageUrl}`
+}
+
+const markEmployeeAvatarBroken = (employeeId) => {
+    if (!employeeId || brokenEmployeeAvatarIds.value[employeeId]) return
+    brokenEmployeeAvatarIds.value = { ...brokenEmployeeAvatarIds.value, [employeeId]: true }
 }
 
 const formatDateTime = (dt) => {
@@ -619,8 +660,8 @@ input[type="date"].minimal-select { padding: 8px 14px; }
 .table-row:hover { background: var(--bg-card-hover); cursor: default; }
 
 .user-cell { display: flex; align-items: center; gap: 14px; }
-.avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; }
-.avatar.mini { width: 32px; height: 32px; font-size: 0.8rem; }
+.avatar, .avatar-img { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; object-fit: cover; flex-shrink: 0; }
+.avatar.mini, .avatar-img-mini { width: 32px; height: 32px; font-size: 0.8rem; }
 .user-info { display: flex; flex-direction: column; }
 .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
 .user-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
@@ -732,9 +773,10 @@ input[type="date"].minimal-select { padding: 8px 14px; }
 /* Custom Combobox */
 .combobox-wrapper { position: relative; width: 100%; border-radius: 8px; }
 .input-with-avatar { position: relative; width: 100%; display: flex; align-items: center; }
-.selected-avatar-preview { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; font-size: 0.7rem; pointer-events: none; }
+.selected-avatar-preview { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 2; }
+.avatar-mini-inline { width: 24px; height: 24px; font-size: 0.7rem; }
 .combobox-input { width: 100%; padding-right: 40px; background: #fff !important; cursor: text; }
-.combobox-input.has-avatar { padding-left: 48px; }
+.combobox-input.has-avatar { padding-left: 52px; }
 
 .dropdown-icon { position: absolute; right: 14px; top: 14px; width: 18px; height: 18px; color: var(--accent-primary); pointer-events: none; transition: transform 0.2s; }
 .dropdown-icon.rotated { transform: rotate(180deg); color: var(--accent-primary); }
@@ -758,3 +800,5 @@ input[type="date"].minimal-select { padding: 8px 14px; }
     .timeline-row { flex-wrap: wrap; }
 }
 </style>
+
+

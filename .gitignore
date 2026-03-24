@@ -1,4 +1,5 @@
 .vs/
+.dotnet-cli/
 # ===== Python =====
 __pycache__/
 *.pyc
@@ -17,12 +18,14 @@ runs/
 # ===== Build files =====
 build/
 dist/
+.tmp-api-build/
 *.exe
 *.pkg
 
 # ===== ASP.NET =====
 bin/
 obj/
+API/API/API/wwwroot/uploads/faces/
 
 # ===== VSCode =====
 .vscode/

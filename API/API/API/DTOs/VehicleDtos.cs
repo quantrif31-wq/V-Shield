@@ -14,6 +14,12 @@ public class VehicleDto
     public string? Description { get; set; }
 }
 
+public class VehicleTypeDto
+{
+    public int VehicleTypeId { get; set; }
+    public string TypeName { get; set; } = null!;
+}
+
 // DTO tạo mới phương tiện
 public class CreateVehicleDto
 {

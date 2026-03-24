@@ -7,7 +7,7 @@ echo =============================
 
 :: RUN ASP.NET CORE API
 echo Starting ASP.NET Core API...
-start cmd /k "cd /d C:\DoAnTotNghiep\V-Shield\API\API\API && dotnet run"
+start cmd /k "cd /d C:\DoAnTotNghiep\V-Shield\API\API\API && dotnet run --launch-profile "https"
 
 :: RUN VUE FRONTEND
 echo Starting Vue Frontend...

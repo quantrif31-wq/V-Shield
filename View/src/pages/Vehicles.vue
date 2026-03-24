@@ -161,7 +161,7 @@
                     </div>
                     
                     <form @submit.prevent="saveVehicle" class="modal-body">
-                        <div class="grid-2">
+                        <div class="grid-2" :class="{ 'grid-1': !editingVehicle }">
                             <div class="input-pane">
                                 <label>Biển số xe <span class="req">*</span></label>
                                 <input v-model="form.licensePlate" type="text" class="sleek-input" 
@@ -180,26 +180,97 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="input-pane">
+                            <div v-if="editingVehicle" class="input-pane">
                                 <label>Loại xe</label>
                                 <select v-model="form.vehicleTypeId" class="sleek-select">
                                     <option :value="null">-- Chọn loại xe --</option>
-                                    <option :value="1">Ô tô</option>
-                                    <option :value="2">Xe máy</option>
-                                    <option :value="3">Xe đạp</option>
-                                    <option :value="4">Xe tải</option>
+                                    <option v-for="type in vehicleTypeOptions" :key="type.vehicleTypeId" :value="type.vehicleTypeId">
+                                        {{ type.typeName }}
+                                    </option>
                                 </select>
+                                <small class="field-note">Chỉ chỉnh tay loại xe khi cập nhật phương tiện.</small>
+                            </div>
+                            <div v-else class="input-pane">
+                                <label>Loại xe</label>
+                                <div class="auto-detected-type" :class="{ ready: !!inferredVehicleTypeId }">
+                                    <strong>{{ inferredVehicleTypeLabel }}</strong>
+                                    <span>Tự động nhận diện từ biển số khi đăng ký mới.</span>
+                                </div>
                             </div>
                         </div>
 
                         <div class="input-pane">
                             <label>Chủ sở hữu (Nhân viên) <span class="req">*</span></label>
-                            <select v-model="form.employeeId" class="sleek-select" required>
-                                <option :value="null">-- Chọn nhân viên --</option>
-                                <option v-for="emp in employeeList" :key="emp.employeeId" :value="emp.employeeId">
-                                    {{ emp.fullName }} - ID: {{ emp.employeeId }}
-                                </option>
-                            </select>
+                            <div class="combobox-wrapper" v-click-outside="closeOwnerDropdown">
+                                <div class="input-with-avatar">
+                                    <div v-if="selectedOwnerEmployee && !showOwnerDropdown" class="selected-avatar-preview">
+                                        <img
+                                            v-if="canShowOwnerAvatar(selectedOwnerEmployee)"
+                                            :src="getOwnerAvatarSrc(selectedOwnerEmployee)"
+                                            class="avatar-img avatar-mini-inline"
+                                            @error="markOwnerAvatarBroken(selectedOwnerEmployee.employeeId)"
+                                        />
+                                        <div
+                                            v-else
+                                            class="avatar mini avatar-mini-inline"
+                                            :style="{ background: getAvatarColor(selectedOwnerEmployee.employeeId || 0) }"
+                                        >
+                                            {{ getInitials(selectedOwnerEmployee.fullName) }}
+                                        </div>
+                                    </div>
+
+                                    <input
+                                        v-model="ownerSearchQuery"
+                                        type="text"
+                                        class="sleek-input combobox-input"
+                                        :class="{ 'has-avatar': selectedOwnerEmployee && !showOwnerDropdown }"
+                                        placeholder="-- Chọn nhân viên --"
+                                        required
+                                        @focus="onOwnerInputFocus"
+                                        @input="onOwnerInputChange"
+                                    />
+                                </div>
+
+                                <svg class="dropdown-icon" :class="{ rotated: showOwnerDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+
+                                <div v-if="showOwnerDropdown" class="combobox-dropdown">
+                                    <div v-if="filteredOwnerEmployees.length === 0" class="no-results">
+                                        Không tìm thấy nhân viên
+                                    </div>
+
+                                    <div
+                                        v-for="emp in filteredOwnerEmployees"
+                                        :key="emp.employeeId"
+                                        class="combobox-item"
+                                        :class="{ selected: form.employeeId === emp.employeeId }"
+                                        @click="selectOwner(emp)"
+                                    >
+                                        <img
+                                            v-if="canShowOwnerAvatar(emp)"
+                                            :src="getOwnerAvatarSrc(emp)"
+                                            class="avatar-img avatar-img-mini"
+                                            @error="markOwnerAvatarBroken(emp.employeeId)"
+                                        />
+                                        <div
+                                            v-else
+                                            class="avatar mini"
+                                            :style="{ background: getAvatarColor(emp.employeeId || 0) }"
+                                        >
+                                            {{ getInitials(emp.fullName) }}
+                                        </div>
+
+                                        <div class="emp-details">
+                                            <span class="emp-name">{{ emp.fullName }}</span>
+                                            <span class="emp-meta">
+                                                ID: {{ emp.employeeId }}
+                                                <span v-if="emp.departmentName">• {{ emp.departmentName }}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="input-pane">
@@ -270,6 +341,10 @@ const editingVehicle = ref(null)
 const saving = ref(false)
 const modalError = ref('')
 const deleteConfirm = ref(null)
+const showOwnerDropdown = ref(false)
+const ownerSearchQuery = ref('')
+const brokenOwnerAvatarIds = ref({})
+const vehicleTypeOptions = ref([])
 
 const form = ref({ licensePlate: '', vehicleTypeId: null, employeeId: null, description: '' })
 
@@ -288,6 +363,9 @@ function onPlateInput() {
     if (!val) {
         plateValidation.touched = false
         plateValidation.isValid = false
+        if (!editingVehicle.value) {
+            form.value.vehicleTypeId = null
+        }
         return
     }
     plateValidation.touched = true
@@ -297,6 +375,9 @@ function onPlateInput() {
     plateValidation.typeLabel = getVehicleTypeLabel(result.type)
     plateValidation.cleanedPlate = result.cleanedPlate
     plateValidation.corrected = result.cleanedPlate !== result.rawInput
+    if (!editingVehicle.value) {
+        form.value.vehicleTypeId = result.isValid ? (resolveVehicleTypeIdByPlateType(result.type) || null) : null
+    }
 }
 
 const toast = ref(null)
@@ -321,6 +402,63 @@ const vehicleTypes = computed(() => {
 })
 
 const vehicleTypeCount = computed(() => vehicleTypes.value.length)
+
+const selectedOwnerEmployee = computed(() => {
+    if (!form.value.employeeId) return null
+    return employeeList.value.find(e => e.employeeId === form.value.employeeId) || null
+})
+
+const normalizeVehicleTypeName = (name) =>
+    String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim()
+
+const resolveVehicleTypeIdByPlateType = (plateType) => {
+    const aliases = plateType === 'Car'
+        ? ['o to', 'xe hoi', 'car']
+        : plateType === 'Motorcycle'
+            ? ['xe may', 'motorcycle', 'motorbike', 'moto']
+            : []
+
+    if (!aliases.length) return null
+
+    const matchedType = vehicleTypeOptions.value.find((item) => {
+        const normalizedName = normalizeVehicleTypeName(item.typeName)
+        return aliases.some((alias) => normalizedName.includes(alias))
+    })
+
+    return matchedType?.vehicleTypeId || null
+}
+
+const inferredVehicleTypeId = computed(() => {
+    if (!plateValidation.isValid) return null
+    return resolveVehicleTypeIdByPlateType(plateValidation.type)
+})
+
+const inferredVehicleTypeLabel = computed(() => {
+    if (!plateValidation.touched) return 'Sẽ tự nhận diện sau khi nhập biển số'
+    if (!plateValidation.isValid || !inferredVehicleTypeId.value) return 'Chưa xác định được loại xe'
+    return getVehicleTypeLabel(plateValidation.type)
+})
+
+const filteredOwnerEmployees = computed(() => {
+    const list = employeeList.value || []
+    if (!ownerSearchQuery.value) return list
+
+    const selectedEmp = selectedOwnerEmployee.value
+    if (selectedEmp && ownerSearchQuery.value === selectedEmp.fullName) {
+        return list
+    }
+
+    const q = ownerSearchQuery.value.toLowerCase()
+    return list.filter(emp =>
+        emp?.fullName?.toLowerCase().includes(q) ||
+        String(emp?.employeeId || '').includes(q) ||
+        emp?.departmentName?.toLowerCase().includes(q)
+    )
+})
 
 let filterTimer = null
 function debouncedFilter() {
@@ -354,6 +492,15 @@ async function fetchVehicles() {
     }
 }
 
+async function fetchVehicleTypes() {
+    try {
+        const res = await vehicleApi.getTypes()
+        vehicleTypeOptions.value = Array.isArray(res.data) ? res.data : []
+    } catch {
+        vehicleTypeOptions.value = []
+    }
+}
+
 async function fetchEmployees() {
     try {
         const res = await getAllEmployees()
@@ -379,6 +526,7 @@ function openModal(v = null) {
             employeeId: v.employeeId || null,
             description: v.description || ''
         }
+        ownerSearchQuery.value = v.employeeFullName || ''
         // Validate existing plate
         if (v.licensePlate) {
             plateValidation.touched = true
@@ -391,7 +539,9 @@ function openModal(v = null) {
         }
     } else {
         form.value = { licensePlate: '', vehicleTypeId: null, employeeId: null, description: '' }
+        ownerSearchQuery.value = ''
     }
+    showOwnerDropdown.value = false
     showModal.value = true
 }
 
@@ -399,6 +549,8 @@ function closeModal() {
     showModal.value = false
     modalError.value = ''
     editingVehicle.value = null
+    showOwnerDropdown.value = false
+    ownerSearchQuery.value = ''
 }
 
 async function saveVehicle() {
@@ -415,6 +567,11 @@ async function saveVehicle() {
     // Apply corrected plate if OCR fixed
     if (plateResult.cleanedPlate !== plateResult.rawInput) {
         form.value.licensePlate = plateResult.cleanedPlate
+    }
+    const inferredTypeId = resolveVehicleTypeIdByPlateType(plateResult.type)
+    if (!editingVehicle.value && !inferredTypeId) {
+        modalError.value = 'Không thể đối chiếu loại xe từ danh mục trong hệ thống. Vui lòng kiểm tra lại bảng VehicleType.'
+        return
     }
     if (!form.value.employeeId) {
         modalError.value = 'Vui lòng chọn nhân viên sở hữu.'
@@ -437,7 +594,7 @@ async function saveVehicle() {
             // Tạo mới
             await vehicleApi.create({
                 licensePlate: form.value.licensePlate.trim(),
-                vehicleTypeId: form.value.vehicleTypeId,
+                vehicleTypeId: inferredTypeId,
                 employeeId: form.value.employeeId,
                 description: form.value.description || null
             })
@@ -474,10 +631,67 @@ async function executeDelete() {
 }
 
 // ─── Helpers ────────────────────────────────────────────────
+const vClickOutside = {
+    mounted(el, binding) {
+        el.clickOutsideEvent = function (event) {
+            if (!(el === event.target || el.contains(event.target))) {
+                binding.value(event, el)
+            }
+        }
+        document.addEventListener('click', el.clickOutsideEvent)
+    },
+    unmounted(el) {
+        document.removeEventListener('click', el.clickOutsideEvent)
+    }
+}
+
+function onOwnerInputFocus() {
+    showOwnerDropdown.value = true
+}
+
+function onOwnerInputChange() {
+    showOwnerDropdown.value = true
+
+    if (!selectedOwnerEmployee.value) return
+    if (ownerSearchQuery.value !== selectedOwnerEmployee.value.fullName) {
+        form.value.employeeId = null
+    }
+}
+
+function selectOwner(emp) {
+    form.value.employeeId = emp.employeeId
+    ownerSearchQuery.value = emp.fullName
+    showOwnerDropdown.value = false
+}
+
+function closeOwnerDropdown() {
+    showOwnerDropdown.value = false
+
+    if (selectedOwnerEmployee.value) {
+        ownerSearchQuery.value = selectedOwnerEmployee.value.fullName
+    } else {
+        ownerSearchQuery.value = ''
+    }
+}
+
 function getEmployeeFace(empId) {
     if (!empId) return null;
     const emp = employeeList.value.find(e => e.employeeId === empId);
     return emp ? emp.faceImageUrl : null;
+}
+
+function canShowOwnerAvatar(employee) {
+    return !!employee?.faceImageUrl && !brokenOwnerAvatarIds.value[employee.employeeId]
+}
+
+function getOwnerAvatarSrc(employee) {
+    if (!employee?.faceImageUrl) return ''
+    return employee.faceImageUrl.startsWith('http') ? employee.faceImageUrl : `${API_BASE}${employee.faceImageUrl}`
+}
+
+function markOwnerAvatarBroken(employeeId) {
+    if (!employeeId || brokenOwnerAvatarIds.value[employeeId]) return
+    brokenOwnerAvatarIds.value = { ...brokenOwnerAvatarIds.value, [employeeId]: true }
 }
 
 function getInitials(name) {
@@ -504,7 +718,7 @@ function getTypeIcon(typeName) {
 
 // ─── Init ───────────────────────────────────────────────────
 onMounted(async () => {
-    await Promise.all([fetchVehicles(), fetchEmployees()])
+    await Promise.all([fetchVehicles(), fetchEmployees(), fetchVehicleTypes()])
 })
 </script>
 
@@ -555,6 +769,7 @@ onMounted(async () => {
 
 .user-cell { display: flex; align-items: center; gap: 14px; }
 .avatar, .avatar-img { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; font-size: 0.8rem; object-fit: cover; }
+.avatar.mini, .avatar-img-mini { width: 32px; height: 32px; font-size: 0.78rem; flex-shrink: 0; }
 .user-info { display: flex; flex-direction: column; }
 .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
 .user-id { font-size: 0.8rem; color: var(--text-muted); font-family: monospace; }
@@ -586,13 +801,58 @@ onMounted(async () => {
 
 .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-1 { grid-template-columns: 1fr; }
 .input-pane { display: flex; flex-direction: column; gap: 8px; }
 .input-pane label { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
 .req { color: var(--accent-danger); }
 .char-count { font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+.field-note { font-size: 0.8rem; color: var(--text-muted); }
 
 .sleek-input, .sleek-select { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.9rem; }
 .sleek-input:focus, .sleek-select:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
+.auto-detected-type {
+    min-height: 92px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px dashed var(--border-color);
+    background: linear-gradient(180deg, rgba(16, 121, 196, 0.04), rgba(16, 121, 196, 0.01));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+}
+.auto-detected-type strong {
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.auto-detected-type span {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+.auto-detected-type.ready {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02));
+}
+
+/* Owner Combobox */
+.combobox-wrapper { position: relative; width: 100%; border-radius: 8px; }
+.input-with-avatar { position: relative; width: 100%; display: flex; align-items: center; }
+.selected-avatar-preview { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 2; }
+.avatar-mini-inline { width: 24px; height: 24px; font-size: 0.7rem; }
+.combobox-input { padding-right: 40px; background: #fff !important; cursor: text; }
+.combobox-input.has-avatar { padding-left: 52px; }
+.dropdown-icon { position: absolute; right: 14px; top: 14px; width: 18px; height: 18px; color: var(--accent-primary); pointer-events: none; transition: transform 0.2s; }
+.dropdown-icon.rotated { transform: rotate(180deg); }
+.combobox-dropdown { position: absolute; top: calc(100% + 4px); left: 0; width: 100%; max-height: 240px; overflow-y: auto; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 100; padding: 4px 0; }
+.combobox-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color); }
+.combobox-item:last-child { border-bottom: none; }
+.combobox-item:hover { background: rgba(16, 121, 196, 0.03); }
+.combobox-item.selected { background: rgba(16, 121, 196, 0.06); }
+.emp-details { display: flex; flex-direction: column; min-width: 0; }
+.emp-name { font-size: 0.95rem; font-weight: 500; color: var(--text-primary); }
+.emp-meta { font-size: 0.83rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.no-results { padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.9rem; font-style: italic; }
 
 .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .modal-actions:not(.centered) .btn { width: auto; flex: 0 0 auto; }

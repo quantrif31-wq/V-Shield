@@ -15,6 +15,13 @@ public class VehiclesController : ControllerBase
         _vehicleService = vehicleService;
     }
 
+    [HttpGet("types")]
+    public async Task<IActionResult> GetVehicleTypes()
+    {
+        var vehicleTypes = await _vehicleService.GetVehicleTypesAsync();
+        return Ok(vehicleTypes);
+    }
+
     // GET: api/vehicles
     // Lấy danh sách tất cả phương tiện
     [HttpGet]
