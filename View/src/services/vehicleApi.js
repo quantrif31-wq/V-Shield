@@ -1,7 +1,8 @@
 import axios from 'axios'
+import { API_BASE_URL } from '../config/api'
 
 const api = axios.create({
-    baseURL: 'https://localhost:7107/api/Vehicles'
+    baseURL: `${API_BASE_URL}/Vehicles`
 })
 
 // Tự động gắn JWT token

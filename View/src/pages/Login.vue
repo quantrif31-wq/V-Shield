@@ -81,6 +81,17 @@
                     </div>
                 </div>
 
+                <div class="login-intro">
+                    <p>
+                        Đăng nhập bằng tài khoản được cấp để theo dõi camera, kiểm tra lịch sử
+                        và xử lý cảnh báo ngay tại trung tâm điều phối.
+                    </p>
+                    <div class="login-badges">
+                        <span>Phân quyền theo vai trò</span>
+                        <span>Giám sát tập trung</span>
+                    </div>
+                </div>
+
                 <form class="login-form" @submit.prevent="handleLogin">
                     <div class="form-group">
                         <label for="username">Tài khoản quản trị</label>
@@ -139,13 +150,13 @@
                     </div>
 
                     <transition name="slide-error">
-                        <div v-if="error" class="login-error">
+                        <div v-if="feedbackMessage" class="login-alert" :class="feedbackType">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M12 8v4" />
                                 <path d="M12 16h.01" />
                             </svg>
-                            <span>{{ error }}</span>
+                            <span>{{ feedbackMessage }}</span>
                         </div>
                     </transition>
 
@@ -171,7 +182,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '../stores/auth'
 
@@ -179,11 +190,25 @@ const router = useRouter()
 
 const form = reactive({ username: '', password: '' })
 const loading = ref(false)
-const error = ref('')
+const feedbackMessage = ref('')
+const feedbackType = ref('danger')
+const error = feedbackMessage
 const showPassword = ref(false)
+let redirectTimer = null
+
+function setFeedback(message, type = 'danger') {
+    feedbackMessage.value = message
+    feedbackType.value = type
+}
 
 async function handleLogin() {
-    error.value = ''
+    if (redirectTimer) {
+        clearTimeout(redirectTimer)
+        redirectTimer = null
+    }
+
+    feedbackMessage.value = ''
+    feedbackType.value = 'danger'
 
     if (!form.username.trim() || !form.password.trim()) {
         error.value = 'Vui lòng điền đầy đủ thông tin xác thực.'
@@ -193,10 +218,15 @@ async function handleLogin() {
     loading.value = true
     try {
         await login(form.username, form.password)
-        router.push('/')
+        feedbackType.value = 'success'
+        feedbackMessage.value = 'Đăng nhập thành công. Đang chuyển vào trung tâm điều phối...'
+        redirectTimer = setTimeout(() => {
+            router.push('/')
+        }, 900)
     } catch (err) {
         if (err.response?.status === 401) {
-            error.value = 'Thông tin đăng nhập chưa chính xác.'
+            error.value = 'Sai tài khoản hoặc mật khẩu.'
+            return
         } else if (err.code === 'ERR_NETWORK') {
             error.value = 'Không thể kết nối tới Core Server. Vui lòng kiểm tra API.'
         } else {
@@ -206,6 +236,12 @@ async function handleLogin() {
         loading.value = false
     }
 }
+
+onUnmounted(() => {
+    if (redirectTimer) {
+        clearTimeout(redirectTimer)
+    }
+})
 </script>
 
 <style scoped>
@@ -268,11 +304,11 @@ async function handleLogin() {
 .login-shell {
     position: relative;
     z-index: 1;
-    width: min(1200px, 100%);
+    width: min(1040px, 100%);
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(360px, 420px);
-    gap: 22px;
-    align-items: stretch;
+    grid-template-columns: minmax(380px, 440px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
 }
 
 .login-story,
@@ -284,12 +320,13 @@ async function handleLogin() {
 }
 
 .login-story {
-    padding: 34px;
+    order: 2;
+    padding: 28px 30px;
     border-radius: 32px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 28px;
+    justify-content: flex-start;
+    gap: 18px;
 }
 
 .story-eyebrow {
@@ -308,29 +345,33 @@ async function handleLogin() {
 
 .login-story h1 {
     font-family: var(--font-heading);
-    font-size: clamp(2.2rem, 4vw, 3.4rem);
+    font-size: clamp(1.95rem, 3vw, 2.7rem);
     font-weight: 700;
-    line-height: 1.02;
+    line-height: 1.08;
     letter-spacing: -0.05em;
     color: var(--text-primary);
-    max-width: 13ch;
+    max-width: 15ch;
 }
 
 .story-copy {
-    max-width: 60ch;
+    max-width: 44ch;
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 0.96rem;
 }
 
 .story-metrics {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.story-metrics .metric-card:last-child {
+    display: none;
 }
 
 .metric-card {
-    padding: 18px;
-    border-radius: 22px;
+    padding: 16px;
+    border-radius: 20px;
     border: 1px solid var(--border-color);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(236, 244, 246, 0.86));
 }
@@ -351,8 +392,8 @@ async function handleLogin() {
 }
 
 .story-panel {
-    padding: 22px;
-    border-radius: 28px;
+    padding: 18px 20px;
+    border-radius: 24px;
     background: linear-gradient(135deg, rgba(16, 32, 51, 0.96), rgba(24, 49, 77, 0.92));
     color: var(--text-inverse);
     overflow: hidden;
@@ -376,7 +417,7 @@ async function handleLogin() {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 .panel-chip {
@@ -413,15 +454,19 @@ async function handleLogin() {
     position: relative;
     z-index: 1;
     display: grid;
-    gap: 14px;
+    gap: 10px;
 }
 
 .panel-step {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr);
-    gap: 14px;
-    padding: 14px 0;
+    gap: 12px;
+    padding: 10px 0;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel-steps .panel-step:last-child {
+    display: none;
 }
 
 .panel-step:first-child {
@@ -430,8 +475,8 @@ async function handleLogin() {
 }
 
 .panel-step strong {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -443,24 +488,25 @@ async function handleLogin() {
 }
 
 .panel-step h3 {
-    font-size: 0.98rem;
+    font-size: 0.93rem;
     font-weight: 700;
     color: #f3fdff;
 }
 
 .panel-step p {
-    margin-top: 6px;
+    margin-top: 4px;
     color: rgba(222, 241, 246, 0.78);
-    font-size: 0.86rem;
+    font-size: 0.82rem;
 }
 
 .login-card {
+    order: 1;
     border-radius: 28px;
-    padding: 28px;
+    padding: 30px 28px;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 24px;
+    gap: 20px;
 }
 
 .brand-lockup {
@@ -502,6 +548,39 @@ async function handleLogin() {
     font-weight: 700;
     line-height: 1.08;
     color: var(--text-primary);
+}
+
+.login-intro {
+    display: grid;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(236, 244, 246, 0.62);
+    border: 1px solid rgba(24, 49, 77, 0.08);
+}
+
+.login-intro p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.login-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.login-badges span {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
 }
 
 .login-form {
@@ -582,20 +661,29 @@ async function handleLogin() {
     height: 18px;
 }
 
-.login-error {
+.login-alert {
     display: flex;
     align-items: flex-start;
     gap: 10px;
     padding: 14px 16px;
     border-radius: 16px;
-    border: 1px solid rgba(195, 81, 70, 0.18);
-    background: rgba(195, 81, 70, 0.08);
-    color: var(--accent-danger);
     font-size: 0.88rem;
     line-height: 1.45;
 }
 
-.login-error svg {
+.login-alert.danger {
+    border: 1px solid rgba(195, 81, 70, 0.18);
+    background: rgba(195, 81, 70, 0.08);
+    color: var(--accent-danger);
+}
+
+.login-alert.success {
+    border: 1px solid rgba(42, 132, 97, 0.2);
+    background: rgba(42, 132, 97, 0.1);
+    color: #1d7a58;
+}
+
+.login-alert svg {
     width: 18px;
     height: 18px;
     flex-shrink: 0;
@@ -655,10 +743,10 @@ async function handleLogin() {
 
 .login-footer {
     margin-top: auto;
-    padding-top: 8px;
+    padding-top: 4px;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 12px;
 }
 
 .footer-item {

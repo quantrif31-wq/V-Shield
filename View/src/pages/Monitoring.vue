@@ -1,728 +1,360 @@
-﻿<template>
-  <div class="page-container animate-in">
-    <header class="page-header bento-header">
-      <div class="greeting">
-        <h1 class="page-title">Giám sát Camera</h1>
-        <p class="page-subtitle">
-          Trang này chỉ hiển thị camera đã cấu hình trong Cài đặt &gt; Mạng lưới Camera.
-        </p>
-      </div>
+<template>
+    <div class="page-container ops-page animate-in">
+        <section class="hero-banner">
+            <div class="hero-panel">
+                <span class="hero-kicker">Live monitoring</span>
+                <h1 class="page-title">Giám sát trực tiếp camera, cổng và kết quả nhận diện từ cùng một màn hình.</h1>
+                <p class="page-subtitle">
+                    Trang này gom dữ liệu camera đã cấu hình, cổng truy cập, biển số mới nhận diện và các bản ghi
+                    khuôn mặt gần nhất trong `Access_Log` để bảo vệ có thể theo dõi nhanh tại chỗ.
+                </p>
+                <div class="hero-actions">
+                    <router-link to="/device-management" class="btn btn-primary">Quản lý camera & cổng</router-link>
+                    <router-link to="/exceptions" class="btn btn-secondary">Xem ngoại lệ</router-link>
+                </div>
+            </div>
 
-      <div class="header-actions">
-        <router-link :to="cameraSettingsRoute" class="manage-btn">Quản lý mạng lưới</router-link>
-        <div class="live-indicator">
-          <span class="live-dot"></span>
-          <span>LIVE</span>
-        </div>
-        <select v-model="layoutMode" class="layout-select">
-          <option value="2x2">Hiển thị: 2 x 2</option>
-          <option value="3x2">Hiển thị: 3 x 2</option>
-          <option value="1x1">Toàn màn hình</option>
-        </select>
-      </div>
-    </header>
+            <div class="hero-aside">
+                <div class="aside-head">
+                    <div>
+                        <span class="aside-label">Thiết bị giám sát</span>
+                        <strong>{{ summary.camerasConfigured }} camera / {{ summary.gatesConfigured }} cổng</strong>
+                    </div>
+                    <span class="aside-chip">
+                        <span class="aside-dot"></span>
+                        Dữ liệu đang cập nhật
+                    </span>
+                </div>
+                <div class="aside-metrics">
+                    <div class="aside-metric">
+                        <span>Gắn cổng</span>
+                        <strong>{{ summary.camerasLinkedToGate }}</strong>
+                    </div>
+                    <div class="aside-metric">
+                        <span>Chưa gắn cổng</span>
+                        <strong>{{ summary.unassignedCameras }}</strong>
+                    </div>
+                    <div class="aside-metric">
+                        <span>Biển số mới</span>
+                        <strong>{{ recentPlates.length }}</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div class="bento-card info-card">
-      <div>
-        <strong>{{ configuredCameraCount }}</strong> camera đang được cấu hình trong mạng lưới.
-        <span class="info-muted">
-          4 ô camera luôn hiển thị sẵn. Muốn đổi URL hoặc thêm camera điện thoại, hãy vào phần Cài đặt.
-        </span>
-      </div>
-      <router-link :to="cameraSettingsRoute" class="link-inline">Mở Cài đặt</router-link>
+        <section class="metric-grid">
+            <article class="metric-tile">
+                <span class="metric-label">Camera đã cấu hình</span>
+                <strong class="metric-value">{{ summary.camerasConfigured }}</strong>
+                <span class="metric-note">Đọc từ bảng `Camera` trong hệ thống.</span>
+            </article>
+            <article class="metric-tile">
+                <span class="metric-label">Cổng đang quản lý</span>
+                <strong class="metric-value">{{ summary.gatesConfigured }}</strong>
+                <span class="metric-note">Số vị trí cổng đang được khai báo.</span>
+            </article>
+            <article class="metric-tile">
+                <span class="metric-label">Camera có gắn cổng</span>
+                <strong class="metric-value">{{ summary.camerasLinkedToGate }}</strong>
+                <span class="metric-note">Các camera đã liên kết đúng điểm truy cập.</span>
+            </article>
+            <article class="metric-tile">
+                <span class="metric-label">Camera chưa gắn cổng</span>
+                <strong class="metric-value">{{ summary.unassignedCameras }}</strong>
+                <span class="metric-note">Cần kiểm tra lại cấu hình thiết bị.</span>
+            </article>
+        </section>
+
+        <section class="ops-grid two">
+            <article class="ops-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="panel-kicker">Configured cameras</span>
+                        <h2 class="panel-title">Camera & điểm đặt</h2>
+                    </div>
+                    <router-link to="/device-management" class="btn btn-secondary btn-sm">Mở cấu hình</router-link>
+                </div>
+
+                <div v-if="cameras.length" class="camera-grid">
+                    <article v-for="camera in cameras" :key="camera.cameraId" class="camera-card">
+                        <div class="camera-card-head">
+                            <div>
+                                <strong>{{ camera.cameraName }}</strong>
+                                <span>{{ camera.gateName || 'Chưa gán cổng' }}</span>
+                            </div>
+                            <span class="soft-chip" :class="camera.gateId ? 'success' : 'warn'">
+                                {{ camera.cameraType || 'Không rõ loại' }}
+                            </span>
+                        </div>
+                        <div class="chip-row">
+                            <span class="soft-chip">{{ camera.accessLogCount }} log</span>
+                            <span v-if="camera.latestPlate" class="soft-chip success">{{ camera.latestPlate }}</span>
+                            <span v-else class="soft-chip warn">Chưa có biển số</span>
+                        </div>
+                        <p class="surface-item-sub">
+                            {{ camera.gateLocation || 'Chưa có vị trí cổng' }}
+                            <template v-if="camera.lastAccessAt">
+                                - hoạt động gần nhất {{ formatDateTime(camera.lastAccessAt) }}
+                            </template>
+                        </p>
+                    </article>
+                </div>
+                <div v-else class="empty-card">Chưa có camera nào trong cơ sở dữ liệu.</div>
+            </article>
+
+            <article class="ops-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="panel-kicker">Plate recognition</span>
+                        <h2 class="panel-title">Biển số nhận diện gần nhất</h2>
+                    </div>
+                </div>
+
+                <div v-if="recentPlates.length" class="surface-list">
+                    <article v-for="plate in recentPlates" :key="`${plate.cameraIP}-${plate.plateNumber}-${plate.lastUpdate}`" class="surface-item">
+                        <div class="camera-card-head">
+                            <div>
+                                <strong>{{ plate.plateNumber }}</strong>
+                                <span>{{ plate.cameraIP }}</span>
+                            </div>
+                            <span class="soft-chip success">{{ formatTime(plate.lastUpdate) }}</span>
+                        </div>
+                        <p class="surface-item-sub">
+                            Bản ghi biển số mới nhất từ camera, dùng để đối soát nhanh với dòng ra vào.
+                        </p>
+                    </article>
+                </div>
+                <div v-else class="empty-card">Chưa có dữ liệu nhận diện biển số gần đây.</div>
+            </article>
+        </section>
+
+        <section class="ops-grid two">
+            <article class="ops-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="panel-kicker">Face & access</span>
+                        <h2 class="panel-title">Dòng xác minh khuôn mặt gần nhất</h2>
+                    </div>
+                    <router-link to="/access-logs" class="btn btn-secondary btn-sm">Mở nhật ký</router-link>
+                </div>
+
+                <div v-if="recentActivities.length" class="surface-list">
+                    <article v-for="activity in recentActivities" :key="activity.logId" class="surface-item">
+                        <div class="camera-card-head">
+                            <div>
+                                <strong>{{ activity.actorName }}</strong>
+                                <span>{{ activity.gateName || 'Chưa gán cổng' }}</span>
+                            </div>
+                            <span class="soft-chip" :class="activity.direction === 'IN' ? 'success' : 'warn'">
+                                {{ activity.direction === 'IN' ? 'Vào' : 'Ra' }}
+                            </span>
+                        </div>
+                        <div class="chip-row">
+                            <span v-if="activity.capturedLicensePlate" class="soft-chip">{{ activity.capturedLicensePlate }}</span>
+                            <span v-if="activity.resultStatus" class="soft-chip">{{ activity.resultStatus }}</span>
+                            <span v-if="activity.isBypass" class="soft-chip danger">BYPASS</span>
+                        </div>
+                        <p class="surface-item-sub">
+                            {{ activity.cameraName || 'Không có camera' }} - {{ formatDateTime(activity.timestamp) }}
+                        </p>
+                    </article>
+                </div>
+                <div v-else class="empty-card">Chưa có log nhận diện nào gần đây.</div>
+            </article>
+
+            <article class="ops-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="panel-kicker">Gate posture</span>
+                        <h2 class="panel-title">Tình trạng cổng truy cập</h2>
+                    </div>
+                </div>
+
+                <div v-if="gates.length" class="surface-list">
+                    <article v-for="gate in gates" :key="gate.gateId" class="surface-item">
+                        <div class="camera-card-head">
+                            <div>
+                                <strong>{{ gate.gateName }}</strong>
+                                <span>{{ gate.location || 'Chưa có vị trí' }}</span>
+                            </div>
+                            <span class="soft-chip">{{ gate.cameraCount }} camera</span>
+                        </div>
+                        <p class="surface-item-sub">
+                            {{ gate.accessLogCount }} log liên quan
+                            <template v-if="gate.lastAccessAt">
+                                - gần nhất {{ formatDateTime(gate.lastAccessAt) }}
+                            </template>
+                        </p>
+                    </article>
+                </div>
+                <div v-else class="empty-card">Chưa khai báo cổng nào trong hệ thống.</div>
+            </article>
+        </section>
     </div>
-
-    <Teleport to="body">
-      <div
-        v-if="selectedExpandedCamera"
-        class="camera-fullscreen-shell"
-        @contextmenu.prevent="toggleExpand(null)"
-      >
-        <div class="camera-modal-backdrop" @click="toggleExpand(null)"></div>
-
-        <article class="camera-card expanded camera-card-teleport" @click.stop>
-          <div class="camera-feed">
-            <img
-              v-if="canRenderLivePreview(selectedExpandedCamera)"
-              :src="getCameraPreviewSrc(selectedExpandedCamera)"
-              :alt="selectedExpandedCamera.sourceName || selectedExpandedCamera.slotName"
-              class="camera-stream"
-              @load="handlePreviewLoad(selectedExpandedCamera.id)"
-              @error="handlePreviewError(selectedExpandedCamera.id)"
-            />
-
-            <div v-else class="camera-state" :class="getStateClass(selectedExpandedCamera)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              <p>{{ getCameraPlaceholder(selectedExpandedCamera) }}</p>
-            </div>
-
-            <div class="camera-overlay">
-              <div class="camera-top-bar">
-                <div>
-                  <div class="camera-name">{{ selectedExpandedCamera.slotName }}</div>
-                  <div class="camera-source">{{ selectedExpandedCamera.sourceName || "Chưa gắn thiết bị" }}</div>
-                  <div v-if="selectedExpandedCamera.url && selectedExpandedCamera.isRtsp" class="camera-meta">
-                    <span class="camera-meta-chip rtsp">RTSP</span>
-                  </div>
-                </div>
-                <div class="camera-actions">
-                  <button class="camera-btn" @click.stop="toggleExpand(null)">
-                    Quay lại
-                  </button>
-                  <span class="camera-status" :class="getStatusClass(selectedExpandedCamera)">
-                    {{ getCameraStatusText(selectedExpandedCamera) }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="camera-bottom-bar">
-                <span>{{ selectedExpandedCamera.location }}</span>
-                <span>{{ selectedExpandedCamera.enabled && selectedExpandedCamera.url ? currentTime : "--" }}</span>
-              </div>
-            </div>
-          </div>
-        </article>
-      </div>
-    </Teleport>
-
-    <div class="camera-grid" :class="layoutMode">
-      <article
-        v-for="camera in cameras"
-        :key="camera.id"
-        class="bento-card camera-card"
-        @dblclick="handleDoubleClick(camera.id)"
-        @contextmenu.prevent="handleContextMenu(camera.id)"
-      >
-        <div class="camera-feed">
-          <img
-            v-if="canRenderLivePreview(camera)"
-            :src="getCameraPreviewSrc(camera)"
-            :alt="camera.sourceName || camera.slotName"
-            class="camera-stream"
-            @load="handlePreviewLoad(camera.id)"
-            @error="handlePreviewError(camera.id)"
-          />
-
-          <div v-else class="camera-state" :class="getStateClass(camera)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-            <p>{{ getCameraPlaceholder(camera) }}</p>
-          </div>
-
-          <div class="camera-overlay">
-              <div class="camera-top-bar">
-                <div>
-                  <div class="camera-name">{{ camera.slotName }}</div>
-                  <div class="camera-source">{{ camera.sourceName || "Chưa gắn thiết bị" }}</div>
-                  <div v-if="camera.url && camera.isRtsp" class="camera-meta">
-                    <span v-if="camera.isRtsp" class="camera-meta-chip rtsp">RTSP</span>
-                  </div>
-                </div>
-                <div class="camera-actions">
-                  <button class="camera-btn" :disabled="!camera.enabled || !camera.url" @click.stop="toggleExpand(camera.id)">
-                    {{ expandedCameraId === camera.id ? "Quay lại" : "Toàn màn hình" }}
-                  </button>
-                <span class="camera-status" :class="getStatusClass(camera)">
-                  {{ getCameraStatusText(camera) }}
-                </span>
-              </div>
-            </div>
-
-            <div class="camera-bottom-bar">
-              <span>{{ camera.location }}</span>
-              <span>{{ camera.enabled && camera.url ? currentTime : "--" }}</span>
-            </div>
-          </div>
-        </div>
-      </article>
-    </div>
-  </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue"
-import {
-  buildCameraHealthProbeUrl,
-  extractCameraDisplayParts,
-  isHttpCameraUrl,
-  isRtspCameraUrl,
-  loadCameraNetworkSettings,
-  normalizeCameraUrl,
-  shouldAppendPreviewCacheBust,
-} from "../utils/cameraNetwork"
+import { onMounted, ref } from 'vue'
+import { getDeviceOverview } from '../services/deviceManagementApi'
+import { getDetectedPlates } from '../services/plateRecognitionApi'
+import { getAccessLogs } from '../services/accessLogApi'
 
-const MONITORING_PREFERENCES_KEY = "vshield-monitoring-preferences-v2"
-const HEALTH_CHECK_INTERVAL_MS = 12000
-const HEALTH_CHECK_TIMEOUT_MS = 4000
-
-const layoutMode = ref(localStorage.getItem(MONITORING_PREFERENCES_KEY) || "2x2")
-const currentTime = ref("")
-const expandedCameraId = ref(null)
+const summary = ref({
+    camerasConfigured: 0,
+    gatesConfigured: 0,
+    camerasLinkedToGate: 0,
+    unassignedCameras: 0,
+})
 const cameras = ref([])
-const cameraSettingsRoute = { name: "Settings", query: { tab: "camera" } }
+const gates = ref([])
+const recentPlates = ref([])
+const recentActivities = ref([])
 
-let timeTimer = null
-let healthTimer = null
-let isHealthCheckRunning = false
-
-const syncImmersiveMode = (isActive) => {
-  document.body.classList.toggle("monitoring-immersive", isActive)
-}
-
-const normalizePreviewUrl = (url) => (isHttpCameraUrl(url) ? normalizeCameraUrl(url) : "")
-
-const rebuildCameras = () => {
-  const previousState = new Map(cameras.value.map((camera) => [camera.id, camera]))
-  const configuredCameras = loadCameraNetworkSettings()
-
-  cameras.value = configuredCameras.map((camera, index) => {
-    const previous = previousState.get(camera.id)
-    const displayParts = extractCameraDisplayParts(camera, index + 1)
-    return {
-      id: camera.id,
-      slotName: displayParts.slotName,
-      sourceName: camera.label || displayParts.sourceName,
-      location: camera.location,
-      enabled: Boolean(camera.enabled && camera.url),
-      url: camera.url || "",
-      previewUrl: normalizePreviewUrl(camera.url),
-      healthCheckUrl: buildCameraHealthProbeUrl(camera.url),
-      isRtsp: isRtspCameraUrl(camera.url),
-      isOffline: previous?.isOffline ?? false,
-      shouldCacheBustPreview: shouldAppendPreviewCacheBust(camera.url),
-      previewNonce: previous?.previewNonce || Date.now(),
-    }
-  })
-}
-
-const configuredCameraCount = computed(
-  () => cameras.value.filter((camera) => camera.enabled && camera.url).length
-)
-
-const selectedExpandedCamera = computed(
-  () => cameras.value.find((camera) => camera.id === expandedCameraId.value) || null
-)
-
-const updateTime = () => {
-  currentTime.value = new Date().toLocaleTimeString("vi-VN")
-}
-
-const getCameraStatusText = (camera) => {
-  if (!camera.url) return "TRỐNG"
-  if (!camera.enabled) return "TẮT"
-  if (camera.isRtsp) return "RTSP"
-  return camera.isOffline ? "OFFLINE" : "ONLINE"
-}
-
-const getStatusClass = (camera) => {
-  if (!camera.url || !camera.enabled) return "neutral"
-  if (camera.isRtsp) return "info"
-  return camera.isOffline ? "danger" : "success"
-}
-
-const getStateClass = (camera) => {
-  if (!camera.url) return "empty"
-  if (!camera.enabled) return "disabled"
-  if (camera.isRtsp) return "rtsp"
-  return camera.isOffline ? "offline" : "loading"
-}
-
-const getCameraPlaceholder = (camera) => {
-  if (!camera.url) return "Chưa cấu hình camera trong mạng lưới"
-  if (!camera.enabled) return "Camera đang tắt trong Cài đặt"
-  if (camera.isRtsp) return "Camera RTSP đã được cấu hình. Cần gateway MJPEG/HLS để xem trên web"
-  if (camera.isOffline) return "Offline - Mất kết nối camera"
-  return "Đang tải luồng camera"
-}
-
-const canRenderLivePreview = (camera) =>
-  Boolean(camera.enabled && camera.previewUrl && !camera.isRtsp && !camera.isOffline)
-
-const getCameraPreviewSrc = (camera) => {
-  if (!camera.previewUrl) return ""
-  if (!camera.shouldCacheBustPreview) {
-    return camera.previewUrl
-  }
-
-  const divider = camera.previewUrl.includes("?") ? "&" : "?"
-  return `${camera.previewUrl}${divider}v=${camera.previewNonce || 0}`
-}
-
-const handlePreviewError = (cameraId) => {
-  const camera = cameras.value.find((item) => item.id === cameraId)
-  if (!camera) return
-  camera.isOffline = true
-  cameras.value = [...cameras.value]
-}
-
-const handlePreviewLoad = (cameraId) => {
-  const camera = cameras.value.find((item) => item.id === cameraId)
-  if (!camera) return
-  camera.isOffline = false
-  cameras.value = [...cameras.value]
-}
-
-const toggleExpand = (cameraId) => {
-  expandedCameraId.value = expandedCameraId.value === cameraId ? null : cameraId
-}
-
-const handleDoubleClick = (cameraId) => {
-  const camera = cameras.value.find((item) => item.id === cameraId)
-  if (!camera || !camera.enabled || !camera.url) return
-  expandedCameraId.value = cameraId
-}
-
-const handleContextMenu = (cameraId) => {
-  if (expandedCameraId.value === cameraId) {
-    expandedCameraId.value = null
-  }
-}
-
-const probeHttpCameraUrl = async (url, timeoutMs = HEALTH_CHECK_TIMEOUT_MS) => {
-  if (!url) {
-    return false
-  }
-
-  const probeUrl = buildCameraHealthProbeUrl(url)
-  if (!probeUrl) {
-    return false
-  }
-
-  const controller = new AbortController()
-  const timerId = window.setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    await fetch(probeUrl, {
-      method: "GET",
-      mode: "no-cors",
-      cache: "no-store",
-      signal: controller.signal,
+const formatDateTime = (value) => {
+    if (!value) return '--'
+    return new Date(value).toLocaleString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
     })
-    return true
-  } catch {
-    return false
-  } finally {
-    clearTimeout(timerId)
-  }
 }
 
-const checkCameraHealth = async () => {
-  if (isHealthCheckRunning) return
+const formatTime = (value) => {
+    if (!value) return '--'
+    return new Date(value).toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+    })
+}
 
-  const liveHttpCameras = cameras.value.filter(
-    (camera) => camera.enabled && camera.previewUrl && !camera.isRtsp
-  )
-  if (!liveHttpCameras.length) return
+const loadMonitoring = async () => {
+    try {
+        const [overviewRes, platesRes, activitiesRes] = await Promise.all([
+            getDeviceOverview(),
+            getDetectedPlates(),
+            getAccessLogs({ page: 1, pageSize: 6 }),
+        ])
 
-  isHealthCheckRunning = true
-  try {
-    const results = await Promise.all(
-      liveHttpCameras.map(async (camera) => ({
-        id: camera.id,
-        ok: await probeHttpCameraUrl(camera.healthCheckUrl || camera.previewUrl),
-      }))
-    )
-
-    let hasChanged = false
-    for (const result of results) {
-      const camera = cameras.value.find((item) => item.id === result.id)
-      if (!camera) continue
-      const nextOffline = !result.ok
-      if (camera.isOffline !== nextOffline) {
-        camera.isOffline = nextOffline
-        if (!nextOffline) {
-          camera.previewNonce = Date.now()
-        }
-        hasChanged = true
-      }
+        summary.value = { ...summary.value, ...(overviewRes.data.summary || {}) }
+        cameras.value = overviewRes.data.cameras || []
+        gates.value = overviewRes.data.gates || []
+        recentPlates.value = (platesRes.data || []).slice(0, 6)
+        recentActivities.value = activitiesRes.data.items || []
+    } catch (error) {
+        console.error('Monitoring load error:', error)
     }
-
-    if (hasChanged) {
-      cameras.value = [...cameras.value]
-    }
-  } finally {
-    isHealthCheckRunning = false
-  }
 }
 
-const handleKeyDown = (event) => {
-  if (event.key === "Escape" && expandedCameraId.value) {
-    expandedCameraId.value = null
-  }
-}
-
-const handleWindowFocus = async () => {
-  rebuildCameras()
-  await checkCameraHealth()
-}
-
-watch(layoutMode, (value) => {
-  localStorage.setItem(MONITORING_PREFERENCES_KEY, value)
-})
-
-watch(expandedCameraId, (value) => {
-  syncImmersiveMode(Boolean(value))
-})
-
-onMounted(async () => {
-  syncImmersiveMode(Boolean(expandedCameraId.value))
-  rebuildCameras()
-  updateTime()
-  timeTimer = setInterval(updateTime, 1000)
-  healthTimer = setInterval(checkCameraHealth, HEALTH_CHECK_INTERVAL_MS)
-  window.addEventListener("keydown", handleKeyDown)
-  window.addEventListener("focus", handleWindowFocus)
-  document.addEventListener("visibilitychange", handleWindowFocus)
-  await checkCameraHealth()
-})
-
-onUnmounted(() => {
-  syncImmersiveMode(false)
-  clearInterval(timeTimer)
-  clearInterval(healthTimer)
-  window.removeEventListener("keydown", handleKeyDown)
-  window.removeEventListener("focus", handleWindowFocus)
-  document.removeEventListener("visibilitychange", handleWindowFocus)
-})
+onMounted(loadMonitoring)
 </script>
 
 <style scoped>
-.bento-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+.aside-head,
+.aside-metrics {
+    display: grid;
+    gap: 14px;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.aside-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
 }
 
-.manage-btn,
-.primary-btn,
-.link-inline,
-.camera-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  border-radius: 12px;
-  font-weight: 700;
+.aside-label {
+    color: rgba(215, 251, 255, 0.72);
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
-.manage-btn,
-.primary-btn {
-  padding: 10px 14px;
-  border: none;
-  background: var(--accent-primary);
-  color: #fff;
+.aside-head strong {
+    font-family: var(--font-heading);
+    font-size: 1.16rem;
+    line-height: 1.35;
 }
 
-.link-inline {
-  color: var(--accent-primary);
+.aside-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(84, 196, 211, 0.14);
+    color: #c0fbff;
+    font-size: 0.76rem;
+    font-weight: 700;
 }
 
-.info-card,
-.empty-network {
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+.aside-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #5de3c7;
 }
 
-.info-muted {
-  margin-left: 8px;
-  color: var(--text-secondary);
+.aside-metrics {
+    margin-top: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.empty-network {
-  flex-direction: column;
-  align-items: flex-start;
+.aside-metric {
+    padding: 16px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.empty-network h3,
-.empty-network p {
-  margin: 0;
+.aside-metric span {
+    color: rgba(215, 251, 255, 0.76);
+    font-size: 0.74rem;
 }
 
-.live-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.18);
-  color: var(--accent-danger);
-  font-weight: 700;
-}
-
-.live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.layout-select {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-.camera-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  background: rgba(2, 6, 23, 0.7);
-  backdrop-filter: blur(5px);
-}
-
-.camera-fullscreen-shell {
-  position: fixed;
-  inset: 0;
-  z-index: 1210;
+.aside-metric strong {
+    display: block;
+    margin-top: 8px;
+    color: #fff;
+    font-family: var(--font-heading);
+    font-size: 1.14rem;
 }
 
 .camera-grid {
-  display: grid;
-  gap: 16px;
+    display: grid;
+    gap: 12px;
 }
 
-.camera-grid.\32x2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.camera-grid.\33x2 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.camera-grid.\31x1 {
-  grid-template-columns: 1fr;
+.camera-card,
+.camera-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
 }
 
 .camera-card {
-  padding: 0;
-  overflow: hidden;
-  position: relative;
-}
-
-.camera-card.expanded {
-  position: fixed;
-  inset: 0;
-  z-index: 1211;
-  margin: 0;
-  border-radius: 0;
-}
-
-.camera-card-teleport {
-  background: #020617;
-  box-shadow: none;
-}
-
-.camera-feed {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  background: #020617;
-  overflow: hidden;
-}
-
-.camera-card.expanded .camera-feed {
-  height: 100vh;
-  aspect-ratio: auto;
-}
-
-.camera-stream {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  background: #020617;
-}
-
-.camera-state {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px;
-  text-align: center;
-}
-
-.camera-state svg {
-  width: 52px;
-  height: 52px;
-  opacity: 0.42;
-}
-
-.camera-state p {
-  max-width: 360px;
-  margin: 0;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.camera-state.empty,
-.camera-state.disabled,
-.camera-state.loading {
-  background: repeating-linear-gradient(45deg, #0f172a, #0f172a 12px, #020617 12px, #020617 24px);
-  color: #cbd5e1;
-}
-
-.camera-state.offline {
-  background: repeating-linear-gradient(45deg, #111827, #111827 12px, #1f2937 12px, #1f2937 24px);
-  color: #fca5a5;
-}
-
-.camera-state.rtsp {
-  background: radial-gradient(circle at top, #13203a, #020617 65%);
-  color: #93c5fd;
-}
-
-.camera-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 14px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72) 0%, transparent 22%, transparent 78%, rgba(0, 0, 0, 0.82) 100%);
-}
-
-.camera-top-bar,
-.camera-bottom-bar,
-.camera-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.camera-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #fff;
-}
-
-.camera-source,
-.camera-bottom-bar {
-  color: #dbeafe;
-  font-size: 0.82rem;
-}
-
-.camera-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.camera-meta-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.46);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: #cbd5e1;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.camera-meta-chip.rtsp {
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.28);
-  background: rgba(37, 99, 235, 0.2);
-}
-
-.camera-btn {
-  min-width: 88px;
-  height: 34px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: rgba(15, 23, 42, 0.7);
-  color: #e2e8f0;
-  cursor: pointer;
-}
-
-.camera-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.camera-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  background: rgba(100, 116, 139, 0.25);
-  color: #cbd5e1;
-}
-
-.camera-status.success {
-  background: rgba(16, 185, 129, 0.2);
-  color: #6ee7b7;
-}
-
-.camera-status.danger {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-}
-
-.camera-status.info {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-}
-
-.camera-status.neutral {
-  background: rgba(100, 116, 139, 0.25);
-  color: #cbd5e1;
-}
-
-@media (max-width: 1200px) {
-  .camera-grid.\33x2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .bento-header,
-  .header-actions,
-  .info-card,
-  .camera-top-bar,
-  .camera-bottom-bar,
-  .camera-actions {
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    background: rgba(236, 244, 246, 0.72);
     flex-direction: column;
-    align-items: stretch;
-  }
+}
 
-  .camera-grid.\32x2,
-  .camera-grid.\33x2 {
-    grid-template-columns: 1fr;
-  }
-
-  .info-muted {
+.camera-card-head strong {
     display: block;
-    margin: 8px 0 0;
-  }
+    color: var(--text-primary);
+    font-size: 0.94rem;
+}
+
+.camera-card-head span {
+    display: block;
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 1180px) {
+    .aside-metrics {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

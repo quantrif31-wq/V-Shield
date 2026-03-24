@@ -106,6 +106,7 @@ Xóa
 <script>
 
 import axios from "axios"
+import { API_BASE_URL, API_ORIGIN } from "../config/api"
 
 import {
 uploadFaceVideo,
@@ -135,7 +136,7 @@ selectedEmployeeId:"",
 
 isAdmin:false,
 
-baseURL:"https://localhost:7107"
+baseURL:API_ORIGIN
 
 }
 
@@ -169,7 +170,7 @@ async loadEmployees(){
 try{
 
 const res = await axios.get(
-"https://localhost:7107/api/Employees",
+`${API_BASE_URL}/Employees`,
 {
 headers:{
 Authorization:`Bearer ${localStorage.getItem("v_shield_token")}`

@@ -275,10 +275,11 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getAll, create, update, deleteEmployee, uploadFace } from '../services/employeeApi'
 import { getDepartments, getPositions } from '../services/lookupApi'
+import { API_ORIGIN } from '../config/api'
 import { validateVietnameseName, normalizeVietnameseName } from '../utils/nameValidator'
 
 const route = useRoute()
-const API_BASE = 'https://localhost:7107'
+const API_BASE = API_ORIGIN
 
 const employees = ref([])
 const departments = ref([])

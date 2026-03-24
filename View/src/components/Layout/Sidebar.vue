@@ -57,7 +57,7 @@
             <div class="sidebar-status" :class="{ compact: collapsed }">
                 <span class="status-dot"></span>
                 <transition name="fade">
-                    <span v-if="!collapsed">Trung tâm điều phối đang đồng bộ</span>
+                    <span v-if="!collapsed">Dữ liệu nghiệp vụ đã sẵn sàng cho ca trực</span>
                 </transition>
             </div>
 
@@ -74,7 +74,7 @@
                                 id="sidebar-search"
                                 v-model="searchQuery"
                                 type="text"
-                                placeholder="Nhân viên, phòng ban, phương tiện..."
+                                placeholder="Nhân sự, khách thăm..."
                                 @input="debouncedSearch"
                                 @focus="showDropdown = true"
                             />
@@ -113,70 +113,51 @@
                     </div>
                 </transition>
 
-                <div class="nav-group">
-                    <span class="nav-label" :class="{ 'sr-only': collapsed }">Điều phối</span>
-                    <router-link
-                        v-for="item in operationsItems"
-                        :key="item.path"
-                        :to="item.path"
-                        class="nav-item"
-                        :class="{ active: $route.path === item.path }"
-                        @click="handleNavClick"
+                <div v-for="group in visibleGroups" :key="group.label" class="nav-group">
+                    <button
+                        v-if="!collapsed"
+                        type="button"
+                        class="nav-label-toggle"
+                        @click="toggleGroup(group.label)"
                     >
-                        <span class="nav-icon" v-html="item.icon"></span>
-                        <transition name="fade">
-                            <span v-if="!collapsed" class="nav-copy">
-                                <span class="nav-text">{{ item.label }}</span>
-                                <span class="nav-hint">{{ item.hint }}</span>
-                            </span>
-                        </transition>
-                        <transition name="fade">
-                            <span v-if="!collapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
-                        </transition>
-                    </router-link>
-                </div>
+                        <span class="nav-label-text">{{ group.label }}</span>
+                        <svg
+                            class="nav-label-chevron"
+                            :class="{ 'chevron-collapsed': collapsedGroups[group.label] }"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <span v-else class="nav-label sr-only">{{ group.label }}</span>
 
-                <div class="nav-group">
-                    <span class="nav-label" :class="{ 'sr-only': collapsed }">Nhận diện & hồ sơ</span>
-                    <router-link
-                        v-for="item in registryItems"
-                        :key="item.path"
-                        :to="item.path"
-                        class="nav-item"
-                        :class="{ active: $route.path === item.path }"
-                        @click="handleNavClick"
+                    <div
+                        class="nav-group-items"
+                        :class="{ 'group-collapsed': collapsedGroups[group.label] && !collapsed }"
                     >
-                        <span class="nav-icon" v-html="item.icon"></span>
-                        <transition name="fade">
-                            <span v-if="!collapsed" class="nav-copy">
-                                <span class="nav-text">{{ item.label }}</span>
-                                <span class="nav-hint">{{ item.hint }}</span>
-                            </span>
-                        </transition>
-                        <transition name="fade">
-                            <span v-if="!collapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
-                        </transition>
-                    </router-link>
-                </div>
-
-                <div class="nav-group">
-                    <span class="nav-label" :class="{ 'sr-only': collapsed }">Quản trị</span>
-                    <router-link
-                        v-for="item in systemItems.filter(i => !i.adminOnly || authState.user?.role === 'Admin')"
-                        :key="item.path"
-                        :to="item.path"
-                        class="nav-item"
-                        :class="{ active: $route.path === item.path }"
-                        @click="handleNavClick"
-                    >
-                        <span class="nav-icon" v-html="item.icon"></span>
-                        <transition name="fade">
-                            <span v-if="!collapsed" class="nav-copy">
-                                <span class="nav-text">{{ item.label }}</span>
-                                <span class="nav-hint">{{ item.hint }}</span>
-                            </span>
-                        </transition>
-                    </router-link>
+                        <router-link
+                            v-for="item in group.items"
+                            :key="item.path"
+                            :to="item.path"
+                            class="nav-item"
+                            :class="{ active: route.path === item.path }"
+                            @click="handleNavClick"
+                        >
+                            <span class="nav-icon" v-html="item.icon"></span>
+                            <transition name="fade">
+                                <span v-if="!collapsed" class="nav-copy">
+                                    <span class="nav-text">{{ item.label }}</span>
+                                    <span class="nav-hint">{{ item.hint }}</span>
+                                </span>
+                            </transition>
+                            <transition name="fade">
+                                <span v-if="!collapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
+                            </transition>
+                        </router-link>
+                    </div>
                 </div>
             </nav>
 
@@ -185,7 +166,7 @@
                     <div v-if="!collapsed" class="footer-card">
                         <div class="footer-chip">
                             <span class="chip-ping"></span>
-                            Core API protected
+                            Business data mapped
                         </div>
                         <div class="footer-metrics">
                             <div>
@@ -193,8 +174,8 @@
                                 <span>Vai trò hiện tại</span>
                             </div>
                             <div>
-                                <strong>24/7</strong>
-                                <span>Giám sát liên tục</span>
+                                <strong>6 nhóm</strong>
+                                <span>Điều hướng nghiệp vụ</span>
                             </div>
                         </div>
                     </div>
@@ -217,10 +198,11 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authState } from '../../stores/auth'
 import { getAll as getAllEmployees } from '../../services/employeeApi'
+import { getGuestProfiles } from '../../services/guestProfileApi'
 
 const props = defineProps({
     collapsed: Boolean,
@@ -233,115 +215,149 @@ const emit = defineEmits(['toggle', 'close-mobile'])
 const router = useRouter()
 const route = useRoute()
 
-const operationsItems = ref([
+const collapsedGroups = ref({})
+
+const toggleGroup = (label) => {
+    collapsedGroups.value[label] = !collapsedGroups.value[label]
+}
+
+const navGroups = ref([
     {
-        path: '/dashboard',
-        label: 'Dashboard',
-        hint: 'Tổng quan vận hành',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+        label: 'Tổng quan',
+        items: [
+            {
+                path: '/dashboard',
+                label: 'Dashboard',
+                hint: 'Toàn cảnh khi đăng nhập',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+            },
+        ],
     },
     {
-        path: '/monitoring',
-        label: 'Giám sát camera',
-        hint: 'Luồng hình ảnh trực tiếp',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>',
-        badge: 'Live',
+        label: 'Giám sát & Lịch sử',
+        items: [
+            {
+                path: '/monitoring',
+                label: 'Giám sát trực tiếp',
+                hint: 'Camera, biển số, access log',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+                badge: 'Live',
+            },
+            {
+                path: '/access-logs',
+                label: 'Tra cứu vào/ra',
+                hint: 'Lịch sử theo thời gian',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>',
+            },
+            {
+                path: '/exceptions',
+                label: 'Xử lý ngoại lệ',
+                hint: 'Bypass và lỗi nhận diện',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+            },
+        ],
     },
     {
-        path: '/access-logs',
-        label: 'Lịch sử ra vào',
-        hint: 'Dòng sự kiện theo thời gian',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>',
+        label: 'Quản lý Khách thăm',
+        items: [
+            {
+                path: '/pre-registrations',
+                label: 'Danh sách hẹn trước',
+                hint: 'Duyệt và theo dõi đăng ký',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1.5"/><path d="M9 14l2 2 4-4"/></svg>',
+            },
+            {
+                path: '/registration-links',
+                label: 'Link đăng ký tự động',
+                hint: 'Token và URL gửi khách',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+            },
+            {
+                path: '/guest-profiles',
+                label: 'Hồ sơ khách',
+                hint: 'Danh bạ khách quen',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 8v6"/><path d="M17 11h6"/></svg>',
+            },
+        ],
     },
     {
-        path: '/pre-registrations',
-        label: 'Đăng ký trước',
-        hint: 'Khách và mã truy cập',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1.5"/><path d="M9 14l2 2 4-4"/></svg>',
+        label: 'Quản trị Nội bộ',
+        items: [
+            {
+                path: '/employees',
+                label: 'Hồ sơ nhân viên',
+                hint: 'Nhân sự, phòng ban, chức vụ',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+                badge: '0',
+            },
+            {
+                path: '/vehicles',
+                label: 'Phương tiện nội bộ',
+                hint: 'Xe đăng ký cố định',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="5" width="16" height="11" rx="2"/><path d="M17 8h4l2 3v5h-6V8z"/><circle cx="5.5" cy="18" r="2.5"/><circle cx="18.5" cy="18" r="2.5"/></svg>',
+            },
+        ],
+    },
+    {
+        label: 'AI & Thiết bị',
+        items: [
+            {
+                path: '/device-management',
+                label: 'Camera & cổng',
+                hint: 'Cấu hình thiết bị truy cập',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v10H4z"/><path d="M9 7V4h6v3"/><path d="M8 17h8"/><path d="M7 21h10"/></svg>',
+            },
+            {
+                path: '/biometrics',
+                label: 'Dữ liệu nhận diện',
+                hint: 'Model và video khuôn mặt',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H6a3 3 0 00-3 3v2"/><path d="M16 3h2a3 3 0 013 3v2"/><path d="M8 21H6a3 3 0 01-3-3v-2"/><path d="M16 21h2a3 3 0 003-3v-2"/><path d="M9 10a3 3 0 016 0v4a3 3 0 01-6 0z"/></svg>',
+            },
+        ],
+    },
+    {
+        label: 'Cài đặt Hệ thống',
+        items: [
+            {
+                path: '/users',
+                label: 'Tài khoản & phân quyền',
+                hint: 'Người dùng phần mềm',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+                adminOnly: true,
+            },
+            {
+                path: '/system-catalog',
+                label: 'Danh mục hệ thống',
+                hint: 'Phòng ban, chức vụ, ngoại lệ',
+                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>',
+                adminOnly: true,
+            },
+        ],
     },
 ])
 
-const registryItems = ref([
-    {
-        path: '/employees',
-        label: 'Nhân sự',
-        hint: 'Danh sách và hồ sơ',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
-        badge: '0',
-    },
-    {
-        path: '/vehicles',
-        label: 'Phương tiện',
-        hint: 'Biển số và trạng thái',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="5" width="16" height="11" rx="2"/><path d="M17 8h4l2 3v5h-6V8z"/><circle cx="5.5" cy="18" r="2.5"/><circle cx="18.5" cy="18" r="2.5"/></svg>',
-    },
-    {
-        path: '/FaceID',
-        label: 'Face ID',
-        hint: 'Nhận diện trực diện',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H6a3 3 0 00-3 3v2"/><path d="M16 3h2a3 3 0 013 3v2"/><path d="M8 21H6a3 3 0 01-3-3v-2"/><path d="M16 21h2a3 3 0 003-3v-2"/><path d="M9 10a3 3 0 016 0v4a3 3 0 01-6 0z"/></svg>',
-    },
-    {
-        path: '/bienso',
-        label: 'Nhận diện biển số',
-        hint: 'Camera giao thông nội bộ',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h10"/><path d="M7 14h4"/></svg>',
-    },
-    {
-        path: '/facevideo',
-        label: 'Video khuôn mặt',
-        hint: 'Đối soát theo video',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="15" height="14" rx="2"/><path d="M18 10l3-2v8l-3-2"/><path d="M8 10a2 2 0 114 0v4a2 2 0 11-4 0z"/></svg>',
-    },
-    {
-        path: '/thonghanh',
-        label: 'Thông hành',
-        hint: 'Kiểm soát giấy tờ ra vào',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h5"/><path d="M10 12h6"/><path d="M10 16h4"/></svg>',
-    },
-])
-
-const systemItems = [
-    {
-        path: '/about-project',
-        label: 'Giới thiệu dự án',
-        hint: 'Thông tin nền tảng',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
-    },
-    {
-        path: '/users',
-        label: 'Tài khoản hệ thống',
-        hint: 'Quyền truy cập',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-        adminOnly: true,
-    },
-    {
-        path: '/departments-positions',
-        label: 'Phòng ban & chức vụ',
-        hint: 'Danh mục tổ chức',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-6 9 6"/><path d="M5 10v9h14v-9"/><path d="M9 19v-5h6v5"/></svg>',
-        adminOnly: true,
-    },
-    {
-        path: '/settings',
-        label: 'Cài đặt',
-        hint: 'Tùy chỉnh hệ thống',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-    },
-]
+const visibleGroups = computed(() =>
+    navGroups.value
+        .map((group) => ({
+            ...group,
+            items: group.items.filter((item) => !item.adminOnly || authState.user?.role === 'Admin'),
+        }))
+        .filter((group) => group.items.length > 0)
+)
 
 onMounted(async () => {
     document.addEventListener('click', handleClickOutside)
 
     try {
-        const res = await getAllEmployees()
-        const count = res.data.length
-        const empItem = registryItems.value.find(item => item.path === '/employees')
-        if (empItem) {
-            empItem.badge = String(count)
+        const employeesRes = await getAllEmployees()
+        const employeesItem = navGroups.value
+            .flatMap((group) => group.items)
+            .find((item) => item.path === '/employees')
+        if (employeesItem) {
+            employeesItem.badge = String(employeesRes.data.length)
         }
     } catch (error) {
-        console.error('Lỗi khi lấy số lượng nhân viên:', error)
+        console.error('Lỗi khi tải badge điều hướng:', error)
     }
 })
 
@@ -385,19 +401,34 @@ const debouncedSearch = () => {
 
     searchTimeout = setTimeout(async () => {
         try {
-            const query = searchQuery.value.trim()
-            const curEmployees = await getAllEmployees({ search: query })
+            const keyword = searchQuery.value.trim()
+            const [employeesRes, guestsRes] = await Promise.all([
+                getAllEmployees({ search: keyword }),
+                getGuestProfiles({ query: keyword, page: 1, pageSize: 6 }),
+            ])
+
             const results = []
 
-            if (curEmployees.data && curEmployees.data.length > 0) {
-                curEmployees.data.forEach(emp => {
+            if (employeesRes.data?.length) {
+                employeesRes.data.forEach((employee) => {
                     results.push({
-                        id: `emp_${emp.employeeId}`,
+                        id: `emp_${employee.employeeId}`,
                         type: 'employee',
-                        name: emp.fullName,
-                        sub: emp.departmentName || 'Chưa phân bổ phòng ban',
+                        name: employee.fullName,
+                        sub: employee.departmentName || 'Chưa gán phòng ban',
                         badge: 'Nhân sự',
-                        originalId: emp.employeeId,
+                    })
+                })
+            }
+
+            if (guestsRes.data?.items?.length) {
+                guestsRes.data.items.forEach((guest) => {
+                    results.push({
+                        id: `guest_${guest.guestId}`,
+                        type: 'guest',
+                        name: guest.fullName,
+                        sub: guest.phone || guest.defaultLicensePlate || 'Hồ sơ khách',
+                        badge: 'Khách',
                     })
                 })
             }
@@ -414,9 +445,11 @@ const debouncedSearch = () => {
     }, 320)
 }
 
-const handleResultClick = (res) => {
-    if (res.type === 'employee') {
-        router.push({ path: '/employees', query: { search: res.name } })
+const handleResultClick = (result) => {
+    if (result.type === 'employee') {
+        router.push({ path: '/employees', query: { search: result.name } })
+    } else if (result.type === 'guest') {
+        router.push({ path: '/guest-profiles', query: { search: result.name } })
     }
 
     showDropdown.value = false
@@ -428,8 +461,8 @@ const handleResultClick = (res) => {
     }
 }
 
-const handleClickOutside = (e) => {
-    if (searchContainerRef.value && !searchContainerRef.value.contains(e.target)) {
+const handleClickOutside = (event) => {
+    if (searchContainerRef.value && !searchContainerRef.value.contains(event.target)) {
         showDropdown.value = false
     }
 }
@@ -632,6 +665,54 @@ const handleNavClick = () => {
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+}
+
+.nav-label-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px 10px;
+    color: var(--sidebar-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.nav-label-toggle:hover {
+    color: var(--sidebar-text);
+}
+
+.nav-label-text {
+    pointer-events: none;
+}
+
+.nav-label-chevron {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+}
+
+.nav-label-chevron.chevron-collapsed {
+    transform: rotate(-90deg);
+}
+
+.nav-group-items {
+    max-height: 600px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.25s ease;
+    opacity: 1;
+}
+
+.nav-group-items.group-collapsed {
+    max-height: 0;
+    opacity: 0;
 }
 
 .nav-item {

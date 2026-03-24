@@ -97,10 +97,29 @@ namespace API
             // ── CORS (cho phép Vue.js gọi) ────────────────────────────────────────
             builder.Services.AddCors(options =>
             {
+                var configuredOrigins = builder.Configuration.GetSection("AppSettings:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+                var frontendUrl = builder.Configuration["AppSettings:FrontendUrl"];
+                var allowedOrigins = configuredOrigins
+                    .Append(frontendUrl ?? string.Empty)
+                    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+                    .Select(origin => origin.Trim().TrimEnd('/'))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                if (allowedOrigins.Length == 0)
+                {
+                    allowedOrigins = new[]
+                    {
+                        "http://localhost:5173",
+                        "http://localhost:5174",
+                        "http://localhost:5175"
+                    };
+                }
+
                 options.AddPolicy("AllowVue", policy =>
                 {
                     policy
-                        .WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175")
+                        .WithOrigins(allowedOrigins)
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials();

@@ -325,10 +325,11 @@
 import { ref, reactive as useReactive, computed, onMounted } from 'vue'
 import * as vehicleApi from '../services/vehicleApi'
 import { getAll as getAllEmployees } from '../services/employeeApi'
+import { API_ORIGIN } from '../config/api'
 import { optimizeAndValidatePlate, getVehicleTypeLabel } from '../utils/licensePlateValidator'
 
 // ─── State ──────────────────────────────────────────────────
-const API_BASE = 'https://localhost:7107'
+const API_BASE = API_ORIGIN
 const vehicles = ref([])
 const employeeList = ref([])
 const loading = ref(true)

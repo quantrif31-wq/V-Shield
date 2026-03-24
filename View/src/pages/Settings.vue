@@ -205,6 +205,7 @@
 import axios from "axios"
 import { onMounted, onUnmounted, reactive, ref, watch } from "vue"
 import { useRoute } from "vue-router"
+import { API_BASE_URL } from "../config/api"
 import {
   buildCameraHealthProbeUrl,
   createDefaultCameraSettings,
@@ -216,7 +217,7 @@ import {
 } from "../utils/cameraNetwork"
 
 const SYSTEM_SETTINGS_STORAGE_KEY = "vshield-system-settings-v1"
-const DISCOVERY_API_BASE = "https://localhost:7107/api/FaceID"
+const DISCOVERY_API_BASE = `${API_BASE_URL}/FaceID`
 const CAMERA_PROBE_TIMEOUT_MS = 3500
 
 const activeTab = ref("general")

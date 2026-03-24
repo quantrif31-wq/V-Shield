@@ -372,8 +372,9 @@
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { getAll, getDetail, updateStatus, createLink } from '../services/preRegistrationApi'
 import { getAll as getAllEmployees } from '../services/employeeApi'
+import { API_ORIGIN } from '../config/api'
 
-const API_BASE = 'https://localhost:7107'
+const API_BASE = API_ORIGIN
 
 const registrations = ref([])
 const totalItems = ref(0)
