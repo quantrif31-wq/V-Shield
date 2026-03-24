@@ -19,6 +19,8 @@ import FaceID from '../components/FaceCamera.vue'
 import bienso from '../components/BienSoSecurity.vue'
 import FaceVideo from '../components/FaceVideo.vue'
 import ThongHanh from '../components/ThongHanh.vue'
+import Tao_QR_D from '../components/Tao_QR_D.vue'
+import Scan_QR_D from '../components/Scan_QR_D.vue'
 
 const routes = [
     {
@@ -48,6 +50,8 @@ const routes = [
             { path: 'bienso', name: 'bienso', component: bienso },
             { path: 'facevideo', name: 'facevideo', component: FaceVideo },
             { path: 'thonghanh', name: 'thonghanh', component: ThongHanh },
+            { path: 'tao_qr_d', name: 'tao_qr_d', component: Tao_QR_D },
+            { path: 'scan_qr_d', name: 'scan_qr_d', component: Scan_QR_D },
             { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration },
             {
                 path: 'users',

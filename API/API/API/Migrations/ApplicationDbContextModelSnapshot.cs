@@ -161,7 +161,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             FullName = "Quản trị viên",
                             IsActive = true,
-                            PasswordHash = "$2a$11$W5dyrBTt.oG27kvQFcX0ouMCinsEOqrpI5JpmnYkNqK1X447ztVR6",
+                            PasswordHash = "$2a$11$.kEZVua33xW3HDY3lsk6yO986m1FgHRlSm0xWaBTw4xmelcPqZoXW",
                             Role = "Admin",
                             Username = "admin"
                         });
@@ -258,6 +258,44 @@ namespace API.Migrations
                             DepartmentId = 3,
                             Name = "Phòng Bảo vệ"
                         });
+                });
+
+            modelBuilder.Entity("API.Models.DynamicQrScanLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("QrPayload")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("ScannedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(getutcdate())");
+
+                    b.Property<string>("ScannerDevice")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DynamicQrScanLogs");
                 });
 
             modelBuilder.Entity("API.Models.Employee", b =>
@@ -362,6 +400,56 @@ namespace API.Migrations
                             PositionId = 3,
                             Status = true
                         });
+                });
+
+            modelBuilder.Entity("API.Models.EmployeeDynamicQr", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(getutcdate())");
+
+                    b.Property<int>("Digits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(6);
+
+                    b.Property<int>("EmployeeId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<long?>("LastUsedCounter")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SecretKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("TimeStepSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique();
+
+                    b.ToTable("EmployeeDynamicQrs");
                 });
 
             modelBuilder.Entity("API.Models.EmployeeFaceModel", b =>
@@ -816,6 +904,18 @@ namespace API.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Position");
+                });
+
+            modelBuilder.Entity("API.Models.EmployeeDynamicQr", b =>
+                {
+                    b.HasOne("API.Models.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_EmployeeDynamicQr_Employee");
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("API.Models.EmployeeFaceModel", b =>

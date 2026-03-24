@@ -45,7 +45,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<VisitorDetail> VisitorDetails { get; set; }
     public virtual DbSet<EmployeeFaceVideo> EmployeeFaceVideos { get; set; }
     public virtual DbSet<EmployeeFaceModel> EmployeeFaceModels { get; set; }
-
+    public virtual DbSet<EmployeeDynamicQr> EmployeeDynamicQrs { get; set; }
+    public virtual DbSet<DynamicQrScanLog> DynamicQrScanLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -332,6 +333,52 @@ public partial class ApplicationDbContext : DbContext
                     Status = true
                 }
             );
+        });
+        modelBuilder.Entity<EmployeeDynamicQr>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.HasIndex(e => e.EmployeeId).IsUnique();
+
+            entity.Property(e => e.SecretKey)
+                  .HasMaxLength(200)
+                  .IsRequired();
+
+            entity.Property(e => e.TimeStepSeconds)
+                  .HasDefaultValue(30);
+
+            entity.Property(e => e.Digits)
+                  .HasDefaultValue(6);
+
+            entity.Property(e => e.IsActive)
+                  .HasDefaultValue(true);
+
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("(getutcdate())");
+
+            entity.HasOne(e => e.Employee)
+                  .WithMany()
+                  .HasForeignKey(e => e.EmployeeId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_EmployeeDynamicQr_Employee");
+        });
+
+        modelBuilder.Entity<DynamicQrScanLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.QrPayload)
+                  .HasMaxLength(500)
+                  .IsRequired();
+
+            entity.Property(e => e.Message)
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.ScannerDevice)
+                  .HasMaxLength(200);
+
+            entity.Property(e => e.ScannedAt)
+                  .HasDefaultValueSql("(getutcdate())");
         });
         OnModelCreatingPartial(modelBuilder);
     }

@@ -3,32 +3,24 @@
   "WorkspaceRootPath": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\videocontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\videocontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\qr_dongcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\qr_dongcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\dtos\\dynamicqrdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\dtos\\dynamicqrdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\models\\dynamicqrscanlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\models\\dynamicqrscanlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\models\\employeedynamicqr.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\models\\employeedynamicqr.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\thonghanhcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\thonghanhcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\faceidcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\faceidcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\models\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\models\\vehicle.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\models\\employeefacemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\models\\employeefacemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\biensocontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\biensocontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -38,7 +30,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 11,
+          "SelectedChildIndex": 9,
           "Children": [
             {
               "$type": "Bookmark",
@@ -66,90 +58,68 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "FaceIDController.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\FaceIDController.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\FaceIDController.cs",
-              "RelativeToolTip": "API\\Controllers\\FaceIDController.cs",
-              "ViewState": "AgIAAGgAAAAAAAAAAAAmwG0AAAAoAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-17T05:14:34.686Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "Vehicle.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\Vehicle.cs",
-              "RelativeDocumentMoniker": "API\\Models\\Vehicle.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\Vehicle.cs",
-              "RelativeToolTip": "API\\Models\\Vehicle.cs",
-              "ViewState": "AgIAABIAAAAAAAAAAAA1wBcAAAAsAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-15T08:38:24.622Z"
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "ThongHanhController.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\ThongHanhController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\ThongHanhController.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\ThongHanhController.cs",
-              "RelativeToolTip": "API\\Controllers\\ThongHanhController.cs",
-              "ViewState": "AgIAAGUBAAAAAAAAAAAYwG8BAAAFAAAAAAAAAA==",
+              "Title": "DynamicQrScanLog.cs",
+              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\DynamicQrScanLog.cs",
+              "RelativeDocumentMoniker": "API\\Models\\DynamicQrScanLog.cs",
+              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\DynamicQrScanLog.cs",
+              "RelativeToolTip": "API\\Models\\DynamicQrScanLog.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAiwBQAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-15T08:06:47.517Z",
+              "WhenOpened": "2026-03-24T06:07:55.422Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
+              "Title": "EmployeeDynamicQr.cs",
+              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\EmployeeDynamicQr.cs",
+              "RelativeDocumentMoniker": "API\\Models\\EmployeeDynamicQr.cs",
+              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\EmployeeDynamicQr.cs",
+              "RelativeToolTip": "API\\Models\\EmployeeDynamicQr.cs",
+              "ViewState": "AgIAABAAAAAAAAAAAAA4wBsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-24T06:01:09.915Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "ApplicationDbContext.cs",
               "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Data\\ApplicationDbContext.cs",
               "RelativeDocumentMoniker": "API\\Data\\ApplicationDbContext.cs",
               "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Data\\ApplicationDbContext.cs",
               "RelativeToolTip": "API\\Data\\ApplicationDbContext.cs",
-              "ViewState": "AgIAAEUBAAAAAAAAAAAuwE8BAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAACgAAAAAAAAAAAAqwAIAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-14T20:49:55.77Z",
+              "WhenOpened": "2026-03-24T05:55:47.816Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "EmployeeFaceModel.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\EmployeeFaceModel.cs",
-              "RelativeDocumentMoniker": "API\\Models\\EmployeeFaceModel.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\EmployeeFaceModel.cs",
-              "RelativeToolTip": "API\\Models\\EmployeeFaceModel.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAANAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-14T20:49:11.687Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "VideoController.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\VideoController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\VideoController.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\VideoController.cs",
-              "RelativeToolTip": "API\\Controllers\\VideoController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKoAAAANAAAAAAAAAA==",
+              "Title": "QR_DongController.cs",
+              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\QR_DongController.cs",
+              "RelativeDocumentMoniker": "API\\Controllers\\QR_DongController.cs",
+              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\QR_DongController.cs",
+              "RelativeToolTip": "API\\Controllers\\QR_DongController.cs",
+              "ViewState": "AgIAAL0BAAAAAAAAAAAiwMgBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-14T19:02:08.061Z",
+              "WhenOpened": "2026-03-24T05:52:24.042Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "BienSoController.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\BienSoController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\BienSoController.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\BienSoController.cs",
-              "RelativeToolTip": "API\\Controllers\\BienSoController.cs",
-              "ViewState": "AgIAAFcAAAAAAAAAAAAAwF4AAAAhAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "DynamicQrDtos.cs",
+              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\DTOs\\DynamicQrDtos.cs",
+              "RelativeDocumentMoniker": "API\\DTOs\\DynamicQrDtos.cs",
+              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\DTOs\\DynamicQrDtos.cs",
+              "RelativeToolTip": "API\\DTOs\\DynamicQrDtos.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAiwBEAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-19T13:50:02.906Z"
+              "WhenOpened": "2026-03-24T06:11:44.768Z",
+              "EditorCaption": ""
             }
           ]
         }
