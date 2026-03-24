@@ -632,6 +632,10 @@ ol {
   color: var(--text-muted);
 }
 
+.filter-grid .search-bar {
+  max-width: none;
+}
+
 .search-bar .search-icon {
   position: absolute;
   left: 16px;

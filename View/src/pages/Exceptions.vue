@@ -47,8 +47,8 @@
             </div>
 
             <div class="filter-card">
-                <div class="filter-grid">
-                    <label class="filter-field filter-field-search">
+                <div class="filter-grid exception-filter-grid">
+                    <label class="filter-field filter-field-query">
                         <span class="field-label">Từ khóa</span>
                         <div class="search-bar">
                             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -64,7 +64,7 @@
                         </div>
                     </label>
 
-                    <label class="filter-field">
+                    <label class="filter-field filter-field-reason">
                         <span class="field-label">Lý do ngoại lệ</span>
                         <select v-model="draftFilters.reasonId" class="filter-select">
                             <option value="">Tất cả lý do</option>
@@ -74,12 +74,12 @@
                         </select>
                     </label>
 
-                    <label class="filter-field">
+                    <label class="filter-field filter-field-date">
                         <span class="field-label">Từ ngày</span>
                         <input v-model="draftFilters.dateFrom" type="date" class="filter-select" />
                     </label>
 
-                    <label class="filter-field">
+                    <label class="filter-field filter-field-date">
                         <span class="field-label">Đến ngày</span>
                         <input v-model="draftFilters.dateTo" type="date" class="filter-select" />
                     </label>
@@ -419,18 +419,20 @@ onMounted(async () => {
 
 .filter-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 14px;
+}
+
+.exception-filter-grid .filter-field-query,
+.exception-filter-grid .filter-field-reason,
+.exception-filter-grid .filter-field-date {
+    grid-column: span 6;
 }
 
 .filter-field {
     display: flex;
     flex-direction: column;
     gap: 8px;
-}
-
-.filter-field-search {
-    grid-column: span 2;
 }
 
 .field-label {
@@ -502,18 +504,14 @@ onMounted(async () => {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .filter-field-search {
-        grid-column: span 2;
+    .filter-grid .filter-field {
+        grid-column: span 1;
     }
 }
 
 @media (max-width: 768px) {
     .filter-grid {
         grid-template-columns: 1fr;
-    }
-
-    .filter-field-search {
-        grid-column: span 1;
     }
 
     .filter-summary {

@@ -44,6 +44,24 @@ namespace API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "DynamicQrScanLogs",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeId = table.Column<int>(type: "int", nullable: false),
+                    QrPayload = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsValid = table.Column<bool>(type: "bit", nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ScannerDevice = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    ScannedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getutcdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DynamicQrScanLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Exception_Reason",
                 columns: table => new
                 {
@@ -185,6 +203,32 @@ namespace API.Migrations
                         principalTable: "Employee",
                         principalColumn: "EmployeeId",
                         onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EmployeeDynamicQrs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeId = table.Column<int>(type: "int", nullable: false),
+                    SecretKey = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    TimeStepSeconds = table.Column<int>(type: "int", nullable: false, defaultValue: 30),
+                    Digits = table.Column<int>(type: "int", nullable: false, defaultValue: 6),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    LastUsedCounter = table.Column<long>(type: "bigint", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getutcdate())"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EmployeeDynamicQrs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EmployeeDynamicQr_Employee",
+                        column: x => x.EmployeeId,
+                        principalTable: "Employee",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -392,7 +436,7 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
-                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$XRqKRLrPkU7Z5YsOb4sjzuw/Q./hg7RvRdWZ.tw2xhDNaORa0he7S", "Admin", "admin" });
+                values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$b92m9MsFYls925/UkCsx6.1GY2qkeEcpjeN5GX6EDMr/ri2YbkqBO", "Admin", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Department",
@@ -485,6 +529,12 @@ namespace API.Migrations
                 column: "PositionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_EmployeeDynamicQrs_EmployeeId",
+                table: "EmployeeDynamicQrs",
+                column: "EmployeeId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_EmployeeFaceModels_EmployeeId",
                 table: "EmployeeFaceModels",
                 column: "EmployeeId");
@@ -554,6 +604,12 @@ namespace API.Migrations
 
             migrationBuilder.DropTable(
                 name: "CameraPlates");
+
+            migrationBuilder.DropTable(
+                name: "DynamicQrScanLogs");
+
+            migrationBuilder.DropTable(
+                name: "EmployeeDynamicQrs");
 
             migrationBuilder.DropTable(
                 name: "EmployeeFaceModels");

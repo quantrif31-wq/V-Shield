@@ -117,8 +117,6 @@
 
                 <div class="chip-row">
                     <span class="soft-chip" :class="getCameraStatusClass(camera)">{{ getCameraStatusText(camera) }}</span>
-                    <span class="soft-chip">{{ recognitionTypeLabel(camera.recognitionType) }}</span>
-                    <span class="soft-chip">{{ camera.resolution }}</span>
                 </div>
 
                 <div class="slot-form">
@@ -148,24 +146,6 @@
                         <label class="network-field">
                             <span class="field-label">Vị trí lắp đặt</span>
                             <input v-model="camera.location" class="filter-select" type="text" @blur="persistCameraSettingsOnly" />
-                        </label>
-
-                        <label class="network-field">
-                            <span class="field-label">Kiểu nhận diện</span>
-                            <select v-model="camera.recognitionType" class="filter-select" @change="persistCameraSettingsOnly">
-                                <option value="both">Khuôn mặt + biển số</option>
-                                <option value="face">Khuôn mặt</option>
-                                <option value="plate">Biển số</option>
-                            </select>
-                        </label>
-
-                        <label class="network-field">
-                            <span class="field-label">Độ phân giải</span>
-                            <select v-model="camera.resolution" class="filter-select" @change="persistCameraSettingsOnly">
-                                <option value="1080p">1080p</option>
-                                <option value="720p">720p</option>
-                                <option value="480p">480p</option>
-                            </select>
                         </label>
                     </div>
                 </div>
@@ -309,15 +289,6 @@ const getCameraStatusClass = (camera) => {
     return camera.online ? 'success' : 'danger'
 }
 
-const recognitionTypeLabel = (value) => {
-    const labels = {
-        both: 'Face + plate',
-        face: 'Face',
-        plate: 'Plate',
-    }
-    return labels[value] || 'Unknown'
-}
-
 const clearDiscoveryState = () => {
     discoveryMessage.value = ''
     discoveryError.value = ''
@@ -381,8 +352,6 @@ const applyCameraToNetwork = async (payload, preferredId = 'auto') => {
         enabled: true,
         online: false,
         location: payload.location?.trim() || current.location,
-        recognitionType: payload.recognitionType || current.recognitionType,
-        resolution: payload.resolution || current.resolution,
     }
 
     persistCameraSettingsOnly()
@@ -729,7 +698,7 @@ onMounted(async () => {
 }
 
 .slot-meta-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
 }
 
 .mono {

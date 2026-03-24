@@ -13,8 +13,6 @@ export const DEFAULT_CAMERA_SETTINGS = [
     location: "Cổng A - Trước",
     online: false,
     enabled: false,
-    recognitionType: "both",
-    resolution: "1080p",
   },
   {
     id: 2,
@@ -24,8 +22,6 @@ export const DEFAULT_CAMERA_SETTINGS = [
     location: "Cổng A - Sau",
     online: false,
     enabled: false,
-    recognitionType: "plate",
-    resolution: "1080p",
   },
   {
     id: 3,
@@ -35,8 +31,6 @@ export const DEFAULT_CAMERA_SETTINGS = [
     location: "Cổng B - Trước",
     online: false,
     enabled: false,
-    recognitionType: "face",
-    resolution: "720p",
   },
   {
     id: 4,
@@ -46,8 +40,6 @@ export const DEFAULT_CAMERA_SETTINGS = [
     location: "Cổng B - Sau",
     online: false,
     enabled: false,
-    recognitionType: "plate",
-    resolution: "720p",
   },
 ]
 
@@ -146,32 +138,33 @@ export const normalizeCameraSettings = (settings) =>
     const savedCamera = Array.isArray(settings)
       ? settings.find((item) => Number(item?.id) === fallbackCamera.id)
       : null
+    const savedCameraData =
+      savedCamera && typeof savedCamera === "object" ? { ...savedCamera } : {}
+    delete savedCameraData.recognitionType
+    delete savedCameraData.resolution
 
     const legacyParts = parseLegacyCameraName(
-      savedCamera?.name,
+      savedCameraData.name,
       fallbackCamera.name,
       fallbackCamera.label
     )
 
-    const normalizedUrl = savedCamera?.url?.trim() || ""
+    const normalizedUrl = savedCameraData.url?.trim() || ""
 
     return {
       ...fallbackCamera,
-      ...(savedCamera || {}),
+      ...savedCameraData,
       id: fallbackCamera.id,
-      name: savedCamera?.name?.trim()
+      name: savedCameraData.name?.trim()
         ? legacyParts.name
         : fallbackCamera.name,
-      label: savedCamera?.label?.trim()
-        ? savedCamera.label.trim()
+      label: savedCameraData.label?.trim()
+        ? savedCameraData.label.trim()
         : legacyParts.label,
       url: normalizedUrl,
-      location: savedCamera?.location?.trim() || fallbackCamera.location,
-      online: Boolean(savedCamera?.online && normalizedUrl),
-      enabled: Boolean(savedCamera?.enabled && normalizedUrl),
-      recognitionType:
-        savedCamera?.recognitionType || fallbackCamera.recognitionType,
-      resolution: savedCamera?.resolution || fallbackCamera.resolution,
+      location: savedCameraData.location?.trim() || fallbackCamera.location,
+      online: Boolean(savedCameraData.online && normalizedUrl),
+      enabled: Boolean(savedCameraData.enabled && normalizedUrl),
     }
   })
 
