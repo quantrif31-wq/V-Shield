@@ -17,10 +17,8 @@ namespace API.Controllers
         private static readonly StringBuilder pythonLogBuffer = new StringBuilder();
         private readonly ILanCameraDiscoveryService _lanCameraDiscoveryService;
 
-        string pythonApi = "http://127.0.0.1:8000";
-        string pythonFolder = Path.GetFullPath(
-    Path.Combine("..", "..", "..", "AI_Project", "face_recognition")
-);
+        private const string PythonApi = "http://127.0.0.1:8000";
+        private readonly string _pythonFolder = ResolvePythonFolder();
 
         public FaceIDController(ILanCameraDiscoveryService lanCameraDiscoveryService)
         {
@@ -33,7 +31,7 @@ namespace API.Controllers
         {
             try
             {
-                var res = await client.GetAsync($"{pythonApi}/");
+                var res = await client.GetAsync($"{PythonApi}/");
                 if (res.IsSuccessStatusCode)
                     return;
             }
@@ -55,7 +53,7 @@ namespace API.Controllers
 
                 try
                 {
-                    var res = await client.GetAsync($"{pythonApi}/");
+                    var res = await client.GetAsync($"{PythonApi}/");
                     if (res.IsSuccessStatusCode)
                         return;
                 }
@@ -69,21 +67,60 @@ namespace API.Controllers
 
         // =========================
 
+        private static string ResolvePythonFolder()
+        {
+            var candidateFolders = new[]
+            {
+                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "AI_Project", "face_recognition")),
+                Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "AI_Project", "face_recognition")),
+                Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "AI_Project", "face_recognition"))
+            };
+
+            return candidateFolders.FirstOrDefault(Directory.Exists) ?? candidateFolders[0];
+        }
+
+        private static string ResolvePythonExecutable(string pythonFolder)
+        {
+            var candidates = OperatingSystem.IsWindows()
+                ? new[]
+                {
+                    Path.Combine(pythonFolder, "venv", "Scripts", "python.exe"),
+                    "python",
+                    "py"
+                }
+                : new[]
+                {
+                    Path.Combine(pythonFolder, "venv", "bin", "python"),
+                    "python3",
+                    "python"
+                };
+
+            foreach (var candidate in candidates)
+            {
+                if (!Path.IsPathRooted(candidate) || System.IO.File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return candidates[0];
+        }
+
         void StartPythonServer()
         {
             if (pythonProcess != null && !pythonProcess.HasExited)
                 return;
 
             pythonLogBuffer.Clear();
-            var pythonExe = Path.Combine(pythonFolder, "venv", "Scripts", "python.exe");
+            var pythonExe = ResolvePythonExecutable(_pythonFolder);
 
-            if (!System.IO.File.Exists(pythonExe))
+            if (Path.IsPathRooted(pythonExe) && !System.IO.File.Exists(pythonExe))
                 throw new FileNotFoundException($"Khong tim thay Python venv: {pythonExe}");
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = pythonExe,
-                WorkingDirectory = pythonFolder,
+                WorkingDirectory = _pythonFolder,
                 Arguments = "-m uvicorn FaceID:app --port 8000",
                 CreateNoWindow = true,
                 UseShellExecute = false,
@@ -137,7 +174,7 @@ namespace API.Controllers
             {
                 await EnsurePythonRunning();
 
-                var res = await client.GetAsync($"{pythonApi}/camera/status");
+                var res = await client.GetAsync($"{PythonApi}/camera/status");
                 var data = await res.Content.ReadAsStringAsync();
 
                 return Content(data, "application/json");
@@ -160,7 +197,7 @@ namespace API.Controllers
                 await EnsurePythonRunning();
 
                 var encodedIp = Uri.EscapeDataString(ip);
-                var res = await client.PostAsync($"{pythonApi}/camera/start?ip_url={encodedIp}", null);
+                var res = await client.PostAsync($"{PythonApi}/camera/start?ip_url={encodedIp}", null);
                 var data = await res.Content.ReadAsStringAsync();
 
                 return new ContentResult
@@ -187,7 +224,7 @@ namespace API.Controllers
             {
                 await EnsurePythonRunning();
 
-                var res = await client.PostAsync($"{pythonApi}/camera/stop", null);
+                var res = await client.PostAsync($"{PythonApi}/camera/stop", null);
                 var data = await res.Content.ReadAsStringAsync();
 
                 return new ContentResult

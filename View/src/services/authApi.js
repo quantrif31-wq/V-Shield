@@ -1,7 +1,8 @@
 import axios from 'axios'
+import { API_BASE_URL } from '../config/api'
 
 const api = axios.create({
-    baseURL: 'https://localhost:7107/api/Auth'
+    baseURL: `${API_BASE_URL}/Auth`
 })
 
 // Tự động gắn JWT token vào mỗi request
@@ -17,7 +18,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && error.response.status === 401) {
+        const requestUrl = String(error.config?.url || '').toLowerCase()
+        const isLoginRequest = requestUrl.endsWith('/login') || requestUrl === '/login'
+
+        if (error.response && error.response.status === 401 && !isLoginRequest) {
             localStorage.removeItem('v_shield_token')
             localStorage.removeItem('v_shield_user')
             window.location.href = '/login'

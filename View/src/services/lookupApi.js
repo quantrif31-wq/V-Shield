@@ -1,11 +1,12 @@
 import axios from 'axios'
+import { API_BASE_URL } from '../config/api'
 
 const deptApi = axios.create({
-    baseURL: 'https://localhost:7107/api/Departments'
+    baseURL: `${API_BASE_URL}/Departments`
 })
 
 const posApi = axios.create({
-    baseURL: 'https://localhost:7107/api/Positions'
+    baseURL: `${API_BASE_URL}/Positions`
 })
 
     // JWT interceptor cho cả hai

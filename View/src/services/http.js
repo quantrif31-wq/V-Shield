@@ -1,12 +1,11 @@
 import axios from 'axios'
 import { API_BASE_URL } from '../config/api'
 
-const api = axios.create({
-    baseURL: `${API_BASE_URL}/Statistics`
+const http = axios.create({
+    baseURL: API_BASE_URL,
 })
 
-// Tự động gắn JWT token vào mỗi request
-api.interceptors.request.use((config) => {
+http.interceptors.request.use((config) => {
     const token = localStorage.getItem('v_shield_token')
     if (token) {
         config.headers.Authorization = `Bearer ${token}`
@@ -14,7 +13,7 @@ api.interceptors.request.use((config) => {
     return config
 })
 
-api.interceptors.response.use(
+http.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
@@ -26,8 +25,4 @@ api.interceptors.response.use(
     }
 )
 
-/**
- * Lấy thống kê tổng quan nhân viên
- * @returns {Promise<{totalEmployees, activeEmployees, inactiveEmployees, byDepartment, byPosition, calculatedAt}>}
- */
-export const getSummary = () => api.get('/employees/summary').then(res => res.data)
+export default http

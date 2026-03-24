@@ -2,77 +2,46 @@
     <div class="page-container ops-page animate-in">
         <section class="hero-banner">
             <div class="hero-panel">
-                <span class="hero-kicker">Access logs</span>
-                <h1 class="page-title">Tra cứu toàn bộ lịch sử ra vào theo thời gian, cổng, hướng di chuyển và trạng thái xử lý.</h1>
+                <span class="hero-kicker">Exceptions</span>
+                <h1 class="page-title">Rà soát các lượt mở cổng thủ công, lỗi nhận diện và trạng thái bất thường.</h1>
                 <p class="page-subtitle">
-                    Màn hình này dành cho bảo vệ và kiểm soát viên tại cổng để rà soát các lượt vào/ra, đối chiếu bằng chứng
-                    nhận diện và phát hiện các trường hợp cần xử lý tiếp.
+                    Đây là màn hình dành cho các trường hợp cần đối soát đặc biệt: <code>IsBypass = true</code>, có
+                    <code>Exception_Reason</code> hoặc log ra vào có trạng thái không thành công.
                 </p>
             </div>
 
             <div class="hero-aside">
                 <div class="aside-head">
                     <div>
-                        <span class="aside-label">Hôm nay</span>
-                        <strong>{{ summary.totalToday }}</strong>
+                        <span class="aside-label">Top lý do</span>
+                        <strong>{{ topReasonLabel }}</strong>
                     </div>
                     <span class="aside-chip">
                         <span class="aside-dot"></span>
-                        Nhật ký thời gian thực
+                        Kiểm soát ngoại lệ
                     </span>
                 </div>
 
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Vào</span>
-                        <strong>{{ summary.entriesToday }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Ra</span>
-                        <strong>{{ summary.exitsToday }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Ngoại lệ</span>
-                        <strong>{{ summary.exceptionsToday }}</strong>
-                    </div>
+                <div class="aside-summary">
+                    <article v-for="reason in summaryByReason.slice(0, 3)" :key="reason.reasonCode" class="reason-row">
+                        <strong>{{ reason.reasonCode }}</strong>
+                        <span>{{ reason.count }} lượt</span>
+                    </article>
                 </div>
             </div>
-        </section>
-
-        <section class="metric-grid">
-            <article class="metric-tile">
-                <span class="metric-label">Tổng lượt hôm nay</span>
-                <strong class="metric-value">{{ summary.totalToday }}</strong>
-                <span class="metric-note">Tất cả bản ghi phát sinh trong ngày.</span>
-            </article>
-            <article class="metric-tile">
-                <span class="metric-label">Bypass thủ công</span>
-                <strong class="metric-value">{{ summary.bypassToday }}</strong>
-                <span class="metric-note">Trường hợp mở thủ công cần được rà soát kỹ.</span>
-            </article>
-            <article class="metric-tile">
-                <span class="metric-label">Xe đang trong khu vực</span>
-                <strong class="metric-value">{{ summary.vehiclesInside }}</strong>
-                <span class="metric-note">Đọc từ trạng thái đỗ xe hiện tại.</span>
-            </article>
-            <article class="metric-tile">
-                <span class="metric-label">Tỷ lệ thành công</span>
-                <strong class="metric-value">{{ summary.successRate }}%</strong>
-                <span class="metric-note">So sánh giữa lượt thường và lượt ngoại lệ.</span>
-            </article>
         </section>
 
         <section class="ops-panel">
             <div class="panel-head">
                 <div>
-                    <span class="panel-kicker">Filter controls</span>
-                    <h2 class="panel-title">Bộ lọc lịch sử ra vào</h2>
+                    <span class="panel-kicker">Exception filters</span>
+                    <h2 class="panel-title">Bộ lọc ngoại lệ</h2>
                     <p class="panel-copy">
-                        Chỉ áp dụng khi bấm nút lọc để tránh rỗng dữ liệu tạm thời lúc đang nhập.
+                        Áp dụng khi cần đối soát theo lý do, khoảng ngày và từ khóa mà không bị refresh giữa chừng.
                     </p>
                 </div>
                 <div class="filter-summary">
-                    <span class="soft-chip success">{{ total }} bản ghi</span>
+                    <span class="soft-chip warn">{{ total }} ngoại lệ</span>
                     <span v-for="tag in appliedFilterTags" :key="tag" class="soft-chip">{{ tag }}</span>
                 </div>
             </div>
@@ -89,34 +58,19 @@
                             <input
                                 v-model="draftFilters.query"
                                 type="text"
-                                placeholder="Tìm theo tên, biển số, ghi chú..."
+                                placeholder="Tìm theo người, biển số, ghi chú..."
                                 @keyup.enter="applyFilters"
                             />
                         </div>
                     </label>
 
                     <label class="filter-field">
-                        <span class="field-label">Chiều di chuyển</span>
-                        <select v-model="draftFilters.direction" class="filter-select">
-                            <option value="">Tất cả chiều</option>
-                            <option value="IN">Vào</option>
-                            <option value="OUT">Ra</option>
-                        </select>
-                    </label>
-
-                    <label class="filter-field">
-                        <span class="field-label">Cổng</span>
-                        <select v-model="draftFilters.gateId" class="filter-select">
-                            <option value="">Tất cả cổng</option>
-                            <option v-for="gate in gates" :key="gate.gateId" :value="String(gate.gateId)">{{ gate.gateName }}</option>
-                        </select>
-                    </label>
-
-                    <label class="filter-field">
-                        <span class="field-label">Trạng thái</span>
-                        <select v-model="draftFilters.status" class="filter-select">
-                            <option value="">Tất cả trạng thái</option>
-                            <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+                        <span class="field-label">Lý do ngoại lệ</span>
+                        <select v-model="draftFilters.reasonId" class="filter-select">
+                            <option value="">Tất cả lý do</option>
+                            <option v-for="reason in reasons" :key="reason.reasonId" :value="String(reason.reasonId)">
+                                {{ reason.reasonCode }} - {{ reason.description }}
+                            </option>
                         </select>
                     </label>
 
@@ -133,7 +87,7 @@
 
                 <div class="filter-footer">
                     <div>
-                        <p class="filter-hint">Khoảng ngày sẽ tự đổi lại nếu nhập ngược thứ tự.</p>
+                        <p class="filter-hint">Nếu nhập ngày kết thúc sớm hơn ngày bắt đầu, hệ thống sẽ tự hoán đổi.</p>
                         <p v-if="filterNotice" class="filter-notice">{{ filterNotice }}</p>
                     </div>
                     <div class="filter-actions">
@@ -147,9 +101,9 @@
                 </div>
             </div>
 
-            <div v-if="isLoading" class="empty-card">Đang tải lịch sử ra vào...</div>
+            <div v-if="isLoading" class="empty-card">Đang tải danh sách ngoại lệ...</div>
             <div v-else-if="items.length === 0" class="empty-card">
-                {{ hasActiveFilters ? 'Không có bản ghi nào khớp với bộ lọc đã áp dụng.' : 'Chưa có bản ghi ra vào nào để hiển thị.' }}
+                {{ hasActiveFilters ? 'Không có ngoại lệ nào khớp với bộ lọc đã áp dụng.' : 'Chưa có ngoại lệ nào để hiển thị.' }}
             </div>
             <div v-else class="table-container">
                 <table class="data-table">
@@ -157,58 +111,46 @@
                         <tr>
                             <th>Thời gian</th>
                             <th>Đối tượng</th>
-                            <th>Chiều</th>
-                            <th>Cổng / Camera</th>
+                            <th>Cổng</th>
                             <th>Biển số</th>
-                            <th>Phương thức</th>
+                            <th>Lý do</th>
                             <th>Trạng thái</th>
                             <th>Ghi chú</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="item in items" :key="item.logId">
-                            <td>
-                                <div class="table-main">{{ formatDateTime(item.timestamp) }}</div>
-                            </td>
+                            <td>{{ formatDateTime(item.timestamp) }}</td>
                             <td>
                                 <div class="table-main">{{ item.actorName }}</div>
-                                <div class="table-sub">{{ actorTypeLabel(item.actorType) }}</div>
-                            </td>
-                            <td>
-                                <span class="badge" :class="item.direction === 'IN' ? 'active' : 'pending'">
-                                    {{ item.direction === 'IN' ? 'VÀO' : 'RA' }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="table-main">{{ item.gateName || 'Chưa gán cổng' }}</div>
                                 <div class="table-sub">{{ item.cameraName || 'Không có camera' }}</div>
                             </td>
+                            <td>{{ item.gateName || 'Chưa gán cổng' }}</td>
                             <td>
                                 <span v-if="item.capturedLicensePlate" class="plate-pill">{{ item.capturedLicensePlate }}</span>
-                                <span v-else class="table-sub">Đi bộ / không ghi nhận</span>
-                            </td>
-                            <td>
-                                <span class="soft-chip" :class="methodClass(item.method)">{{ methodLabel(item.method) }}</span>
+                                <span v-else class="table-sub">Không ghi nhận</span>
                             </td>
                             <td>
                                 <div class="chip-row">
-                                    <span v-if="item.resultStatus" class="soft-chip">{{ item.resultStatus }}</span>
-                                    <span v-if="item.isBypass" class="soft-chip danger">BYPASS</span>
-                                    <span v-if="item.isException" class="soft-chip warn">NGOẠI LỆ</span>
+                                    <span v-if="item.exceptionReasonCode" class="soft-chip warn">{{ item.exceptionReasonCode }}</span>
+                                    <span v-else class="soft-chip warn">UNCLASSIFIED</span>
                                 </div>
+                                <div class="table-sub">{{ item.exceptionReasonDescription || 'Chưa có mô tả' }}</div>
                             </td>
                             <td>
-                                <div class="table-sub note-cell">
-                                    {{ item.note || item.exceptionReasonDescription || '—' }}
+                                <div class="chip-row">
+                                    <span v-if="item.isBypass" class="soft-chip danger">BYPASS</span>
+                                    <span v-if="item.resultStatus" class="soft-chip">{{ item.resultStatus }}</span>
                                 </div>
                             </td>
+                            <td class="note-cell">{{ item.note || '—' }}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             <div v-if="total > 0" class="pagination">
-                <div class="pagination-info">Hiển thị {{ items.length }} / {{ total }} bản ghi</div>
+                <div class="pagination-info">Hiển thị {{ items.length }} / {{ total }} ngoại lệ</div>
                 <div class="pagination-buttons">
                     <button class="pagination-btn" :disabled="page === 1" @click="setPage(page - 1)">‹</button>
                     <button
@@ -229,16 +171,14 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { getAccessLogs, getAccessLogSummary } from '../services/accessLogApi'
-import { getGates } from '../services/deviceManagementApi'
+import { getExceptions } from '../services/accessLogApi'
+import { getExceptionReasons } from '../services/exceptionReasonApi'
 
 const pageSize = 12
 
 const createDefaultFilters = () => ({
     query: '',
-    direction: '',
-    gateId: '',
-    status: '',
+    reasonId: '',
     dateFrom: '',
     dateTo: '',
 })
@@ -247,28 +187,16 @@ const isLoading = ref(true)
 const items = ref([])
 const total = ref(0)
 const page = ref(1)
-const gates = ref([])
+const reasons = ref([])
+const summaryByReason = ref([])
 const filterNotice = ref('')
 const draftFilters = reactive(createDefaultFilters())
 const appliedFilters = ref(createDefaultFilters())
-const summary = ref({
-    totalToday: 0,
-    entriesToday: 0,
-    exitsToday: 0,
-    exceptionsToday: 0,
-    bypassToday: 0,
-    vehiclesInside: 0,
-    successRate: 0,
-})
-
-const defaultStatusOptions = ['APPROVED', 'SUCCESS', 'MATCHED', 'GRANTED', 'OK', 'DENIED', 'FAILED', 'REJECTED']
 
 const normalizeFilters = (source) => {
     const normalized = {
         query: source.query?.trim() || '',
-        direction: source.direction || '',
-        gateId: source.gateId || '',
-        status: source.status || '',
+        reasonId: source.reasonId || '',
         dateFrom: source.dateFrom || '',
         dateTo: source.dateTo || '',
     }
@@ -296,14 +224,9 @@ const hasActiveFilters = computed(() =>
     Object.values(normalizeFilters(appliedFilters.value).normalized).some((value) => Boolean(value))
 )
 
-const statusOptions = computed(() => {
-    const uniqueStatuses = new Set(defaultStatusOptions)
-    items.value.forEach((item) => {
-        if (item.resultStatus) {
-            uniqueStatuses.add(item.resultStatus)
-        }
-    })
-    return Array.from(uniqueStatuses)
+const topReasonLabel = computed(() => {
+    const top = summaryByReason.value[0]
+    return top ? `${top.reasonCode} - ${top.count} lượt` : 'Chưa có ngoại lệ'
 })
 
 const appliedFilterTags = computed(() => {
@@ -311,14 +234,12 @@ const appliedFilterTags = computed(() => {
     const tags = []
 
     if (current.query) tags.push(`Từ khóa: ${current.query}`)
-    if (current.direction) tags.push(current.direction === 'IN' ? 'Chiều: Vào' : 'Chiều: Ra')
 
-    if (current.gateId) {
-        const gate = gates.value.find((item) => String(item.gateId) === current.gateId)
-        tags.push(`Cổng: ${gate?.gateName || current.gateId}`)
+    if (current.reasonId) {
+        const reason = reasons.value.find((item) => String(item.reasonId) === current.reasonId)
+        tags.push(`Lý do: ${reason ? reason.reasonCode : current.reasonId}`)
     }
 
-    if (current.status) tags.push(`Trạng thái: ${current.status}`)
     if (current.dateFrom) tags.push(`Từ: ${formatDate(current.dateFrom)}`)
     if (current.dateTo) tags.push(`Đến: ${formatDate(current.dateTo)}`)
 
@@ -341,52 +262,16 @@ function formatDateTime(value) {
     })
 }
 
-function actorTypeLabel(value) {
-    const map = {
-        Employee: 'Nhân sự nội bộ',
-        Guest: 'Khách / đăng ký trước',
-        Unknown: 'Chưa xác định',
-    }
-    return map[value] || 'Chưa phân loại'
-}
-
-function methodLabel(value) {
-    const map = {
-        face: 'Khuôn mặt',
-        plate: 'Biển số',
-        manual: 'Thủ công',
-        'face-and-plate': 'Khuôn mặt + biển số',
-        system: 'Hệ thống',
-    }
-    return map[value] || value
-}
-
-function methodClass(value) {
-    if (value === 'manual') return 'danger'
-    if (value === 'plate') return 'warn'
-    if (value === 'face') return 'success'
-    return ''
-}
-
-async function fetchSummary() {
+async function fetchReasons() {
     try {
-        const { data } = await getAccessLogSummary()
-        summary.value = { ...summary.value, ...data }
+        const { data } = await getExceptionReasons()
+        reasons.value = data || []
     } catch (error) {
-        console.error('Access log summary error:', error)
+        console.error('Exception reasons error:', error)
     }
 }
 
-async function fetchGates() {
-    try {
-        const { data } = await getGates()
-        gates.value = data || []
-    } catch (error) {
-        console.error('Gate list error:', error)
-    }
-}
-
-async function fetchLogs() {
+async function fetchItems() {
     isLoading.value = true
     try {
         const current = normalizeFilters(appliedFilters.value).normalized
@@ -394,20 +279,20 @@ async function fetchLogs() {
             page: page.value,
             pageSize,
             query: current.query || undefined,
-            direction: current.direction || undefined,
-            gateId: current.gateId || undefined,
-            resultStatus: current.status || undefined,
+            reasonId: current.reasonId || undefined,
             dateFrom: current.dateFrom || undefined,
             dateTo: current.dateTo || undefined,
         }
 
-        const { data } = await getAccessLogs(params)
+        const { data } = await getExceptions(params)
         items.value = data.items || []
         total.value = data.total || 0
+        summaryByReason.value = data.summaryByReason || []
     } catch (error) {
-        console.error('Access logs error:', error)
+        console.error('Exceptions load error:', error)
         items.value = []
         total.value = 0
+        summaryByReason.value = []
     } finally {
         isLoading.value = false
     }
@@ -416,7 +301,7 @@ async function fetchLogs() {
 function commitFilters(nextFilters) {
     appliedFilters.value = { ...nextFilters }
     if (page.value === 1) {
-        fetchLogs()
+        fetchItems()
         return
     }
     page.value = 1
@@ -441,24 +326,20 @@ function setPage(nextPage) {
     page.value = nextPage
 }
 
-watch(page, fetchLogs)
+watch(page, fetchItems)
 
 onMounted(async () => {
-    await Promise.all([fetchSummary(), fetchGates()])
-    await fetchLogs()
+    await fetchReasons()
+    await fetchItems()
 })
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
-
 .aside-head {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
+    gap: 14px;
 }
 
 .aside-label {
@@ -470,7 +351,8 @@ onMounted(async () => {
 
 .aside-head strong {
     font-family: var(--font-heading);
-    font-size: 1.8rem;
+    font-size: 1.15rem;
+    line-height: 1.3;
 }
 
 .aside-chip {
@@ -492,29 +374,31 @@ onMounted(async () => {
     background: #5de3c7;
 }
 
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.aside-summary {
+    margin-top: 18px;
+    display: grid;
+    gap: 10px;
 }
 
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
+.reason-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
+.reason-row strong {
+    color: #fff;
+    font-size: 0.88rem;
 }
 
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
+.reason-row span {
+    color: rgba(215, 251, 255, 0.76);
+    font-size: 0.8rem;
 }
 
 .filter-summary {
@@ -587,7 +471,6 @@ onMounted(async () => {
 .table-main {
     color: var(--text-primary);
     font-weight: 600;
-    font-size: 0.9rem;
 }
 
 .table-sub {
@@ -610,15 +493,11 @@ onMounted(async () => {
 }
 
 .note-cell {
-    max-width: 220px;
-    white-space: normal;
+    max-width: 240px;
+    color: var(--text-secondary);
 }
 
 @media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
-    }
-
     .filter-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

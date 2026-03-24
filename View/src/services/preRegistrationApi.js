@@ -1,13 +1,14 @@
 import axios from 'axios'
+import { API_BASE_URL } from '../config/api'
 
 // ── Axios instance cho các endpoint PUBLIC (không cần auth) ──
 const publicApi = axios.create({
-    baseURL: 'https://localhost:7107/api'
+    baseURL: API_BASE_URL
 })
 
 // ── Axios instance cho các endpoint ADMIN (cần auth) ──
 const authApi = axios.create({
-    baseURL: 'https://localhost:7107/api'
+    baseURL: API_BASE_URL
 })
 
 authApi.interceptors.request.use((config) => {
@@ -66,4 +67,9 @@ export const updateStatus = (id, status) => {
 /** Tạo link đăng ký mới */
 export const createLink = (data) => {
     return authApi.post('/registration-links', data)
+}
+
+/** Láº¥y danh sÃ¡ch link Ä‘Äƒng kÃ½ */
+export const getLinks = (params = {}) => {
+    return authApi.get('/registration-links', { params })
 }

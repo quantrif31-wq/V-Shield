@@ -22,6 +22,12 @@ import FaceVideo from '../components/FaceVideo.vue'
 import ThongHanh from '../components/ThongHanh.vue'
 import Tao_QR_D from '../components/Tao_QR_D.vue'
 import Scan_QR_D from '../components/Scan_QR_D.vue'
+import Exceptions from '../pages/Exceptions.vue'
+import RegistrationLinks from '../pages/RegistrationLinks.vue'
+import GuestProfiles from '../pages/GuestProfiles.vue'
+import DeviceManagement from '../pages/DeviceManagement.vue'
+import Biometrics from '../pages/Biometrics.vue'
+import SystemCatalog from '../pages/SystemCatalog.vue'
 
 const routes = [
     {
@@ -41,13 +47,19 @@ const routes = [
         component: MainLayout,
         meta: { requiresAuth: true },
         children: [
-            { path: '', redirect: { name: 'AboutProject' } },
+            { path: '', redirect: { name: 'Dashboard' } },
             { path: 'dashboard', name: 'Dashboard', component: Dashboard },
+            { path: 'monitoring', name: 'Monitoring', component: Monitoring },
+            { path: 'access-logs', name: 'AccessLogs', component: AccessLogs },
+            { path: 'exceptions', name: 'Exceptions', component: Exceptions },
+            { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration },
+            { path: 'registration-links', name: 'RegistrationLinks', component: RegistrationLinks },
+            { path: 'guest-profiles', name: 'GuestProfiles', component: GuestProfiles },
             { path: 'about-project', name: 'AboutProject', component: AboutProject },
             { path: 'employees', name: 'Employees', component: Employees },
             { path: 'vehicles', name: 'Vehicles', component: Vehicles },
-            { path: 'access-logs', name: 'AccessLogs', component: AccessLogs },
-            { path: 'monitoring', name: 'Monitoring', component: Monitoring },
+            { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement },
+            { path: 'biometrics', name: 'Biometrics', component: Biometrics },
             { path: 'settings', name: 'Settings', component: Settings },
             { path: 'FaceID', name: 'FaceID', component: FaceID },
             { path: 'bienso', name: 'bienso', component: bienso },
@@ -60,6 +72,12 @@ const routes = [
                 path: 'users',
                 name: 'UserManagement',
                 component: UserManagement,
+                meta: { requiresAdmin: true },
+            },
+            {
+                path: 'system-catalog',
+                name: 'SystemCatalog',
+                component: SystemCatalog,
                 meta: { requiresAdmin: true },
             },
             {

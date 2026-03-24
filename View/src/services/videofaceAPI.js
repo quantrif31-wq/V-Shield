@@ -1,6 +1,7 @@
 import axios from "axios"
+import { API_BASE_URL } from "../config/api"
 
-const API = "https://localhost:7107/api/Video"
+const API = `${API_BASE_URL}/Video`
 
 export const uploadFaceVideo = async (file, employeeId, onProgress)=>{
 

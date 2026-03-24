@@ -291,6 +291,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { validateToken, submitRegistration } from '../services/preRegistrationApi'
+import { API_ORIGIN } from '../config/api'
 import { optimizeAndValidatePlate, getVehicleTypeLabel } from '../utils/licensePlateValidator'
 import { validateVietnameseName, normalizeVietnameseName } from '../utils/nameValidator'
 
@@ -400,7 +401,7 @@ const form = reactive({
 })
 
 // ── Helpers ──────────────────────────────────────
-const API_BASE = 'https://localhost:7107';
+const API_BASE = API_ORIGIN;
 
 const getInitials = (name) => {
     if (!name) return '??'

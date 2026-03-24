@@ -106,16 +106,16 @@
 
                     <div class="notification-list">
                         <div
-                            v-for="n in notifications"
-                            :key="n.id"
+                            v-for="notification in notifications"
+                            :key="notification.id"
                             class="notification-item"
-                            :class="{ unread: !n.read }"
+                            :class="{ unread: !notification.read }"
                         >
-                            <div class="notification-icon" :class="n.type">
-                                <svg v-if="n.type === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <div class="notification-icon" :class="notification.type">
+                                <svg v-if="notification.type === 'success'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path d="M20 6L9 17l-5-5" />
                                 </svg>
-                                <svg v-else-if="n.type === 'warning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <svg v-else-if="notification.type === 'warning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                                     <line x1="12" y1="9" x2="12" y2="13" />
                                     <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -128,8 +128,8 @@
                             </div>
 
                             <div class="notification-content">
-                                <p>{{ n.message }}</p>
-                                <span class="notification-time">{{ n.time }}</span>
+                                <p>{{ notification.message }}</p>
+                                <span class="notification-time">{{ notification.time }}</span>
                             </div>
                         </div>
                     </div>
@@ -162,47 +162,71 @@ const currentDate = ref('')
 const routeMeta = {
     Dashboard: {
         title: 'Tổng quan hệ thống',
-        description: 'Giám sát con người, phương tiện và camera trong một luồng điều phối thống nhất.',
+        description: 'Nhìn nhanh người, xe, khách và camera ngay khi đăng nhập vào V-Shield.',
     },
     Monitoring: {
-        title: 'Giám sát thời gian thực',
-        description: 'Theo dõi luồng camera, tình trạng kết nối và tín hiệu an ninh tại các điểm truy cập.',
+        title: 'Giám sát trực tiếp',
+        description: 'Theo dõi camera, cổng, biển số và access log gần nhất trong cùng một màn hình.',
     },
     AccessLogs: {
-        title: 'Nhật ký ra vào',
-        description: 'Đối soát lịch sử check-in, check-out và các tín hiệu cảnh báo theo thời gian.',
+        title: 'Tra cứu vào/ra',
+        description: 'Rà soát lịch sử ra vào theo thời gian, cổng, biển số và trạng thái xử lý.',
     },
-    Employees: {
-        title: 'Hồ sơ nhân sự',
-        description: 'Quản lý lực lượng nội bộ, danh tính, vai trò và dữ liệu nhận diện.',
-    },
-    Vehicles: {
-        title: 'Quản lý phương tiện',
-        description: 'Kiểm soát biển số, luồng phương tiện và trạng thái cấp quyền.',
+    Exceptions: {
+        title: 'Xử lý ngoại lệ',
+        description: 'Tập trung các trường hợp bypass, lỗi nhận diện và lý do ngoại lệ cần đối soát.',
     },
     PreRegistration: {
-        title: 'Đăng ký khách trước',
-        description: 'Tạo luồng đón tiếp nhanh với mã truy cập rõ ràng và ít ma sát.',
+        title: 'Danh sách hẹn trước',
+        description: 'Quản lý lượt khách đăng ký trước, duyệt trạng thái và theo dõi lịch hẹn.',
     },
-    Settings: {
-        title: 'Điều chỉnh hệ thống',
-        description: 'Tinh chỉnh cấu hình vận hành, quy tắc nhận diện và môi trường tích hợp.',
+    RegistrationLinks: {
+        title: 'Link đăng ký tự động',
+        description: 'Tạo và quản lý token đăng ký để khách tự khai báo trước khi đến.',
+    },
+    GuestProfiles: {
+        title: 'Hồ sơ khách',
+        description: 'Lưu danh bạ khách quen để tái sử dụng nhanh cho các lần mời tiếp theo.',
+    },
+    Employees: {
+        title: 'Hồ sơ nhân viên',
+        description: 'Quản lý nhân sự, phòng ban, chức vụ và dữ liệu nhận diện nội bộ.',
+    },
+    Vehicles: {
+        title: 'Phương tiện nội bộ',
+        description: 'Theo dõi xe đăng ký cố định của nhân viên và trạng thái trong bãi.',
+    },
+    DeviceManagement: {
+        title: 'Camera & cổng',
+        description: 'Khai báo và cấu hình các camera, cổng truy cập đang có trong hệ thống.',
+    },
+    Biometrics: {
+        title: 'Dữ liệu nhận diện',
+        description: 'Kiểm tra model, video khuôn mặt và độ phủ dữ liệu AI theo từng nhân sự.',
     },
     UserManagement: {
-        title: 'Quản trị tài khoản',
-        description: 'Kiểm soát người dùng, quyền truy cập và phạm vi vận hành.',
+        title: 'Tài khoản & phân quyền',
+        description: 'Quản lý người dùng phần mềm, vai trò và trạng thái hoạt động của tài khoản.',
+    },
+    SystemCatalog: {
+        title: 'Danh mục hệ thống',
+        description: 'Rà soát các danh mục tĩnh như phòng ban, chức vụ và lý do ngoại lệ.',
     },
     DepartmentPosition: {
         title: 'Cấu trúc tổ chức',
-        description: 'Sắp xếp phòng ban, vị trí công việc và quan hệ điều phối nội bộ.',
+        description: 'Quản trị chi tiết phòng ban và chức vụ dùng trong toàn bộ hệ thống.',
     },
     AboutProject: {
-        title: 'Thông tin nền tảng',
-        description: 'Tóm tắt mục tiêu, kiến trúc và năng lực chính của giải pháp V-Shield.',
+        title: 'Giới thiệu dự án',
+        description: 'Thông tin tổng quan về mục tiêu và bối cảnh triển khai V-Shield.',
+    },
+    Settings: {
+        title: 'Cài đặt hệ thống',
+        description: 'Khu cấu hình mở rộng của ứng dụng.',
     },
     Login: {
         title: 'Xác thực truy cập',
-        description: 'Đăng nhập bảo mật để tiếp cận trung tâm điều phối V-Shield.',
+        description: 'Đăng nhập an toàn để vào trung tâm điều phối V-Shield.',
     },
 }
 
@@ -226,28 +250,28 @@ const roleLabel = computed(() => {
 const notifications = ref([
     {
         id: 1,
-        message: 'Nhân viên Nguyễn Văn A đã check-in tại Cổng A lúc 08:05.',
+        message: 'Có bản ghi ngoại lệ mới cần kiểm tra trong mục Xử lý ngoại lệ.',
         time: '5 phút trước',
-        type: 'success',
-        read: false,
-    },
-    {
-        id: 2,
-        message: 'Biển số 51A-123.45 đang cần xác minh lại nhận diện.',
-        time: '12 phút trước',
         type: 'warning',
         read: false,
     },
     {
+        id: 2,
+        message: 'Hệ thống đã đồng bộ danh sách hẹn trước và dashboard sáng nay.',
+        time: '15 phút trước',
+        type: 'success',
+        read: false,
+    },
+    {
         id: 3,
-        message: 'Camera 02 vừa khôi phục kết nối sau 1 phút gián đoạn.',
+        message: 'Camera và cổng đã được map lại theo danh mục nghiệp vụ mới.',
         time: '1 giờ trước',
         type: 'info',
         read: true,
     },
 ])
 
-const unreadCount = computed(() => notifications.value.filter(item => !item.read).length)
+const unreadCount = computed(() => notifications.value.filter((item) => !item.read).length)
 
 function updateTime() {
     const now = new Date()
@@ -279,7 +303,7 @@ function toggleUserMenu() {
 }
 
 function markAllRead() {
-    notifications.value = notifications.value.map(item => ({ ...item, read: true }))
+    notifications.value = notifications.value.map((item) => ({ ...item, read: true }))
 }
 
 function handleLogout() {
