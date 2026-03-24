@@ -6,7 +6,6 @@ __pycache__/
 venv/
 lpr_final/
 lpr_gpu/
-Migrations/
 
 # ===== YOLO / Dataset =====
 AI_Project/Vietnam License Plate.v2i.yolov8/
