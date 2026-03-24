@@ -1,18 +1,19 @@
-import axios from "axios";
+import axios from 'axios'
+import { API_BASE_URL } from '../config/api'
 
 const api = axios.create({
-  baseURL: "https://localhost:7107", // sửa lại đúng API của bạn
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 15000,
-});
+    baseURL: API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    timeout: 15000,
+})
 
 export async function generateDynamicQr(employeeId) {
-  const response = await api.post("/api/QR_Dong/generate", {
-    employeeId: Number(employeeId),
-  });
-  return response.data;
+    const response = await api.post('/QR_Dong/generate', {
+        employeeId: Number(employeeId),
+    })
+    return response.data
 }
 
-export default api;
+export default api
