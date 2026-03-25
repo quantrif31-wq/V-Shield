@@ -25,26 +25,29 @@ public class DashboardController : ControllerBase
         var weekStart = StartOfWeek(today, DayOfWeek.Monday);
         var weekEnd = weekStart.AddDays(7);
 
-        var vehiclesInsideTask = _context.Vehicles.AsNoTracking()
+        // NOTE: All queries must be awaited sequentially because DbContext is NOT thread-safe.
+        // Using Task.WhenAll with the same DbContext causes InvalidOperationException.
+
+        var vehiclesInside = await _context.Vehicles.AsNoTracking()
             .CountAsync(v => v.ParkingStatus != null && v.ParkingStatus.ToUpper() == "IN");
 
-        var expectedVisitorsTodayTask = _context.PreRegistrations.AsNoTracking()
+        var expectedVisitorsToday = await _context.PreRegistrations.AsNoTracking()
             .CountAsync(r => r.ExpectedTimeIn >= today && r.ExpectedTimeIn < tomorrow);
 
-        var pendingRegistrationsTask = _context.PreRegistrations.AsNoTracking()
+        var pendingRegistrations = await _context.PreRegistrations.AsNoTracking()
             .CountAsync(r => r.Status != null && r.Status.ToUpper() == "PENDING");
 
-        var camerasConfiguredTask = _context.Cameras.AsNoTracking().CountAsync();
-        var gatesConfiguredTask = _context.Gates.AsNoTracking().CountAsync();
-        var guestProfilesTask = _context.GuestProfiles.AsNoTracking().CountAsync();
+        var camerasConfigured = await _context.Cameras.AsNoTracking().CountAsync();
+        var gatesConfigured = await _context.Gates.AsNoTracking().CountAsync();
+        var guestProfiles = await _context.GuestProfiles.AsNoTracking().CountAsync();
 
-        var employeeCountTask = _context.Employees.AsNoTracking().CountAsync();
-        var trainedEmployeeCountTask = _context.EmployeeFaceModels.AsNoTracking()
+        var employeeCount = await _context.Employees.AsNoTracking().CountAsync();
+        var trainedEmployeeCount = await _context.EmployeeFaceModels.AsNoTracking()
             .Select(m => m.EmployeeId)
             .Distinct()
             .CountAsync();
 
-        var todaysLogsTask = _context.AccessLogs.AsNoTracking()
+        var todaysLogs = await _context.AccessLogs.AsNoTracking()
             .Where(log => log.Timestamp >= today && log.Timestamp < tomorrow)
             .Select(log => new
             {
@@ -57,7 +60,7 @@ public class DashboardController : ControllerBase
             })
             .ToListAsync();
 
-        var weeklyLogsTask = _context.AccessLogs.AsNoTracking()
+        var weeklyLogs = await _context.AccessLogs.AsNoTracking()
             .Where(log => log.Timestamp >= weekStart && log.Timestamp < weekEnd)
             .Select(log => new
             {
@@ -66,7 +69,7 @@ public class DashboardController : ControllerBase
             })
             .ToListAsync();
 
-        var recentActivitiesTask = _context.AccessLogs.AsNoTracking()
+        var recentActivitiesRaw = await _context.AccessLogs.AsNoTracking()
             .OrderByDescending(log => log.Timestamp)
             .Take(6)
             .Select(log => new
@@ -85,22 +88,6 @@ public class DashboardController : ControllerBase
                 ExceptionReason = log.ExceptionReason != null ? log.ExceptionReason.Description : null
             })
             .ToListAsync();
-
-        await Task.WhenAll(
-            vehiclesInsideTask,
-            expectedVisitorsTodayTask,
-            pendingRegistrationsTask,
-            camerasConfiguredTask,
-            gatesConfiguredTask,
-            guestProfilesTask,
-            employeeCountTask,
-            trainedEmployeeCountTask,
-            todaysLogsTask,
-            weeklyLogsTask,
-            recentActivitiesTask
-        );
-
-        var todaysLogs = todaysLogsTask.Result;
         var successfulStatuses = new[] { "APPROVED", "SUCCESS", "GRANTED", "OK", "MATCHED" };
 
         var traffic = Enumerable.Range(0, 7)
@@ -108,7 +95,7 @@ public class DashboardController : ControllerBase
             {
                 var day = weekStart.AddDays(offset);
                 var nextDay = day.AddDays(1);
-                var dayLogs = weeklyLogsTask.Result
+                var dayLogs = weeklyLogs
                     .Where(log => log.Timestamp >= day && log.Timestamp < nextDay)
                     .ToList();
 
@@ -129,11 +116,11 @@ public class DashboardController : ControllerBase
             log.ExceptionReasonId != null ||
             (!string.IsNullOrWhiteSpace(log.ResultStatus) && !successfulStatuses.Contains(log.ResultStatus.ToUpper())));
 
-        var recognitionCoverage = employeeCountTask.Result == 0
+        var recognitionCoverage = employeeCount == 0
             ? 0
-            : (int)Math.Round(trainedEmployeeCountTask.Result * 100.0 / employeeCountTask.Result);
+            : (int)Math.Round(trainedEmployeeCount * 100.0 / employeeCount);
 
-        var recentActivities = recentActivitiesTask.Result.Select(activity => new
+        var recentActivities = recentActivitiesRaw.Select(activity => new
         {
             activity.LogId,
             activity.Timestamp,
@@ -154,17 +141,17 @@ public class DashboardController : ControllerBase
             snapshot = new
             {
                 generatedAt = DateTime.Now,
-                vehiclesInside = vehiclesInsideTask.Result,
-                expectedVisitorsToday = expectedVisitorsTodayTask.Result,
-                pendingRegistrations = pendingRegistrationsTask.Result,
+                vehiclesInside,
+                expectedVisitorsToday,
+                pendingRegistrations,
                 dailyCheckIn = dailyIn,
                 dailyCheckOut = dailyOut,
                 dailyExceptions,
-                camerasConfigured = camerasConfiguredTask.Result,
-                gatesConfigured = gatesConfiguredTask.Result,
-                guestProfiles = guestProfilesTask.Result,
-                employeeCount = employeeCountTask.Result,
-                trainedEmployeeCount = trainedEmployeeCountTask.Result,
+                camerasConfigured,
+                gatesConfigured,
+                guestProfiles,
+                employeeCount,
+                trainedEmployeeCount,
                 recognitionCoverage
             },
             weeklyTraffic = traffic,

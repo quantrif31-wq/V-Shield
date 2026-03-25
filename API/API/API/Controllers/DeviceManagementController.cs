@@ -21,15 +21,16 @@ public class DeviceManagementController : ControllerBase
     [HttpGet("overview")]
     public async Task<IActionResult> GetOverview()
     {
-        var cameraCountTask = _context.Cameras.AsNoTracking().CountAsync();
-        var gateCountTask = _context.Gates.AsNoTracking().CountAsync();
-        var linkedCameraCountTask = _context.Cameras.AsNoTracking().CountAsync(camera => camera.GateId != null);
+        // DbContext is scoped per request and is not safe for concurrent EF operations.
+        var cameraCount = await _context.Cameras.AsNoTracking().CountAsync();
+        var gateCount = await _context.Gates.AsNoTracking().CountAsync();
+        var linkedCameraCount = await _context.Cameras.AsNoTracking().CountAsync(camera => camera.GateId != null);
 
-        var camerasTask = BuildCameraQuery()
+        var cameras = await BuildCameraQuery()
             .OrderBy(camera => camera.CameraName)
             .ToListAsync();
 
-        var gatesTask = _context.Gates.AsNoTracking()
+        var gates = await _context.Gates.AsNoTracking()
             .OrderBy(gate => gate.GateName)
             .Select(gate => new
             {
@@ -45,20 +46,18 @@ public class DeviceManagementController : ControllerBase
             })
             .ToListAsync();
 
-        await Task.WhenAll(cameraCountTask, gateCountTask, linkedCameraCountTask, camerasTask, gatesTask);
-
         return Ok(new
         {
             generatedAt = DateTime.Now,
             summary = new
             {
-                camerasConfigured = cameraCountTask.Result,
-                gatesConfigured = gateCountTask.Result,
-                camerasLinkedToGate = linkedCameraCountTask.Result,
-                unassignedCameras = cameraCountTask.Result - linkedCameraCountTask.Result
+                camerasConfigured = cameraCount,
+                gatesConfigured = gateCount,
+                camerasLinkedToGate = linkedCameraCount,
+                unassignedCameras = cameraCount - linkedCameraCount
             },
-            cameras = camerasTask.Result,
-            gates = gatesTask.Result
+            cameras,
+            gates
         });
     }
 
