@@ -1,275 +1,455 @@
 <template>
-  <div class="page">
-    <div class="card">
-      <h2>Tạo QR động nhân viên</h2>
+    <div class="page-container ops-page animate-in">
+        <section class="hero-banner">
+            <div class="hero-panel">
+                <span class="hero-kicker">Dynamic QR</span>
+                <h1 class="page-title">Tạo QR động cho nhân viên để dùng tại luồng thông hành.</h1>
+                <p class="page-subtitle">
+                    Mã QR được sinh theo time-step từ backend, tự làm mới khi gần hết hạn và chỉ dùng payload thật do API trả
+                    về để render.
+                </p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" :disabled="loading" @click="startGenerate">
+                        {{ loading ? 'Đang tạo...' : 'Tạo QR động' }}
+                    </button>
+                    <button class="btn btn-secondary" :disabled="!isRealtimeActive" @click="stopAutoRefresh">
+                        Dừng realtime
+                    </button>
+                </div>
+            </div>
 
-      <div class="form-group">
-        <label for="employeeId">Employee ID</label>
-        <input
-          id="employeeId"
-          v-model="employeeId"
-          type="number"
-          min="1"
-          placeholder="Nhập Employee ID"
-          @keyup.enter="startGenerate"
-        />
-      </div>
+            <div class="hero-aside">
+                <div class="aside-head">
+                    <div>
+                        <span class="aside-label">Trạng thái QR</span>
+                        <strong>{{ qrData ? 'Đang hoạt động' : 'Chưa sinh mã' }}</strong>
+                    </div>
+                    <span class="aside-chip">
+                        <span class="aside-dot"></span>
+                        {{ isRealtimeActive ? 'Realtime bật' : 'Realtime tắt' }}
+                    </span>
+                </div>
 
-      <div class="actions">
-        <button @click="startGenerate" :disabled="loading">
-          {{ loading ? "Đang tạo..." : "Tạo QR động" }}
-        </button>
+                <div class="aside-metrics">
+                    <div class="aside-metric">
+                        <span>Chu kỳ</span>
+                        <strong>{{ qrData?.timeStepSeconds || 0 }}s</strong>
+                    </div>
+                    <div class="aside-metric">
+                        <span>Còn lại</span>
+                        <strong>{{ remainingSeconds }}s</strong>
+                    </div>
+                    <div class="aside-metric">
+                        <span>Nhân viên</span>
+                        <strong>{{ qrData?.employeeId || '—' }}</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <button class="secondary" @click="stopAutoRefresh">
-          Dừng realtime
-        </button>
-      </div>
+        <section class="ops-grid two qr-layout">
+            <article class="ops-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="panel-kicker">Generate form</span>
+                        <h2 class="panel-title">Sinh QR theo Employee ID</h2>
+                        <p class="panel-copy">
+                            Controller mới chỉ cần <code>employeeId</code>. Backend sẽ tự sinh secret nếu nhân viên chưa có cấu
+                            hình QR động.
+                        </p>
+                    </div>
+                </div>
 
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="success">{{ successMessage }}</p>
+                <div class="form-stack">
+                    <label class="form-field">
+                        <span class="field-label">Employee ID</span>
+                        <input
+                            v-model="employeeId"
+                            type="number"
+                            min="1"
+                            class="filter-select"
+                            placeholder="Nhập Employee ID"
+                            @keyup.enter="startGenerate"
+                        />
+                    </label>
+                </div>
+
+                <div v-if="errorMessage" class="empty-card error-card">{{ errorMessage }}</div>
+                <div v-if="successMessage" class="empty-card success-card">{{ successMessage }}</div>
+
+                <div class="surface-list helper-list">
+                    <article class="surface-item">
+                        <div class="inline-stat">
+                            <strong>Payload chuẩn</strong>
+                            <span>Mẫu trả về từ backend: <code>EMP:&lt;id&gt;|TS:&lt;counter&gt;|OTP:&lt;code&gt;</code></span>
+                        </div>
+                    </article>
+                    <article class="surface-item">
+                        <div class="inline-stat">
+                            <strong>Thời gian hiển thị</strong>
+                            <span>Frontend tự đếm ngược và gọi lại API khi QR sắp hết hạn.</span>
+                        </div>
+                    </article>
+                </div>
+            </article>
+
+            <article class="ops-panel">
+                <div class="panel-head">
+                    <div>
+                        <span class="panel-kicker">Generated output</span>
+                        <h2 class="panel-title">QR động hiện tại</h2>
+                    </div>
+                    <span class="soft-chip" :class="qrData ? 'success' : 'warn'">
+                        {{ qrData ? 'Có dữ liệu' : 'Chưa tạo' }}
+                    </span>
+                </div>
+
+                <div v-if="qrData" class="qr-content">
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <span>Nhân viên</span>
+                            <strong>{{ qrData.employeeName }}</strong>
+                            <small>ID {{ qrData.employeeId }}</small>
+                        </div>
+                        <div class="info-card countdown-card">
+                            <span>Còn lại</span>
+                            <strong>{{ remainingSeconds }}s</strong>
+                            <div class="countdown-bar">
+                                <span :style="{ width: `${countdownPercent}%` }"></span>
+                            </div>
+                        </div>
+                        <div class="info-card">
+                            <span>Generated</span>
+                            <strong>{{ formatDate(qrData.generatedAtUtc) }}</strong>
+                            <small>Local time</small>
+                        </div>
+                        <div class="info-card">
+                            <span>Expires</span>
+                            <strong>{{ formatDate(qrData.expiresAtUtc) }}</strong>
+                            <small>Local time</small>
+                        </div>
+                    </div>
+
+                    <div class="qr-box">
+                        <img v-if="qrImage" :src="qrImage" alt="Dynamic QR" />
+                    </div>
+
+                    <label class="form-field">
+                        <span class="field-label">QR Payload</span>
+                        <textarea rows="4" class="payload-box" readonly :value="qrData.qrPayload"></textarea>
+                    </label>
+                </div>
+
+                <div v-else class="empty-card">
+                    Chưa có mã QR nào được tạo. Nhập <code>Employee ID</code> và bấm <strong>Tạo QR động</strong> để bắt đầu.
+                </div>
+            </article>
+        </section>
     </div>
-
-    <div v-if="qrData" class="card qr-card">
-      <h3>Thông tin QR động</h3>
-
-      <div class="info-grid">
-        <div><strong>Employee ID:</strong> {{ qrData.employeeId }}</div>
-        <div><strong>Họ tên:</strong> {{ qrData.employeeName }}</div>
-        <div><strong>OTP:</strong> {{ qrData.otp }}</div>
-        <div><strong>Chu kỳ:</strong> {{ qrData.timeStepSeconds }} giây</div>
-        <div><strong>Generated UTC:</strong> {{ formatDate(qrData.generatedAtUtc) }}</div>
-        <div><strong>Expires UTC:</strong> {{ formatDate(qrData.expiresAtUtc) }}</div>
-      </div>
-
-      <div class="countdown-wrap">
-        <div class="countdown-label">Còn lại</div>
-        <div class="countdown-value">{{ remainingSeconds }}s</div>
-      </div>
-
-      <div class="qr-box">
-        <img v-if="qrImage" :src="qrImage" alt="Dynamic QR" />
-      </div>
-
-      <div class="payload-box">
-        <label>QR Payload</label>
-        <textarea rows="4" readonly :value="qrData.qrPayload"></textarea>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount } from "vue";
-import QRCode from "qrcode";
-import { generateDynamicQr } from "../services/dynamicQrApi";
+import { computed, onBeforeUnmount, ref } from 'vue'
+import QRCode from 'qrcode'
+import { generateDynamicQr } from '../services/dynamicQrApi'
 
-const employeeId = ref("");
-const loading = ref(false);
-const errorMessage = ref("");
-const successMessage = ref("");
-const qrData = ref(null);
-const qrImage = ref("");
-const remainingSeconds = ref(0);
+const employeeId = ref('')
+const loading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+const qrData = ref(null)
+const qrImage = ref('')
+const remainingSeconds = ref(0)
+const isRealtimeActive = ref(false)
 
-let intervalId = null;
-let currentEmployeeId = null;
+let intervalId = null
+let currentEmployeeId = null
+
+const countdownPercent = computed(() => {
+    if (!qrData.value?.timeStepSeconds) return 0
+    return Math.max(0, Math.min(100, Math.round((remainingSeconds.value / qrData.value.timeStepSeconds) * 100)))
+})
 
 function clearMessages() {
-  errorMessage.value = "";
-  successMessage.value = "";
+    errorMessage.value = ''
+    successMessage.value = ''
 }
 
 function stopAutoRefresh() {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-  }
+    if (intervalId) {
+        clearInterval(intervalId)
+        intervalId = null
+    }
+    isRealtimeActive.value = false
 }
 
 async function renderQr(payload) {
-  qrImage.value = await QRCode.toDataURL(payload, {
-    width: 280,
-    margin: 2,
-  });
+    qrImage.value = await QRCode.toDataURL(payload, {
+        width: 300,
+        margin: 2,
+    })
 }
 
 async function fetchQr(employeeIdValue) {
-  loading.value = true;
-  clearMessages();
+    loading.value = true
+    clearMessages()
 
-  try {
-    const result = await generateDynamicQr(employeeIdValue);
+    try {
+        const result = await generateDynamicQr(employeeIdValue)
 
-    if (!result.success) {
-      throw new Error(result.message || "Tạo QR thất bại.");
+        if (!result.success || !result.data?.qrPayload) {
+            throw new Error(result.message || 'Tạo QR thất bại.')
+        }
+
+        qrData.value = result.data
+        remainingSeconds.value = result.data.remainingSeconds ?? 0
+        await renderQr(result.data.qrPayload)
+        successMessage.value = result.message || 'Tạo QR động thành công.'
+        return true
+    } catch (error) {
+        qrData.value = null
+        qrImage.value = ''
+        errorMessage.value = error?.response?.data?.message || error?.message || 'Không thể tạo QR động.'
+        return false
+    } finally {
+        loading.value = false
     }
-
-    qrData.value = result.data;
-    remainingSeconds.value = result.data.remainingSeconds ?? 0;
-    await renderQr(result.data.qrPayload);
-
-    successMessage.value = result.message || "Tạo QR thành công.";
-  } catch (error) {
-    errorMessage.value =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Không thể tạo QR động.";
-  } finally {
-    loading.value = false;
-  }
 }
 
 async function startGenerate() {
-  if (!employeeId.value) {
-    errorMessage.value = "Vui lòng nhập Employee ID.";
-    return;
-  }
-
-  currentEmployeeId = Number(employeeId.value);
-
-  stopAutoRefresh();
-  await fetchQr(currentEmployeeId);
-
-  intervalId = setInterval(async () => {
-    if (remainingSeconds.value > 1) {
-      remainingSeconds.value -= 1;
-      return;
+    if (!employeeId.value) {
+        errorMessage.value = 'Vui lòng nhập Employee ID.'
+        return
     }
 
-    if (currentEmployeeId) {
-      await fetchQr(currentEmployeeId);
-    }
-  }, 1000);
+    currentEmployeeId = Number(employeeId.value)
+
+    stopAutoRefresh()
+    const ok = await fetchQr(currentEmployeeId)
+    if (!ok) return
+
+    isRealtimeActive.value = true
+    intervalId = setInterval(async () => {
+        if (remainingSeconds.value > 1) {
+            remainingSeconds.value -= 1
+            return
+        }
+
+        if (currentEmployeeId) {
+            await fetchQr(currentEmployeeId)
+        }
+    }, 1000)
 }
 
 function formatDate(dateValue) {
-  if (!dateValue) return "";
-  return new Date(dateValue).toLocaleString();
+    if (!dateValue) return ''
+    return new Date(dateValue).toLocaleString('vi-VN')
 }
 
 onBeforeUnmount(() => {
-  stopAutoRefresh();
-});
+    stopAutoRefresh()
+})
 </script>
 
 <style scoped>
-.page {
-  max-width: 900px;
-  margin: 24px auto;
-  padding: 16px;
+.aside-head,
+.aside-metrics {
+    display: grid;
+    gap: 14px;
 }
 
-.card {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+.aside-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
 }
 
-h2, h3 {
-  margin-top: 0;
+.aside-label {
+    color: rgba(215, 251, 255, 0.72);
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
-.form-group {
-  margin-bottom: 16px;
+.aside-head strong {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
 }
 
-label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
+.aside-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(84, 196, 211, 0.14);
+    color: #c0fbff;
+    font-size: 0.76rem;
+    font-weight: 700;
 }
 
-input,
-textarea {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  box-sizing: border-box;
+.aside-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #5de3c7;
 }
 
-.actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
+.aside-metrics {
+    margin-top: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-button {
-  border: none;
-  background: #2563eb;
-  color: #fff;
-  padding: 12px 18px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
+.aside-metric {
+    padding: 16px 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-button.secondary {
-  background: #6b7280;
+.aside-metric span {
+    color: rgba(215, 251, 255, 0.76);
+    font-size: 0.74rem;
 }
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.aside-metric strong {
+    display: block;
+    margin-top: 8px;
+    color: #fff;
+    font-family: var(--font-heading);
+    font-size: 1.14rem;
 }
 
-.error {
-  color: #dc2626;
-  margin-top: 12px;
-  font-weight: 600;
+.qr-layout {
+    align-items: start;
 }
 
-.success {
-  color: #16a34a;
-  margin-top: 12px;
-  font-weight: 600;
+.form-stack {
+    display: grid;
+    gap: 16px;
 }
 
-.qr-card {
-  text-align: center;
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field-label {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.helper-list code,
+.panel-copy code,
+.empty-card code {
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.06);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.success-card {
+    border-style: solid;
+    border-color: rgba(20, 134, 109, 0.18);
+    color: var(--accent-success);
+}
+
+.error-card {
+    border-style: solid;
+    border-color: rgba(195, 81, 70, 0.18);
+    color: var(--accent-danger);
+}
+
+.qr-content {
+    display: grid;
+    gap: 18px;
 }
 
 .info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  text-align: left;
-  gap: 10px;
-  margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
 }
 
-.countdown-wrap {
-  margin: 20px 0;
+.info-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    background: rgba(236, 244, 246, 0.72);
 }
 
-.countdown-label {
-  color: #555;
-  margin-bottom: 8px;
+.info-card span,
+.info-card small {
+    color: var(--text-muted);
 }
 
-.countdown-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #dc2626;
+.info-card strong {
+    color: var(--text-primary);
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    line-height: 1.25;
+}
+
+.countdown-card strong {
+    font-size: 1.5rem;
+}
+
+.countdown-bar {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(24, 49, 77, 0.08);
+    overflow: hidden;
+}
+
+.countdown-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent-warning), var(--accent-primary));
 }
 
 .qr-box {
-  margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    padding: 18px;
+    border-radius: 24px;
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    background: rgba(255, 255, 255, 0.94);
 }
 
 .qr-box img {
-  max-width: 280px;
-  width: 100%;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
+    width: min(100%, 320px);
+    border-radius: 20px;
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    background: #fff;
+    padding: 14px;
 }
 
 .payload-box {
-  text-align: left;
+    width: 100%;
+    min-height: 110px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(24, 49, 77, 0.1);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    resize: vertical;
+}
+
+@media (max-width: 1180px) {
+    .aside-metrics {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

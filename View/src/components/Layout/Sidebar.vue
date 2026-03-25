@@ -159,6 +159,53 @@
                         </router-link>
                     </div>
                 </div>
+
+                <div v-if="passageItems.length" class="nav-group">
+                    <button
+                        v-if="!collapsed"
+                        type="button"
+                        class="nav-label-toggle"
+                        @click="toggleGroup('Thông hành')"
+                    >
+                        <span class="nav-label-text">Thông hành</span>
+                        <svg
+                            class="nav-label-chevron"
+                            :class="{ 'chevron-collapsed': collapsedGroups['Thông hành'] }"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    <span v-else class="nav-label sr-only">Thông hành</span>
+
+                    <div
+                        class="nav-group-items"
+                        :class="{ 'group-collapsed': collapsedGroups['Thông hành'] && !collapsed }"
+                    >
+                        <router-link
+                            v-for="item in passageItems"
+                            :key="item.path"
+                            :to="item.path"
+                            class="nav-item"
+                            :class="{ active: route.path === item.path }"
+                            @click="handleNavClick"
+                        >
+                            <span class="nav-icon" v-html="item.icon"></span>
+                            <transition name="fade">
+                                <span v-if="!collapsed" class="nav-copy">
+                                    <span class="nav-text">{{ item.label }}</span>
+                                    <span class="nav-hint">{{ item.hint }}</span>
+                                </span>
+                            </transition>
+                            <transition name="fade">
+                                <span v-if="!collapsed && item.badge" class="nav-badge">{{ item.badge }}</span>
+                            </transition>
+                        </router-link>
+                    </div>
+                </div>
             </nav>
 
             <div class="sidebar-footer">
@@ -174,7 +221,7 @@
                                 <span>Vai trò hiện tại</span>
                             </div>
                             <div>
-                                <strong>6 nhóm</strong>
+                                <strong>{{ navigationGroupCount }} nhóm</strong>
                                 <span>Điều hướng nghiệp vụ</span>
                             </div>
                         </div>
@@ -421,6 +468,30 @@ const visibleGroups = computed(() =>
         }))
         .filter((group) => group.items.length > 0)
 )
+
+const passageItems = computed(() => [
+    {
+        path: '/thonghanh',
+        label: 'Điều phối thông hành',
+        hint: 'Face + biển số theo từng làn',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18"/><path d="M6 7v10"/><path d="M18 7v10"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M12 7v10"/></svg>',
+        badge: '2 làn',
+    },
+    {
+        path: '/scan_qr_d',
+        label: 'Quét QR động',
+        hint: 'Giải mã và xác thực tại cổng',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h5v5H4z"/><path d="M15 4h5v5h-5z"/><path d="M4 15h5v5H4z"/><path d="M16 16h1"/><path d="M19 16h1"/><path d="M16 19h4"/><path d="M12 7h1"/><path d="M12 12h1"/><path d="M7 12h5"/></svg>',
+    },
+    {
+        path: '/tao_qr_d',
+        label: 'Tạo QR động',
+        hint: 'Sinh mã QR realtime cho nhân viên',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
+    },
+])
+
+const navigationGroupCount = computed(() => visibleGroups.value.length + (passageItems.value.length ? 1 : 0))
 
 onMounted(async () => {
     document.addEventListener('click', handleClickOutside)

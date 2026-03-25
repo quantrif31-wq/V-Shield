@@ -462,8 +462,6 @@ const applyCameraToNetwork = async (payload, preferredId = "auto") => {
     enabled: true,
     online: false,
     location: payload.location?.trim() || current.location,
-    recognitionType: payload.recognitionType || current.recognitionType,
-    resolution: payload.resolution || current.resolution,
   }
 
   persistCameraSettingsOnly()

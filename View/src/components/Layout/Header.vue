@@ -224,6 +224,18 @@ const routeMeta = {
         title: 'Cài đặt hệ thống',
         description: 'Khu cấu hình mở rộng của ứng dụng.',
     },
+    thonghanh: {
+        title: 'Điều phối thông hành',
+        description: 'Vận hành theo từng làn với face, biển số và xác nhận qua cổng.',
+    },
+    tao_qr_d: {
+        title: 'Tạo QR động',
+        description: 'Sinh mã QR realtime cho nhân viên từ backend QR động mới.',
+    },
+    scan_qr_d: {
+        title: 'Quét QR động',
+        description: 'Giải mã, theo dõi phiên và xác thực QR động tại cổng quét.',
+    },
     Login: {
         title: 'Xác thực truy cập',
         description: 'Đăng nhập an toàn để vào trung tâm điều phối V-Shield.',
