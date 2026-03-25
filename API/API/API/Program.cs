@@ -1,6 +1,7 @@
 using System.Text;
 using API.Data;
 using API.Hubs;
+using API.Models;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -127,6 +128,28 @@ namespace API
             });
 
             var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                db.Database.Migrate();
+
+                if (!db.AppUsers.Any(u => u.Username == "admin"))
+                {
+                    // Reset IDENTITY về 0 trước khi seed để admin luôn là UserId = 1
+                    db.Database.ExecuteSqlRaw("DBCC CHECKIDENT ('AppUsers', RESEED, 0)");
+
+                    db.AppUsers.Add(new AppUser
+                    {
+                        Username = "admin",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                        FullName = "Quản trị viên",
+                        Role = "Admin",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    db.SaveChanges();
+                }
+            }
 
             // ── HTTP Pipeline ─────────────────────────────────────────────────────
             if (app.Environment.IsDevelopment())

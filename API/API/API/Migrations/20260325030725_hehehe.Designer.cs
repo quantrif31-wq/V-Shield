@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260324125600_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260325030725_hehehe")]
+    partial class hehehe
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -156,18 +156,6 @@ namespace API.Migrations
                         .IsUnique();
 
                     b.ToTable("AppUsers");
-
-                    b.HasData(
-                        new
-                        {
-                            UserId = 1,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FullName = "Quản trị viên",
-                            IsActive = true,
-                            PasswordHash = "$2a$11$b92m9MsFYls925/UkCsx6.1GY2qkeEcpjeN5GX6EDMr/ri2YbkqBO",
-                            Role = "Admin",
-                            Username = "admin"
-                        });
                 });
 
             modelBuilder.Entity("API.Models.Camera", b =>
