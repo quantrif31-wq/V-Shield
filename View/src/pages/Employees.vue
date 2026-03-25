@@ -101,7 +101,7 @@
                                     <div class="avatar" v-if="!emp.faceImageUrl" :style="{ background: getAvatarColor(emp.employeeId) }">
                                         {{ getInitials(emp.fullName) }}
                                     </div>
-                                    <img v-else :src="API_BASE + emp.faceImageUrl" class="avatar-img" @error="$event.target.style.display = 'none'" />
+                                    <img v-else :src="emp.faceImageUrl?.startsWith('http') ? emp.faceImageUrl : API_BASE + emp.faceImageUrl" class="avatar-img" @error="$event.target.style.display = 'none'" />
                                     <div class="user-info">
                                         <span class="user-name">{{ emp.fullName }}</span>
                                         <span class="user-id">ID: {{ emp.employeeId }}</span>
@@ -211,21 +211,77 @@
                         </div>
                         
                         <!-- Face Upload -->
-                        <div class="input-pane">
-                            <label>Dữ liệu nhận diện (Face ID)</label>
-                            <div class="face-dropzone" @click="$refs.faceInput.click()" @dragover.prevent @drop.prevent="handleDrop">
-                                <img v-if="facePreview" :src="facePreview" class="face-preview-img" />
-                                <div v-else class="dropzone-text">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
-                                    <span>Tải ảnh khuôn mặt lên</span>
-                                    <small>Định dạng JPG/PNG/WebP, Max 5MB</small>
-                                </div>
-                            </div>
-                            <input ref="faceInput" type="file" accept="image/*" hidden @change="handleFaceSelect" />
-                            <div class="text-right" v-if="facePreview" style="margin-top: 8px;">
-                                <button type="button" class="btn-text danger" @click.stop="removeFace">Xóa ảnh này</button>
-                            </div>
-                        </div>
+<div class="input-pane">
+    <label>Dữ liệu nhận diện (Face ID)</label>
+    
+    <!-- Tab switcher -->
+    <div class="face-tab-switcher">
+        <button type="button" 
+            class="face-tab" :class="{ active: faceInputMode === 'upload' }"
+            @click="switchFaceMode('upload')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
+            Tải ảnh lên
+        </button>
+        <button type="button" 
+            class="face-tab" :class="{ active: faceInputMode === 'url' }"
+            @click="switchFaceMode('url')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Dùng URL
+        </button>
+    </div>
+
+    <!-- Upload mode -->
+    <template v-if="faceInputMode === 'upload'">
+        <div class="face-dropzone" @click="$refs.faceInput.click()" @dragover.prevent @drop.prevent="handleDrop">
+            <img v-if="facePreview && !faceUrlInput" :src="facePreview" class="face-preview-img" />
+            <div v-else class="dropzone-text">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
+                <span>Tải ảnh khuôn mặt lên</span>
+                <small>Định dạng JPG/PNG/WebP, Max 5MB</small>
+            </div>
+        </div>
+        <input ref="faceInput" type="file" accept="image/*" hidden @change="handleFaceSelect" />
+        <div class="text-right" v-if="facePreview && !faceUrlInput" style="margin-top: 8px;">
+            <button type="button" class="btn-text danger" @click.stop="removeFace">Xóa ảnh này</button>
+        </div>
+    </template>
+
+    <!-- URL mode -->
+    <template v-else>
+        <div class="url-input-wrapper">
+            <input 
+                v-model="faceUrlInput"
+                type="url"
+                class="sleek-input"
+                placeholder="https://example.com/avatar.jpg"
+                @input="handleUrlInput"
+                @paste="handleUrlPaste"
+            />
+            <button v-if="faceUrlInput" type="button" class="url-clear-btn" @click="clearFaceUrl" title="Xóa URL">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <!-- URL Preview -->
+        <div v-if="faceUrlInput" class="url-preview-box">
+            <div v-if="urlPreviewStatus === 'loading'" class="url-preview-loading">
+                <div class="spinner-sm" style="border-color: var(--border-color); border-top-color: var(--accent-primary);"></div>
+                <span>Đang tải ảnh xem trước...</span>
+            </div>
+            <div v-else-if="urlPreviewStatus === 'success'" class="url-preview-success">
+                <img :src="faceUrlInput" class="url-preview-img" @error="urlPreviewStatus = 'error'" />
+                <div class="url-preview-info">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--accent-success)"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>
+                    <span style="color: var(--accent-success); font-size: 0.82rem;">Ảnh hợp lệ</span>
+                </div>
+            </div>
+            <div v-else-if="urlPreviewStatus === 'error'" class="url-preview-error">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+                <span>Không thể tải ảnh từ URL này</span>
+            </div>
+        </div>
+    </template>
+</div>
 
                         <div v-if="modalError" class="alert-box error">{{ modalError }}</div>
 
@@ -311,6 +367,54 @@ const empNameValidation = reactive({
     isValid: false,
     error: ''
 })
+// Thêm sau các ref hiện tại
+const faceInputMode = ref('upload') // 'upload' | 'url'
+const faceUrlInput = ref('')
+const urlPreviewStatus = ref('') // 'loading' | 'success' | 'error'
+let urlDebounceTimer = null
+
+function switchFaceMode(mode) {
+    faceInputMode.value = mode
+    // Reset cái còn lại khi đổi tab
+    if (mode === 'upload') {
+        faceUrlInput.value = ''
+        urlPreviewStatus.value = ''
+    } else {
+        faceFile.value = null
+        facePreview.value = null
+    }
+}
+
+function handleUrlInput() {
+    urlPreviewStatus.value = 'loading'
+    if (urlDebounceTimer) clearTimeout(urlDebounceTimer)
+    urlDebounceTimer = setTimeout(() => {
+        checkUrlPreview(faceUrlInput.value)
+    }, 600)
+}
+
+function handleUrlPaste(e) {
+    // Paste xử lý ngay không cần debounce
+    if (urlDebounceTimer) clearTimeout(urlDebounceTimer)
+    const pasted = e.clipboardData?.getData('text') || ''
+    urlDebounceTimer = setTimeout(() => {
+        checkUrlPreview(pasted || faceUrlInput.value)
+    }, 200)
+}
+
+function checkUrlPreview(url) {
+    if (!url?.trim()) { urlPreviewStatus.value = ''; return }
+    urlPreviewStatus.value = 'loading'
+    const img = new Image()
+    img.onload = () => { urlPreviewStatus.value = 'success' }
+    img.onerror = () => { urlPreviewStatus.value = 'error' }
+    img.src = url
+}
+
+function clearFaceUrl() {
+    faceUrlInput.value = ''
+    urlPreviewStatus.value = ''
+}
 
 function runNameValidation() {
     const val = modalForm.fullName?.trim()
@@ -356,43 +460,79 @@ async function fetchEmployees() {
 }
 
 function openCreateModal() {
-    isEditing.value = false; editingId.value = null; modalError.value = ''; faceFile.value = null; facePreview.value = null;
-    empNameValidation.touched = false; empNameValidation.isValid = false; empNameValidation.error = '';
+    isEditing.value = false; editingId.value = null; modalError.value = ''
+    faceFile.value = null; facePreview.value = null
+    faceInputMode.value = 'upload'; faceUrlInput.value = ''; urlPreviewStatus.value = ''
+    empNameValidation.touched = false; empNameValidation.isValid = false; empNameValidation.error = ''
     Object.assign(modalForm, { fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true })
     showModal.value = true
 }
 
 function openEditModal(emp) {
-    isEditing.value = true; editingId.value = emp.employeeId; modalError.value = ''; faceFile.value = null;
+    isEditing.value = true; editingId.value = emp.employeeId; modalError.value = ''
+    faceFile.value = null
     facePreview.value = emp.faceImageUrl ? (API_BASE + emp.faceImageUrl) : null
+    faceInputMode.value = 'upload'; faceUrlInput.value = ''; urlPreviewStatus.value = ''
     Object.assign(modalForm, { fullName: emp.fullName, phone: emp.phone || '', email: emp.email || '', departmentId: emp.departmentId || null, positionId: emp.positionId || null, status: emp.status ?? true })
     showModal.value = true
 }
 
-function closeModal() { showModal.value = false; modalError.value = ''; faceFile.value = null; facePreview.value = null; }
+function closeModal() {
+    showModal.value = false; modalError.value = ''
+    faceFile.value = null; facePreview.value = null
+    faceUrlInput.value = ''; urlPreviewStatus.value = ''
+}
 
 async function handleSubmit() {
-    // Validate name
     runNameValidation()
     if (!empNameValidation.isValid) {
         modalError.value = empNameValidation.error || 'Họ và tên không hợp lệ'
         return
     }
-    // Normalize name
-    modalForm.fullName = normalizeVietnameseName(modalForm.fullName)
 
+    if (faceInputMode.value === 'url' && faceUrlInput.value && urlPreviewStatus.value === 'error') {
+        modalError.value = 'URL ảnh không hợp lệ, vui lòng kiểm tra lại'
+        return
+    }
+
+    modalForm.fullName = normalizeVietnameseName(modalForm.fullName)
     saving.value = true; modalError.value = ''
     try {
-        const data = { fullName: modalForm.fullName, phone: modalForm.phone || null, email: modalForm.email || null, departmentId: modalForm.departmentId || null, positionId: modalForm.positionId || null }
+        const data = {
+            fullName: modalForm.fullName,
+            phone: modalForm.phone || null,
+            email: modalForm.email || null,
+            departmentId: modalForm.departmentId || null,
+            positionId: modalForm.positionId || null,
+        }
+
+        // ✅ Nếu dùng URL thì truyền thẳng vào body — backend đã hỗ trợ sẵn
+        if (faceInputMode.value === 'url' && faceUrlInput.value && urlPreviewStatus.value === 'success') {
+            data.faceImageUrl = faceUrlInput.value
+        }
+
         let employeeId = editingId.value
-        if (isEditing.value) { data.status = modalForm.status; await update(editingId.value, data) } 
-        else { data.status = true; const res = await create(data); employeeId = res.data.employeeId }
-        
-        if (faceFile.value && employeeId) await uploadFace(employeeId, faceFile.value)
+        if (isEditing.value) {
+            data.status = modalForm.status
+            await update(editingId.value, data)
+        } else {
+            data.status = true
+            const res = await create(data)
+            employeeId = res.data.employeeId
+        }
+
+        // ✅ Nếu dùng file upload thì gọi endpoint /face như cũ
+        if (faceInputMode.value === 'upload' && faceFile.value && employeeId) {
+            await uploadFace(employeeId, faceFile.value)
+        }
+
         showToast(isEditing.value ? 'Đã lưu thay đổi' : 'Đã tạo hồ sơ nhân sự')
         closeModal(); await fetchEmployees()
-    } catch (err) { modalError.value = err.response?.data?.message || 'Có lỗi khi lưu dữ liệu' } 
-    finally { saving.value = false }
+    } catch (err) {
+        modalError.value = err.response?.data?.message || 'Có lỗi khi lưu dữ liệu'
+    } finally {
+        saving.value = false
+    }
 }
 
 function handleFaceSelect(e) {
