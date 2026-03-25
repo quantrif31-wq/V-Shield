@@ -268,6 +268,14 @@ const toggleGroup = (label) => {
     collapsedGroups.value[label] = !collapsedGroups.value[label]
 }
 
+// Helper: kiểm tra role hiện tại có được phép xem item không
+// Nếu item không có 'roles' → chỉ Admin mới xem được (mặc định hạn chế)
+const userRole = computed(() => authState.user?.role)
+const canSeeItem = (item) => {
+    if (!item.roles) return userRole.value === 'Admin'
+    return item.roles.includes(userRole.value)
+}
+
 const navGroups = ref([
     {
         label: 'Tổng quan',
@@ -277,6 +285,7 @@ const navGroups = ref([
                 label: 'Dashboard',
                 hint: 'Toàn cảnh khi đăng nhập',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+                roles: ['Admin', 'BaoVe'],
             },
         ],
     },
@@ -289,18 +298,21 @@ const navGroups = ref([
                 hint: 'Camera, biển số, access log',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>',
                 badge: 'Live',
+                roles: ['Admin', 'BaoVe'],
             },
             {
                 path: '/access-logs',
                 label: 'Tra cứu vào/ra',
                 hint: 'Lịch sử theo thời gian',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>',
+                roles: ['Admin', 'BaoVe'],
             },
             {
                 path: '/exceptions',
                 label: 'Xử lý ngoại lệ',
                 hint: 'Bypass và lỗi nhận diện',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+                roles: ['Admin', 'BaoVe'],
             },
         ],
     },
@@ -312,18 +324,21 @@ const navGroups = ref([
                 label: 'Danh sách hẹn trước',
                 hint: 'Duyệt và theo dõi đăng ký',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1.5"/><path d="M9 14l2 2 4-4"/></svg>',
+                roles: ['Admin'],
             },
             {
                 path: '/registration-links',
                 label: 'Link đăng ký tự động',
                 hint: 'Token và URL gửi khách',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+                roles: ['Admin'],
             },
             {
                 path: '/guest-profiles',
                 label: 'Hồ sơ khách',
                 hint: 'Danh bạ khách quen',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 8v6"/><path d="M17 11h6"/></svg>',
+                roles: ['Admin'],
             },
         ],
     },
@@ -336,12 +351,14 @@ const navGroups = ref([
                 hint: 'Nhân sự, phòng ban, chức vụ',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
                 badge: '0',
+                roles: ['Admin'],
             },
             {
                 path: '/vehicles',
                 label: 'Phương tiện nội bộ',
                 hint: 'Xe đăng ký cố định',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="5" width="16" height="11" rx="2"/><path d="M17 8h4l2 3v5h-6V8z"/><circle cx="5.5" cy="18" r="2.5"/><circle cx="18.5" cy="18" r="2.5"/></svg>',
+                roles: ['Admin'],
             },
         ],
     },
@@ -353,12 +370,14 @@ const navGroups = ref([
                 label: 'Camera & cổng',
                 hint: 'Cấu hình thiết bị truy cập',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v10H4z"/><path d="M9 7V4h6v3"/><path d="M8 17h8"/><path d="M7 21h10"/></svg>',
+                roles: ['Admin'],
             },
             {
                 path: '/biometrics',
                 label: 'Dữ liệu nhận diện',
                 hint: 'Model và video khuôn mặt',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H6a3 3 0 00-3 3v2"/><path d="M16 3h2a3 3 0 013 3v2"/><path d="M8 21H6a3 3 0 01-3-3v-2"/><path d="M16 21h2a3 3 0 003-3v-2"/><path d="M9 10a3 3 0 016 0v4a3 3 0 01-6 0z"/></svg>',
+                roles: ['Admin'],
             },
         ],
     },
@@ -370,14 +389,14 @@ const navGroups = ref([
                 label: 'Tài khoản & phân quyền',
                 hint: 'Người dùng phần mềm',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
-                adminOnly: true,
+                roles: ['Admin'],
             },
             {
                 path: '/system-catalog',
                 label: 'Danh mục hệ thống',
                 hint: 'Phòng ban, chức vụ, ngoại lệ',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>',
-                adminOnly: true,
+                roles: ['Admin'],
             },
         ],
     },
@@ -464,32 +483,37 @@ const visibleGroups = computed(() =>
     navGroups.value
         .map((group) => ({
             ...group,
-            items: group.items.filter((item) => !item.adminOnly || authState.user?.role === 'Admin'),
+            items: group.items.filter((item) => canSeeItem(item)),
         }))
         .filter((group) => group.items.length > 0)
 )
 
-const passageItems = computed(() => [
+const allPassageItems = [
     {
         path: '/thonghanh',
         label: 'Điều phối thông hành',
         hint: 'Face + biển số theo từng làn',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18"/><path d="M6 7v10"/><path d="M18 7v10"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M12 7v10"/></svg>',
         badge: '2 làn',
+        roles: ['Admin', 'BaoVe'],
     },
     {
         path: '/scan_qr_d',
         label: 'Quét QR động',
         hint: 'Giải mã và xác thực tại cổng',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h5v5H4z"/><path d="M15 4h5v5h-5z"/><path d="M4 15h5v5H4z"/><path d="M16 16h1"/><path d="M19 16h1"/><path d="M16 19h4"/><path d="M12 7h1"/><path d="M12 12h1"/><path d="M7 12h5"/></svg>',
+        roles: ['Admin', 'BaoVe'],
     },
     {
         path: '/tao_qr_d',
         label: 'Tạo QR động',
         hint: 'Sinh mã QR realtime cho nhân viên',
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
+        roles: ['Admin', 'Staff', 'BaoVe'],
     },
-])
+]
+
+const passageItems = computed(() => allPassageItems.filter((item) => canSeeItem(item)))
 
 const navigationGroupCount = computed(() => visibleGroups.value.length + (passageItems.value.length ? 1 : 0))
 

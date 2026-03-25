@@ -16,7 +16,7 @@ const ensureApiBaseUrl = (value, fallbackPort) => {
 
 const stripApiSuffix = (value) => value.replace(/\/api$/, "");
 
-export const API_BASE_URL = ensureApiBaseUrl(import.meta.env.VITE_API_BASE_URL, 5000);
+export const API_BASE_URL = ensureApiBaseUrl(import.meta.env.VITE_API_BASE_URL, 5107);
 export const API_ORIGIN = stripApiSuffix(API_BASE_URL);
 
 export const FACE_API_BASE_URL = ensureApiBaseUrl(import.meta.env.VITE_FACE_API_BASE_URL, 5001);

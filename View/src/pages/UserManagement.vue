@@ -59,7 +59,7 @@
                     <select class="minimal-select" v-model="filterRole">
                         <option value="">Tất cả vai trò</option>
                         <option value="Admin">Admin</option>
-                        <option value="Staff">Staff</option>
+                        <option value="Staff">Nhân viên</option>
                         <option value="BaoVe">Bảo vệ</option>
                     </select>
                     <select class="minimal-select" v-model="filterStatus">
@@ -172,7 +172,7 @@
                                     <label>Vai trò <span class="req">*</span></label>
                                     <select v-model="modalForm.role" class="sleek-select" required>
                                         <option value="Admin">Admin</option>
-                                        <option value="Staff">Nhân viên (Staff)</option>
+                                        <option value="Staff">Nhân viên</option>
                                         <option value="BaoVe">Bảo vệ</option>
                                     </select>
                                 </div>

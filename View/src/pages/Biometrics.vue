@@ -1,46 +1,15 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Biometrics</span>
-                <h1 class="page-title">Theo dõi tình trạng huấn luyện dữ liệu khuôn mặt của từng nhân sự để AI nhận diện ổn định.</h1>
-                <p class="page-subtitle">
-                    Tại đây kỹ thuật viên có thể xem ai đã có video, ai đã có model, ai còn thiếu dữ liệu và những file
-                    sinh gần nhất trong `EmployeeFaceVideos` và `EmployeeFaceModels`.
-                </p>
-                <div class="hero-actions">
-                    <router-link to="/employees" class="btn btn-primary">Mở hồ sơ nhân sự</router-link>
-                    <router-link to="/monitoring" class="btn btn-secondary">Quay lại giám sát</router-link>
-                </div>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Biometrics</span>
+                <h1 class="page-title">Dữ liệu sinh trắc học</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Độ phủ model</span>
-                        <strong>{{ summary.trainedEmployees }}/{{ summary.totalEmployees }}</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        AI readiness
-                    </span>
-                </div>
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Có model</span>
-                        <strong>{{ summary.trainedEmployees }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Có video</span>
-                        <strong>{{ summary.employeesWithVideos }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Thiếu model</span>
-                        <strong>{{ summary.employeesMissingModels }}</strong>
-                    </div>
-                </div>
+            <div class="header-actions">
+                <router-link to="/employees" class="btn btn-primary">Mở hồ sơ nhân sự</router-link>
+                <router-link to="/monitoring" class="btn btn-secondary">Quay lại giám sát</router-link>
             </div>
-        </section>
+        </div>
 
         <section class="metric-grid">
             <article class="metric-tile">
@@ -90,7 +59,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="employee in employees" :key="employee.employeeId">
+                        <tr v-for="employee in paginatedEmployees" :key="employee.employeeId">
                             <td>
                                 <div class="table-main">{{ employee.fullName }}</div>
                                 <div class="table-sub">{{ employee.positionName || 'Chưa có chức vụ' }}</div>
@@ -114,6 +83,15 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div v-if="!isLoading && employees.length > 0" class="pagination-bar">
+                <span>Hiển thị {{ bPagStart }}–{{ bPagEnd }} / {{ employees.length }}</span>
+                <div class="page-buttons">
+                    <button class="page-btn" :disabled="bCurrentPage <= 1" @click="bCurrentPage--">‹</button>
+                    <button v-for="p in bTotalPages" :key="p" class="page-btn" :class="{ active: p === bCurrentPage }" @click="bCurrentPage = p">{{ p }}</button>
+                    <button class="page-btn" :disabled="bCurrentPage >= bTotalPages" @click="bCurrentPage++">›</button>
+                </div>
             </div>
         </section>
 
@@ -164,7 +142,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { getBiometricOverview } from '../services/biometricApi'
 
 const isLoading = ref(true)
@@ -181,6 +159,16 @@ const summary = ref({
 const employees = ref([])
 const recentModels = ref([])
 const recentVideos = ref([])
+
+const bCurrentPage = ref(1)
+const bPageSize = 10
+const bTotalPages = computed(() => Math.max(1, Math.ceil(employees.value.length / bPageSize)))
+const paginatedEmployees = computed(() => {
+    const start = (bCurrentPage.value - 1) * bPageSize
+    return employees.value.slice(start, start + bPageSize)
+})
+const bPagStart = computed(() => employees.value.length === 0 ? 0 : (bCurrentPage.value - 1) * bPageSize + 1)
+const bPagEnd = computed(() => Math.min(bCurrentPage.value * bPageSize, employees.value.length))
 
 const formatDateTime = (value) => {
     if (!value) return '--'
@@ -208,6 +196,7 @@ const latestRecordLabel = (employee) => {
 
 const fetchOverview = async () => {
     isLoading.value = true
+    bCurrentPage.value = 1
     try {
         const { data } = await getBiometricOverview({ query: query.value || undefined })
         summary.value = { ...summary.value, ...(data.summary || {}) }
@@ -234,73 +223,6 @@ onMounted(fetchOverview)
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
-
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.8rem;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
-
 .table-main {
     color: var(--text-primary);
     font-weight: 600;
@@ -313,8 +235,5 @@ onMounted(fetchOverview)
 }
 
 @media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
     }
-}
 </style>

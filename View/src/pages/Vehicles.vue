@@ -56,7 +56,7 @@
                     <input v-model="searchQuery" type="text" placeholder="Tìm biển số, chủ xe..." @input="debouncedFilter" />
                 </div>
                 <div class="filter-box" style="display: flex; gap: 12px;">
-                    <select v-model="filterType" class="minimal-select">
+                    <select v-model="filterType" class="minimal-select" @change="debouncedFilter">
                         <option value="">Tất cả loại xe</option>
                         <option v-for="t in vehicleTypes" :key="t" :value="t">{{ t }}</option>
                     </select>
@@ -96,7 +96,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="v in filteredVehicles" :key="v.vehicleId" class="table-row">
+                        <tr v-for="v in paginatedVehicles" :key="v.vehicleId" class="table-row">
                             <td>
                                 <div class="plate-number"><span class="plate">{{ v.licensePlate }}</span></div>
                             </td>
@@ -146,8 +146,13 @@
                 </table>
             </div>
 
-            <div v-if="!loading && !loadError" class="pagination-footer">
-                <span class="showing-txt">Hiển thị {{ filteredVehicles.length }} / {{ vehicles.length }}</span>
+            <div v-if="!loading && !loadError && filteredVehicles.length > 0" class="pagination-bar">
+                <span>Hiển thị {{ vPagStart }}–{{ vPagEnd }} / {{ filteredVehicles.length }}</span>
+                <div class="page-buttons">
+                    <button class="page-btn" :disabled="vCurrentPage <= 1" @click="vCurrentPage--">‹</button>
+                    <button v-for="p in vTotalPages" :key="p" class="page-btn" :class="{ active: p === vCurrentPage }" @click="vCurrentPage = p">{{ p }}</button>
+                    <button class="page-btn" :disabled="vCurrentPage >= vTotalPages" @click="vCurrentPage++">›</button>
+                </div>
             </div>
         </div>
 
@@ -464,11 +469,11 @@ const filteredOwnerEmployees = computed(() => {
 let filterTimer = null
 function debouncedFilter() {
     if (filterTimer) clearTimeout(filterTimer)
-    filterTimer = setTimeout(() => { /* filteredVehicles tự cập nhật qua computed */ }, 300)
+    filterTimer = setTimeout(() => { vCurrentPage.value = 1 }, 300)
 }
 
 const filteredVehicles = computed(() => {
-    return vehicles.value.filter(v => {
+    const result = vehicles.value.filter(v => {
         const q = searchQuery.value.toLowerCase()
         const matchSearch = !q ||
             v.licensePlate?.toLowerCase().includes(q) ||
@@ -477,7 +482,18 @@ const filteredVehicles = computed(() => {
         const matchType = !filterType.value || v.vehicleTypeName === filterType.value
         return matchSearch && matchType
     })
+    return result
 })
+
+const vCurrentPage = ref(1)
+const vPageSize = 10
+const vTotalPages = computed(() => Math.max(1, Math.ceil(filteredVehicles.value.length / vPageSize)))
+const paginatedVehicles = computed(() => {
+    const start = (vCurrentPage.value - 1) * vPageSize
+    return filteredVehicles.value.slice(start, start + vPageSize)
+})
+const vPagStart = computed(() => filteredVehicles.value.length === 0 ? 0 : (vCurrentPage.value - 1) * vPageSize + 1)
+const vPagEnd = computed(() => Math.min(vCurrentPage.value * vPageSize, filteredVehicles.value.length))
 
 // ─── Fetch data ─────────────────────────────────────────────
 async function fetchVehicles() {

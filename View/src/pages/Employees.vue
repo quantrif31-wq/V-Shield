@@ -95,7 +95,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="emp in employees" :key="emp.employeeId" class="table-row">
+                        <tr v-for="emp in paginatedEmployees" :key="emp.employeeId" class="table-row">
                             <td>
                                 <div class="user-cell">
                                     <div class="avatar" v-if="!emp.faceImageUrl" :style="{ background: getAvatarColor(emp.employeeId) }">
@@ -146,6 +146,15 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div v-if="!loading && !loadError && employees.length > 0" class="pagination-bar">
+                <span>Hiển thị {{ pagStart }}–{{ pagEnd }} / {{ employees.length }}</span>
+                <div class="page-buttons">
+                    <button class="page-btn" :disabled="currentPage <= 1" @click="currentPage--">‹</button>
+                    <button v-for="p in totalPages" :key="p" class="page-btn" :class="{ active: p === currentPage }" @click="currentPage = p">{{ p }}</button>
+                    <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">›</button>
+                </div>
             </div>
         </div>
 
@@ -332,6 +341,16 @@ function showToast(message, type = 'success') {
     toastTimer = setTimeout(() => { toast.value = null }, 3000)
 }
 
+const currentPage = ref(1)
+const pageSize = 10
+const totalPages = computed(() => Math.max(1, Math.ceil(employees.value.length / pageSize)))
+const paginatedEmployees = computed(() => {
+    const start = (currentPage.value - 1) * pageSize
+    return employees.value.slice(start, start + pageSize)
+})
+const pagStart = computed(() => employees.value.length === 0 ? 0 : (currentPage.value - 1) * pageSize + 1)
+const pagEnd = computed(() => Math.min(currentPage.value * pageSize, employees.value.length))
+
 const activeCount = computed(() => employees.value.filter(e => e.status).length)
 const inactiveCount = computed(() => employees.value.filter(e => !e.status).length)
 
@@ -344,6 +363,7 @@ function debouncedFetch() {
 async function fetchEmployees() {
     loading.value = true
     loadError.value = ''
+    currentPage.value = 1
     try {
         const params = {}
         if (searchQuery.value.trim()) params.search = searchQuery.value.trim()

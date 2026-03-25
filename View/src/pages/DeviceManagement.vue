@@ -1,46 +1,15 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">AI devices</span>
-                <h1 class="page-title">Quản lý camera, cổng và nguồn stream để các luồng giám sát luôn nối đúng điểm.</h1>
-                <p class="page-subtitle">
-                    Trang này gồm hai lớp cấu hình: mạng lưới stream thực tế từ IP Webcam hoặc IP Camera Lite, và danh mục
-                    camera/cổng đang lưu trong cơ sở dữ liệu để map đúng vào nghiệp vụ ra vào.
-                </p>
-                <div class="hero-actions">
-                    <button class="btn btn-primary" @click="openCameraModal()">Thêm camera</button>
-                    <button class="btn btn-secondary" @click="openGateModal()">Thêm cổng</button>
-                </div>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">AI devices</span>
+                <h1 class="page-title">Quản lý camera & cổng</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Thiết bị đã cấu hình</span>
-                        <strong>{{ summary.camerasConfigured }} camera</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Device topology
-                    </span>
-                </div>
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Cổng</span>
-                        <strong>{{ summary.gatesConfigured }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Đã gắn cổng</span>
-                        <strong>{{ summary.camerasLinkedToGate }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Chưa gắn</span>
-                        <strong>{{ summary.unassignedCameras }}</strong>
-                    </div>
-                </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" @click="openCameraModal()">Thêm camera</button>
+                <button class="btn btn-secondary" @click="openGateModal()">Thêm cổng</button>
             </div>
-        </section>
+        </div>
 
         <CameraNetworkPanel />
 
@@ -383,73 +352,7 @@ onMounted(fetchOverview)
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
 
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.4rem;
-    line-height: 1.35;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
 
 .plate-pill {
     display: inline-flex;

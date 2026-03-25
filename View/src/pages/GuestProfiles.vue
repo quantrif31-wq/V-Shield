@@ -1,46 +1,15 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Guest profiles</span>
-                <h1 class="page-title">Danh bạ khách quen để thao tác nhanh khi tạo hẹn trước hoặc đối soát truy cập.</h1>
-                <p class="page-subtitle">
-                    Hồ sơ khách lưu lại họ tên, điện thoại, biển số mặc định và lịch sử hẹn trước. Khi cần mời lại,
-                    lễ tân chỉ cần chọn hồ sơ thay vì nhập lại toàn bộ thông tin.
-                </p>
-                <div class="hero-actions">
-                    <button class="btn btn-primary" @click="openModal()">Thêm hồ sơ khách</button>
-                    <router-link to="/registration-links" class="btn btn-secondary">Mở link đăng ký</router-link>
-                </div>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Guest profiles</span>
+                <h1 class="page-title">Hồ sơ khách</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Hồ sơ đã lưu</span>
-                        <strong>{{ total }}</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Guest memory
-                    </span>
-                </div>
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Có lịch sắp tới</span>
-                        <strong>{{ upcomingCount }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Có biển số mẫu</span>
-                        <strong>{{ withPlateCount }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Có ảnh mặt</span>
-                        <strong>{{ withFaceCount }}</strong>
-                    </div>
-                </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" @click="openModal()">Thêm hồ sơ khách</button>
+                <router-link to="/registration-links" class="btn btn-secondary">Mở link đăng ký</router-link>
             </div>
-        </section>
+        </div>
 
         <section class="ops-panel">
             <div class="toolbar-shell">
@@ -68,7 +37,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="profile in profiles" :key="profile.guestId">
+                        <tr v-for="profile in paginatedProfiles" :key="profile.guestId">
                             <td>
                                 <div class="table-main">{{ profile.fullName }}</div>
                                 <div class="chip-row">
@@ -91,6 +60,15 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div v-if="!isLoading && profiles.length > 0" class="pagination-bar">
+                <span>Hiển thị {{ gPagStart }}–{{ gPagEnd }} / {{ profiles.length }}</span>
+                <div class="page-buttons">
+                    <button class="page-btn" :disabled="gCurrentPage <= 1" @click="gCurrentPage--">‹</button>
+                    <button v-for="p in gTotalPages" :key="p" class="page-btn" :class="{ active: p === gCurrentPage }" @click="gCurrentPage = p">{{ p }}</button>
+                    <button class="page-btn" :disabled="gCurrentPage >= gTotalPages" @click="gCurrentPage++">›</button>
+                </div>
             </div>
         </section>
 
@@ -169,6 +147,16 @@ const upcomingCount = computed(() => profiles.value.filter((item) => item.nextEx
 const withPlateCount = computed(() => profiles.value.filter((item) => item.defaultLicensePlate).length)
 const withFaceCount = computed(() => profiles.value.filter((item) => item.faceImageUrl).length)
 
+const gCurrentPage = ref(1)
+const gPageSize = 10
+const gTotalPages = computed(() => Math.max(1, Math.ceil(profiles.value.length / gPageSize)))
+const paginatedProfiles = computed(() => {
+    const start = (gCurrentPage.value - 1) * gPageSize
+    return profiles.value.slice(start, start + gPageSize)
+})
+const gPagStart = computed(() => profiles.value.length === 0 ? 0 : (gCurrentPage.value - 1) * gPageSize + 1)
+const gPagEnd = computed(() => Math.min(gCurrentPage.value * gPageSize, profiles.value.length))
+
 const formatDateTime = (value) => {
     if (!value) return '--'
     return new Date(value).toLocaleString('vi-VN', {
@@ -182,6 +170,7 @@ const formatDateTime = (value) => {
 
 const fetchProfiles = async () => {
     isLoading.value = true
+    gCurrentPage.value = 1
     try {
         const { data } = await getGuestProfiles({ query: query.value || undefined, page: 1, pageSize: 50 })
         profiles.value = data.items || []
@@ -280,73 +269,6 @@ onMounted(fetchProfiles)
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
-
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.8rem;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
-
 .table-main {
     color: var(--text-primary);
     font-weight: 600;
@@ -372,8 +294,5 @@ onMounted(fetchProfiles)
 }
 
 @media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
     }
-}
 </style>

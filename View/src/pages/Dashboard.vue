@@ -1,56 +1,16 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Dashboard overview</span>
-                <h1 class="page-title">Bảng điều phối tổng quan để nhìn ngay người, xe, khách và camera khi vừa đăng nhập.</h1>
-                <p class="page-subtitle">
-                    Mọi chỉ số chính của `V-Shield` được gom lại ở đây: xe đang trong bãi, khách dự kiến đến hôm nay,
-                    tình trạng dữ liệu nhận diện và dòng hoạt động mới nhất tại các cổng.
-                </p>
-
-                <div class="hero-actions">
-                    <router-link to="/monitoring" class="btn btn-primary">Mở giám sát trực tiếp</router-link>
-                    <router-link to="/access-logs" class="btn btn-secondary">Tra cứu vào/ra</router-link>
-                    <router-link to="/pre-registrations" class="btn btn-secondary">Xem khách hẹn trước</router-link>
-                </div>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Dashboard overview</span>
+                <h1 class="page-title">Bảng điều phối tổng quan</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Ca trực hiện tại</span>
-                        <strong>{{ nowLabel }}</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        {{ loadError ? 'Cần kiểm tra dữ liệu' : 'Đồng bộ dữ liệu' }}
-                    </span>
-                </div>
-
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Lượt vào hôm nay</span>
-                        <strong>{{ snapshot.dailyCheckIn }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Lượt ra hôm nay</span>
-                        <strong>{{ snapshot.dailyCheckOut }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Phủ dữ liệu AI</span>
-                        <strong>{{ snapshot.recognitionCoverage }}%</strong>
-                    </div>
-                </div>
-
-                <div class="aside-alert">
-                    <span class="alert-chip">Focus</span>
-                    <p>
-                        {{ spotlightMessage }}
-                    </p>
-                </div>
+            <div class="header-actions">
+                <router-link to="/monitoring" class="btn btn-primary">Mở giám sát trực tiếp</router-link>
+                <router-link to="/access-logs" class="btn btn-secondary">Tra cứu vào/ra</router-link>
+                <router-link to="/pre-registrations" class="btn btn-secondary">Xem khách hẹn trước</router-link>
             </div>
-        </section>
+        </div>
 
         <section class="metric-grid">
             <article class="metric-tile">
@@ -113,8 +73,8 @@
                     <router-link to="/access-logs" class="btn btn-secondary btn-sm">Xem toàn bộ</router-link>
                 </div>
 
-                <div v-if="recentActivities.length" class="surface-list">
-                    <article v-for="activity in recentActivities" :key="activity.logId" class="activity-item">
+                <div v-if="recentActivities.length" class="surface-list scrollable-panel">
+                    <article v-for="activity in displayedActivities" :key="activity.logId" class="activity-item">
                         <div class="activity-dot" :class="activity.direction === 'IN' ? 'success' : 'warn'"></div>
                         <div class="activity-meta">
                             <strong>{{ formatTime(activity.timestamp) }}</strong>
@@ -216,6 +176,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { getDashboardOverview } from '../services/dashboardApi'
 
+const maxActivities = 4
+
 const isLoading = ref(true)
 const loadError = ref('')
 const snapshot = ref({
@@ -234,6 +196,8 @@ const snapshot = ref({
 })
 const weeklyTraffic = ref([])
 const recentActivities = ref([])
+
+const displayedActivities = computed(() => recentActivities.value.slice(0, maxActivities))
 
 const nowLabel = computed(() =>
     new Date().toLocaleDateString('vi-VN', {
@@ -296,102 +260,12 @@ const loadDashboard = async () => {
 onMounted(loadDashboard)
 </script>
 
+
+
 <style scoped>
-.aside-head {
+.ops-panel {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-}
-
-.aside-label {
-    display: block;
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    display: block;
-    margin-top: 8px;
-    font-family: var(--font-heading);
-    font-size: 1.12rem;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 20px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    display: block;
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    font-size: 1.15rem;
-    color: #fff;
-    font-family: var(--font-heading);
-}
-
-.aside-alert {
-    margin-top: 18px;
-    padding: 18px;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.alert-chip {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 10px;
-    border-radius: 999px;
-    background: rgba(216, 155, 55, 0.16);
-    color: #ffd89d;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.aside-alert p {
-    margin-top: 10px;
-    color: rgba(239, 251, 252, 0.88);
-    font-size: 0.88rem;
-    line-height: 1.6;
+    flex-direction: column;
 }
 
 .traffic-chart {
@@ -400,6 +274,7 @@ onMounted(loadDashboard)
     justify-content: space-between;
     gap: 12px;
     min-height: 250px;
+    margin-top: auto;
 }
 
 .chart-day {
@@ -412,7 +287,7 @@ onMounted(loadDashboard)
 
 .chart-stack {
     width: 100%;
-    height: 200px;
+    height: 280px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -512,11 +387,28 @@ onMounted(loadDashboard)
     margin-bottom: 14px;
 }
 
-@media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
-    }
+.scrollable-panel {
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(24, 49, 77, 0.15) transparent;
 }
+
+.scrollable-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.scrollable-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollable-panel::-webkit-scrollbar-thumb {
+    background: rgba(24, 49, 77, 0.15);
+    border-radius: 10px;
+}
+
+
+
 
 @media (max-width: 768px) {
     .activity-item {

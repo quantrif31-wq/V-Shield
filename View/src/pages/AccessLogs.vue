@@ -1,43 +1,11 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Access logs</span>
-                <h1 class="page-title">Tra cứu toàn bộ lịch sử ra vào theo thời gian, cổng, hướng di chuyển và trạng thái xử lý.</h1>
-                <p class="page-subtitle">
-                    Màn hình này dành cho bảo vệ và kiểm soát viên tại cổng để rà soát các lượt vào/ra, đối chiếu bằng chứng
-                    nhận diện và phát hiện các trường hợp cần xử lý tiếp.
-                </p>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Access logs</span>
+                <h1 class="page-title">Lịch sử ra vào</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Hôm nay</span>
-                        <strong>{{ summary.totalToday }}</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Nhật ký thời gian thực
-                    </span>
-                </div>
-
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Vào</span>
-                        <strong>{{ summary.entriesToday }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Ra</span>
-                        <strong>{{ summary.exitsToday }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Ngoại lệ</span>
-                        <strong>{{ summary.exceptionsToday }}</strong>
-                    </div>
-                </div>
-            </div>
-        </section>
+        </div>
 
         <section class="metric-grid">
             <article class="metric-tile">
@@ -450,73 +418,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
-
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.8rem;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
-
 .filter-summary {
     display: flex;
     flex-wrap: wrap;
@@ -625,10 +526,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
-    }
-
     .filter-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

@@ -1,35 +1,11 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Exceptions</span>
-                <h1 class="page-title">Rà soát các lượt mở cổng thủ công, lỗi nhận diện và trạng thái bất thường.</h1>
-                <p class="page-subtitle">
-                    Đây là màn hình dành cho các trường hợp cần đối soát đặc biệt: <code>IsBypass = true</code>, có
-                    <code>Exception_Reason</code> hoặc log ra vào có trạng thái không thành công.
-                </p>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Exceptions</span>
+                <h1 class="page-title">Xử lý ngoại lệ</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Top lý do</span>
-                        <strong>{{ topReasonLabel }}</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Kiểm soát ngoại lệ
-                    </span>
-                </div>
-
-                <div class="aside-summary">
-                    <article v-for="reason in summaryByReason.slice(0, 3)" :key="reason.reasonCode" class="reason-row">
-                        <strong>{{ reason.reasonCode }}</strong>
-                        <span>{{ reason.count }} lượt</span>
-                    </article>
-                </div>
-            </div>
-        </section>
+        </div>
 
         <section class="ops-panel">
             <div class="panel-head">
@@ -335,72 +311,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.aside-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 14px;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.15rem;
-    line-height: 1.3;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-summary {
-    margin-top: 18px;
-    display: grid;
-    gap: 10px;
-}
-
-.reason-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.reason-row strong {
-    color: #fff;
-    font-size: 0.88rem;
-}
-
-.reason-row span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.8rem;
-}
-
 .filter-summary {
     display: flex;
     flex-wrap: wrap;

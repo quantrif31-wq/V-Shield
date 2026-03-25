@@ -1,42 +1,11 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">System catalog</span>
-                <h1 class="page-title">Quản lý các danh mục tĩnh của hệ thống: phòng ban, chức vụ và lý do ngoại lệ.</h1>
-                <p class="page-subtitle">
-                    Đây là lớp cấu hình nền để các nghiệp vụ phía trên dùng thống nhất. Từ cùng một màn hình, quản trị
-                    có thể rà soát cơ cấu tổ chức và danh mục `Exception_Reason` đang được dùng trong access log.
-                </p>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">System catalog</span>
+                <h1 class="page-title">Danh mục hệ thống</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Danh mục ngoại lệ</span>
-                        <strong>{{ reasons.length }} lý do</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Static configuration
-                    </span>
-                </div>
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Phòng ban</span>
-                        <strong>{{ departments.length }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Chức vụ</span>
-                        <strong>{{ positions.length }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Đang được dùng</span>
-                        <strong>{{ usedReasonCount }}</strong>
-                    </div>
-                </div>
-            </div>
-        </section>
+        </div>
 
         <section class="ops-grid three">
             <article class="ops-panel">
@@ -246,73 +215,6 @@ onMounted(fetchData)
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
-
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.6rem;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
-
 .top-gap {
     margin-top: 10px;
 }
@@ -323,9 +225,26 @@ onMounted(fetchData)
     color: var(--accent-danger);
 }
 
-@media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
-    }
+.surface-list {
+    max-height: 420px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(24, 49, 77, 0.15) transparent;
 }
+
+.surface-list::-webkit-scrollbar {
+    width: 5px;
+}
+
+.surface-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.surface-list::-webkit-scrollbar-thumb {
+    background: rgba(24, 49, 77, 0.15);
+    border-radius: 10px;
+}
+
+@media (max-width: 1180px) {
+    }
 </style>

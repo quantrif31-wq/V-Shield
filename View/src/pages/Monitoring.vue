@@ -1,46 +1,15 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Live monitoring</span>
-                <h1 class="page-title">Giám sát trực tiếp camera, cổng và kết quả nhận diện từ cùng một màn hình.</h1>
-                <p class="page-subtitle">
-                    Trang này gom dữ liệu camera đã cấu hình, cổng truy cập, biển số mới nhận diện và các bản ghi
-                    khuôn mặt gần nhất trong `Access_Log` để bảo vệ có thể theo dõi nhanh tại chỗ.
-                </p>
-                <div class="hero-actions">
-                    <router-link to="/device-management" class="btn btn-primary">Quản lý camera & cổng</router-link>
-                    <router-link to="/exceptions" class="btn btn-secondary">Xem ngoại lệ</router-link>
-                </div>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Live monitoring</span>
+                <h1 class="page-title">Giám sát trực tiếp</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Thiết bị giám sát</span>
-                        <strong>{{ summary.camerasConfigured }} camera / {{ summary.gatesConfigured }} cổng</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Dữ liệu đang cập nhật
-                    </span>
-                </div>
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Gắn cổng</span>
-                        <strong>{{ summary.camerasLinkedToGate }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Chưa gắn cổng</span>
-                        <strong>{{ summary.unassignedCameras }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Biển số mới</span>
-                        <strong>{{ recentPlates.length }}</strong>
-                    </div>
-                </div>
+            <div class="header-actions">
+                <router-link to="/device-management" class="btn btn-primary">Quản lý camera & cổng</router-link>
+                <router-link to="/exceptions" class="btn btn-secondary">Xem ngoại lệ</router-link>
             </div>
-        </section>
+        </div>
 
         <section class="metric-grid">
             <article class="metric-tile">
@@ -75,8 +44,8 @@
                     <router-link to="/device-management" class="btn btn-secondary btn-sm">Mở cấu hình</router-link>
                 </div>
 
-                <div v-if="cameras.length" class="camera-grid">
-                    <article v-for="camera in cameras" :key="camera.cameraId" class="camera-card">
+                <div v-if="cameras.length" class="camera-grid scrollable-panel">
+                    <article v-for="camera in displayedCameras" :key="camera.cameraId" class="camera-card">
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ camera.cameraName }}</strong>
@@ -98,6 +67,9 @@
                             </template>
                         </p>
                     </article>
+                    <div v-if="cameras.length > maxCameras" class="show-more-hint">
+                        Hiển thị {{ maxCameras }}/{{ cameras.length }} camera. Vào <router-link to="/device-management">Quản lý thiết bị</router-link> để xem tất cả.
+                    </div>
                 </div>
                 <div v-else class="empty-card">Chưa có camera nào trong cơ sở dữ liệu.</div>
             </article>
@@ -110,8 +82,8 @@
                     </div>
                 </div>
 
-                <div v-if="recentPlates.length" class="surface-list">
-                    <article v-for="plate in recentPlates" :key="`${plate.cameraIP}-${plate.plateNumber}-${plate.lastUpdate}`" class="surface-item">
+                <div v-if="recentPlates.length" class="surface-list scrollable-panel">
+                    <article v-for="plate in displayedPlates" :key="`${plate.cameraIP}-${plate.plateNumber}-${plate.lastUpdate}`" class="surface-item">
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ plate.plateNumber }}</strong>
@@ -138,8 +110,8 @@
                     <router-link to="/access-logs" class="btn btn-secondary btn-sm">Mở nhật ký</router-link>
                 </div>
 
-                <div v-if="recentActivities.length" class="surface-list">
-                    <article v-for="activity in recentActivities" :key="activity.logId" class="surface-item">
+                <div v-if="recentActivities.length" class="surface-list scrollable-panel">
+                    <article v-for="activity in displayedActivities" :key="activity.logId" class="surface-item">
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ activity.actorName }}</strong>
@@ -170,8 +142,8 @@
                     </div>
                 </div>
 
-                <div v-if="gates.length" class="surface-list">
-                    <article v-for="gate in gates" :key="gate.gateId" class="surface-item">
+                <div v-if="gates.length" class="surface-list scrollable-panel">
+                    <article v-for="gate in displayedGates" :key="gate.gateId" class="surface-item">
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ gate.gateName }}</strong>
@@ -194,10 +166,15 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { getDeviceOverview } from '../services/deviceManagementApi'
 import { getDetectedPlates } from '../services/plateRecognitionApi'
 import { getAccessLogs } from '../services/accessLogApi'
+
+const maxCameras = 6
+const maxPlates = 6
+const maxActivities = 8
+const maxGates = 6
 
 const summary = ref({
     camerasConfigured: 0,
@@ -209,6 +186,11 @@ const cameras = ref([])
 const gates = ref([])
 const recentPlates = ref([])
 const recentActivities = ref([])
+
+const displayedCameras = computed(() => cameras.value.slice(0, maxCameras))
+const displayedPlates = computed(() => recentPlates.value.slice(0, maxPlates))
+const displayedActivities = computed(() => recentActivities.value.slice(0, maxActivities))
+const displayedGates = computed(() => gates.value.slice(0, maxGates))
 
 const formatDateTime = (value) => {
     if (!value) return '--'
@@ -250,73 +232,7 @@ onMounted(loadMonitoring)
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
 
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.16rem;
-    line-height: 1.35;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
 
 .camera-grid {
     display: grid;
@@ -352,9 +268,43 @@ onMounted(loadMonitoring)
     font-size: 0.8rem;
 }
 
-@media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
-    }
+.scrollable-panel {
+    max-height: 520px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(24, 49, 77, 0.15) transparent;
 }
+
+.scrollable-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.scrollable-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollable-panel::-webkit-scrollbar-thumb {
+    background: rgba(24, 49, 77, 0.15);
+    border-radius: 10px;
+}
+
+.show-more-hint {
+    text-align: center;
+    padding: 12px;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+
+.show-more-hint a {
+    color: var(--accent-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.show-more-hint a:hover {
+    text-decoration: underline;
+}
+
+
+
 </style>

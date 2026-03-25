@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isLoggedIn, hasRole } from '../stores/auth'
+import { authState } from '../stores/auth'
 
 import Login from '../pages/Login.vue'
 import MainLayout from '../components/Layout/MainLayout.vue'
@@ -47,44 +48,47 @@ const routes = [
         component: MainLayout,
         meta: { requiresAuth: true },
         children: [
-            { path: '', redirect: { name: 'Dashboard' } },
-            { path: 'dashboard', name: 'Dashboard', component: Dashboard },
-            { path: 'monitoring', name: 'Monitoring', component: Monitoring },
-            { path: 'access-logs', name: 'AccessLogs', component: AccessLogs },
-            { path: 'exceptions', name: 'Exceptions', component: Exceptions },
-            { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration },
-            { path: 'registration-links', name: 'RegistrationLinks', component: RegistrationLinks },
-            { path: 'guest-profiles', name: 'GuestProfiles', component: GuestProfiles },
+            { path: '', redirect: to => {
+                const role = authState.user?.role
+                if (role === 'Staff') return { name: 'tao_qr_d' }
+                return { name: 'Dashboard' }
+            }},
+            { path: 'dashboard', name: 'Dashboard', component: Dashboard, meta: { allowedRoles: ['Admin', 'BaoVe'] } },
+            { path: 'monitoring', name: 'Monitoring', component: Monitoring, meta: { allowedRoles: ['Admin', 'BaoVe'] } },
+            { path: 'access-logs', name: 'AccessLogs', component: AccessLogs, meta: { allowedRoles: ['Admin', 'BaoVe'] } },
+            { path: 'exceptions', name: 'Exceptions', component: Exceptions, meta: { allowedRoles: ['Admin', 'BaoVe'] } },
+            { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration, meta: { allowedRoles: ['Admin'] } },
+            { path: 'registration-links', name: 'RegistrationLinks', component: RegistrationLinks, meta: { allowedRoles: ['Admin'] } },
+            { path: 'guest-profiles', name: 'GuestProfiles', component: GuestProfiles, meta: { allowedRoles: ['Admin'] } },
             { path: 'about-project', name: 'AboutProject', component: AboutProject },
-            { path: 'employees', name: 'Employees', component: Employees },
-            { path: 'vehicles', name: 'Vehicles', component: Vehicles },
-            { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement },
-            { path: 'biometrics', name: 'Biometrics', component: Biometrics },
-            { path: 'settings', name: 'Settings', component: Settings },
-            { path: 'FaceID', name: 'FaceID', component: FaceID },
-            { path: 'bienso', name: 'bienso', component: bienso },
-            { path: 'facevideo', name: 'facevideo', component: FaceVideo },
-            { path: 'thonghanh', name: 'thonghanh', component: ThongHanh },
+            { path: 'employees', name: 'Employees', component: Employees, meta: { allowedRoles: ['Admin'] } },
+            { path: 'vehicles', name: 'Vehicles', component: Vehicles, meta: { allowedRoles: ['Admin'] } },
+            { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement, meta: { allowedRoles: ['Admin'] } },
+            { path: 'biometrics', name: 'Biometrics', component: Biometrics, meta: { allowedRoles: ['Admin'] } },
+            { path: 'settings', name: 'Settings', component: Settings, meta: { allowedRoles: ['Admin'] } },
+            { path: 'FaceID', name: 'FaceID', component: FaceID, meta: { allowedRoles: ['Admin'] } },
+            { path: 'bienso', name: 'bienso', component: bienso, meta: { allowedRoles: ['Admin'] } },
+            { path: 'facevideo', name: 'facevideo', component: FaceVideo, meta: { allowedRoles: ['Admin'] } },
+            { path: 'thonghanh', name: 'thonghanh', component: ThongHanh, meta: { allowedRoles: ['Admin', 'BaoVe'] } },
             { path: 'tao_qr_d', name: 'tao_qr_d', component: Tao_QR_D },
-            { path: 'scan_qr_d', name: 'scan_qr_d', component: Scan_QR_D },
-            { path: 'pre-registrations', name: 'PreRegistration', component: PreRegistration },
+            { path: 'scan_qr_d', name: 'scan_qr_d', component: Scan_QR_D, meta: { allowedRoles: ['Admin', 'BaoVe'] } },
             {
                 path: 'users',
                 name: 'UserManagement',
                 component: UserManagement,
-                meta: { requiresAdmin: true },
+                meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
             },
             {
                 path: 'system-catalog',
                 name: 'SystemCatalog',
                 component: SystemCatalog,
-                meta: { requiresAdmin: true },
+                meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
             },
             {
                 path: 'departments-positions',
                 name: 'DepartmentPosition',
                 component: DepartmentPosition,
-                meta: { requiresAdmin: true },
+                meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
             },
         ],
     },
@@ -107,14 +111,28 @@ router.beforeEach((to, from, next) => {
     // Nếu route yêu cầu Admin
     if (to.matched.some(r => r.meta.requiresAdmin)) {
         if (!hasRole('Admin')) {
+            const role = authState.user?.role
+            if (role === 'Staff') return next({ name: 'tao_qr_d' })
             return next({ name: 'Dashboard' })
         }
     }
 
-    // Nếu đã đăng nhập mà vào trang login → redirect Dashboard
+    // Kiểm tra allowedRoles
+    const allowedRoles = to.matched.find(r => r.meta.allowedRoles)?.meta.allowedRoles
+    if (allowedRoles) {
+        const currentRole = authState.user?.role
+        if (!allowedRoles.includes(currentRole)) {
+            if (currentRole === 'Staff') return next({ name: 'tao_qr_d' })
+            return next({ name: 'Dashboard' })
+        }
+    }
+
+    // Nếu đã đăng nhập mà vào trang login → redirect
     // Nhưng cho phép truy cập trang đăng ký khách (GuestRegister) dù đã đăng nhập
     if (to.meta.guest && isLoggedIn() && to.name !== 'GuestRegister') {
-        return next({ name: 'AboutProject' })
+        const role = authState.user?.role
+        if (role === 'Staff') return next({ name: 'tao_qr_d' })
+        return next({ name: 'Dashboard' })
     }
 
     next()

@@ -1,46 +1,15 @@
 <template>
     <div class="page-container ops-page animate-in">
-        <section class="hero-banner">
-            <div class="hero-panel">
-                <span class="hero-kicker">Registration links</span>
-                <h1 class="page-title">Tạo và quản lý link đăng ký tự động để khách tự khai báo trước khi đến.</h1>
-                <p class="page-subtitle">
-                    Đây là lớp vận hành nhanh cho lễ tân hoặc nhân sự mời khách. Link có token riêng, thời hạn hết hạn
-                    rõ ràng và được liên kết trực tiếp tới nhân sự host trong hệ thống.
-                </p>
-                <div class="hero-actions">
-                    <button class="btn btn-primary" @click="showModal = true">Tạo link mới</button>
-                    <router-link to="/pre-registrations" class="btn btn-secondary">Xem danh sách hẹn trước</router-link>
-                </div>
+        <div class="page-header-bar">
+            <div>
+                <span class="panel-kicker">Registration links</span>
+                <h1 class="page-title">Link đăng ký</h1>
             </div>
-
-            <div class="hero-aside">
-                <div class="aside-head">
-                    <div>
-                        <span class="aside-label">Link đang hoạt động</span>
-                        <strong>{{ activeLinks }}</strong>
-                    </div>
-                    <span class="aside-chip">
-                        <span class="aside-dot"></span>
-                        Visitor self-registration
-                    </span>
-                </div>
-                <div class="aside-metrics">
-                    <div class="aside-metric">
-                        <span>Tổng link</span>
-                        <strong>{{ links.length }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Đã dùng</span>
-                        <strong>{{ usedLinks }}</strong>
-                    </div>
-                    <div class="aside-metric">
-                        <span>Hết hạn</span>
-                        <strong>{{ expiredLinks }}</strong>
-                    </div>
-                </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" @click="showModal = true">Tạo link mới</button>
+                <router-link to="/pre-registrations" class="btn btn-secondary">Xem danh sách hẹn trước</router-link>
             </div>
-        </section>
+        </div>
 
         <section class="ops-panel">
             <div class="toolbar-shell">
@@ -100,13 +69,61 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Nhân sự host</label>
-                        <select v-model="form.hostEmployeeId" class="filter-select">
-                            <option value="">Chọn nhân sự</option>
-                            <option v-for="employee in employees" :key="employee.employeeId" :value="employee.employeeId">
-                                {{ employee.fullName }} - {{ employee.departmentName || 'Chưa gán phòng ban' }}
-                            </option>
-                        </select>
+                        <label>Nhân sự Host đại diện <span class="req">*</span></label>
+                        <div class="combobox-wrapper" v-click-outside="closeHostDropdown">
+                            <div class="input-with-avatar">
+                                <div v-if="selectedHostEmployee && !showHostDropdown" class="selected-avatar-preview">
+                                    <img
+                                        v-if="canShowAvatar(selectedHostEmployee)"
+                                        :src="getAvatarSrc(selectedHostEmployee)"
+                                        class="avatar-img avatar-mini-inline"
+                                        @error="markAvatarBroken(selectedHostEmployee.employeeId)"
+                                    />
+                                    <div
+                                        v-else
+                                        class="avatar mini avatar-mini-inline"
+                                        :style="{ background: getAvatarColor(selectedHostEmployee.employeeId) }"
+                                    >
+                                        {{ getInitials(selectedHostEmployee.fullName) }}
+                                    </div>
+                                </div>
+                                <input
+                                    type="text"
+                                    v-model="hostSearchQuery"
+                                    @focus="showHostDropdown = true"
+                                    @input="showHostDropdown = true"
+                                    placeholder="-- Nhập tên để tìm nhân sự --"
+                                    class="sleek-input combobox-input"
+                                    :class="{ 'has-avatar': selectedHostEmployee && !showHostDropdown }"
+                                />
+                            </div>
+                            <svg class="dropdown-icon" :class="{ rotated: showHostDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+
+                            <div v-if="showHostDropdown" class="combobox-dropdown">
+                                <div v-if="filteredEmployees.length === 0" class="no-results">Không tìm thấy nhân sự</div>
+                                <div
+                                    v-for="emp in filteredEmployees"
+                                    :key="emp.employeeId"
+                                    class="combobox-item"
+                                    :class="{ selected: form.hostEmployeeId === emp.employeeId }"
+                                    @click="selectHost(emp)"
+                                >
+                                    <img
+                                        v-if="canShowAvatar(emp)"
+                                        :src="getAvatarSrc(emp)"
+                                        class="avatar-img avatar-img-mini"
+                                        @error="markAvatarBroken(emp.employeeId)"
+                                    />
+                                    <div v-else class="avatar mini" :style="{ background: getAvatarColor(emp.employeeId) }">
+                                        {{ getInitials(emp.fullName) }}
+                                    </div>
+                                    <div class="emp-details">
+                                        <span class="emp-name">{{ emp.fullName }}</span>
+                                        <span class="emp-dept">{{ emp.departmentName || 'Chưa gán phòng ban' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -134,10 +151,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getLinks, createLink } from '../services/preRegistrationApi'
 import { getAll as getAllEmployees } from '../services/employeeApi'
+import { API_ORIGIN } from '../config/api'
 
+const API_BASE = API_ORIGIN
 const isLoading = ref(true)
 const isCreating = ref(false)
 const links = ref([])
@@ -147,10 +166,77 @@ const showModal = ref(false)
 const copiedUrl = ref('')
 const formError = ref('')
 
+// Combobox state
+const showHostDropdown = ref(false)
+const hostSearchQuery = ref('')
+const brokenAvatarIds = ref({})
+
 const form = reactive({
-    hostEmployeeId: '',
+    hostEmployeeId: null,
     expiryHours: 24,
 })
+
+// Click outside directive
+const vClickOutside = {
+    mounted(el, binding) {
+        el.clickOutsideEvent = (event) => {
+            if (!(el === event.target || el.contains(event.target))) {
+                binding.value(event, el)
+            }
+        }
+        document.addEventListener('click', el.clickOutsideEvent)
+    },
+    unmounted(el) {
+        document.removeEventListener('click', el.clickOutsideEvent)
+    }
+}
+
+const selectedHostEmployee = computed(() => {
+    if (!form.hostEmployeeId) return null
+    return employees.value.find(e => e.employeeId === form.hostEmployeeId) || null
+})
+
+const filteredEmployees = computed(() => {
+    const list = employees.value || []
+    if (!hostSearchQuery.value) return list
+    const selected = selectedHostEmployee.value
+    if (selected && hostSearchQuery.value === selected.fullName) return list
+    const q = hostSearchQuery.value.toLowerCase()
+    return list.filter(e => e?.fullName?.toLowerCase().includes(q) || e?.departmentName?.toLowerCase().includes(q))
+})
+
+const selectHost = (emp) => {
+    form.hostEmployeeId = emp.employeeId
+    hostSearchQuery.value = emp.fullName
+    showHostDropdown.value = false
+}
+
+const closeHostDropdown = () => {
+    showHostDropdown.value = false
+    if (selectedHostEmployee.value) {
+        hostSearchQuery.value = selectedHostEmployee.value.fullName
+    } else {
+        hostSearchQuery.value = ''
+    }
+}
+
+const getInitials = (name) => {
+    if (!name) return '?'
+    return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
+const avColors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f43f5e']
+const getAvatarColor = (id) => avColors[Math.abs(id || 0) % avColors.length]
+
+const canShowAvatar = (emp) => !!emp?.faceImageUrl && !brokenAvatarIds.value[emp.employeeId]
+const getAvatarSrc = (emp) => {
+    if (!emp?.faceImageUrl) return ''
+    return emp.faceImageUrl.startsWith('http') ? emp.faceImageUrl : `${API_BASE}${emp.faceImageUrl}`
+}
+const markAvatarBroken = (id) => {
+    if (!id || brokenAvatarIds.value[id]) return
+    brokenAvatarIds.value = { ...brokenAvatarIds.value, [id]: true }
+}
 
 const filteredLinks = computed(() => {
     const keyword = query.value.trim().toLowerCase()
@@ -231,82 +317,17 @@ const handleCreate = async () => {
 
 const closeModal = () => {
     showModal.value = false
-    form.hostEmployeeId = ''
+    form.hostEmployeeId = null
     form.expiryHours = 24
     formError.value = ''
+    hostSearchQuery.value = ''
+    showHostDropdown.value = false
 }
 
 onMounted(fetchData)
 </script>
 
 <style scoped>
-.aside-head,
-.aside-metrics {
-    display: grid;
-    gap: 14px;
-}
-
-.aside-head {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-}
-
-.aside-label {
-    color: rgba(215, 251, 255, 0.72);
-    font-size: 0.76rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.aside-head strong {
-    font-family: var(--font-heading);
-    font-size: 1.8rem;
-}
-
-.aside-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(84, 196, 211, 0.14);
-    color: #c0fbff;
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.aside-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #5de3c7;
-}
-
-.aside-metrics {
-    margin-top: 12px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.aside-metric {
-    padding: 16px 14px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-metric span {
-    color: rgba(215, 251, 255, 0.76);
-    font-size: 0.74rem;
-}
-
-.aside-metric strong {
-    display: block;
-    margin-top: 8px;
-    color: #fff;
-    font-family: var(--font-heading);
-    font-size: 1.14rem;
-}
-
 .token-pill {
     display: inline-flex;
     align-items: center;
@@ -326,9 +347,35 @@ onMounted(fetchData)
     color: var(--accent-danger);
 }
 
+.req { color: var(--accent-danger); }
+
+/* Combobox */
+.combobox-wrapper { position: relative; width: 100%; }
+.input-with-avatar { position: relative; width: 100%; display: flex; align-items: center; }
+.selected-avatar-preview { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 2; }
+.avatar-mini-inline { width: 24px; height: 24px; font-size: 0.7rem; }
+.combobox-input { width: 100%; padding-right: 40px; cursor: text; }
+.combobox-input.has-avatar { padding-left: 52px; }
+.sleek-input { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); outline: none; transition: border 0.2s; font-size: 0.95rem; }
+.sleek-input:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(16, 121, 196, 0.15); }
+
+.dropdown-icon { position: absolute; right: 14px; top: 14px; width: 18px; height: 18px; color: var(--accent-primary); pointer-events: none; transition: transform 0.2s; }
+.dropdown-icon.rotated { transform: rotate(180deg); }
+
+.combobox-dropdown { position: absolute; top: calc(100% + 4px); left: 0; width: 100%; max-height: 240px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 100; padding: 4px 0; }
+.combobox-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color); }
+.combobox-item:last-child { border-bottom: none; }
+.combobox-item:hover { background: rgba(16, 121, 196, 0.03); }
+.combobox-item.selected { background: rgba(16, 121, 196, 0.06); }
+
+.avatar, .avatar-img { width: 38px; height: 38px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; color: white; object-fit: cover; flex-shrink: 0; }
+.avatar.mini, .avatar-img-mini { width: 32px; height: 32px; font-size: 0.78rem; }
+
+.emp-details { display: flex; flex-direction: column; }
+.emp-name { font-size: 0.95rem; font-weight: 500; color: var(--text-primary); }
+.emp-dept { font-size: 0.85rem; color: var(--accent-primary); }
+.no-results { padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.9rem; font-style: italic; }
+
 @media (max-width: 1180px) {
-    .aside-metrics {
-        grid-template-columns: 1fr;
     }
-}
 </style>

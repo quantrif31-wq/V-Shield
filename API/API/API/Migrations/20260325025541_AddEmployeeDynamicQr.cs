@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -8,11 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace API.Migrations
 {
     /// <inheritdoc />
-<<<<<<<< HEAD:API/API/API/Migrations/20260325025541_AddEmployeeDynamicQr.cs
     public partial class AddEmployeeDynamicQr : Migration
-========
-    public partial class hehehe : Migration
->>>>>>>> 6049fa4708bb02804b0fa7743fe7bed1382e9444:API/API/API/Migrations/20260325030725_hehehe.cs
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -438,14 +434,11 @@ namespace API.Migrations
                 });
 
             migrationBuilder.InsertData(
-<<<<<<<< HEAD:API/API/API/Migrations/20260325025541_AddEmployeeDynamicQr.cs
                 table: "AppUsers",
                 columns: new[] { "UserId", "CreatedAt", "EmployeeId", "FullName", "IsActive", "PasswordHash", "Role", "Username" },
                 values: new object[] { 1, new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "Quản trị viên", true, "$2a$11$pUWX4MoFOOTCBP/BnANHoeZStrKmbETeVVxh6wjD09SEfWNutGZZe", "Admin", "admin" });
 
             migrationBuilder.InsertData(
-========
->>>>>>>> 6049fa4708bb02804b0fa7743fe7bed1382e9444:API/API/API/Migrations/20260325030725_hehehe.cs
                 table: "Department",
                 columns: new[] { "DepartmentId", "Name" },
                 values: new object[,]

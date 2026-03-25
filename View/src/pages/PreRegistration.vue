@@ -1,4 +1,4 @@
-﻿<template>
+<template>
     <div class="page-container animate-in">
         <!-- Minimalist Header -->
         <header class="page-header bento-header">
@@ -379,7 +379,7 @@ const API_BASE = API_ORIGIN
 const registrations = ref([])
 const totalItems = ref(0)
 const currentPage = ref(1)
-const pageSize = 20
+const pageSize = 10
 const isLoading = ref(false)
 const searchQuery = ref('')
 const filterStatus = ref('')
