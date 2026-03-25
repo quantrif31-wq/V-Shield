@@ -164,12 +164,7 @@
 
                             <div class="input-pane">
                                 <label>Họ và tên</label>
-                                <input v-model="modalForm.fullName" list="employee-names" type="text" class="sleek-input" placeholder="Ví dụ: Nguyễn Văn A" maxlength="100" autocomplete="off" />
-                                <datalist id="employee-names">
-                                    <option v-for="emp in employees" :key="emp.employeeId" :value="emp.fullName">
-                                        {{ emp.fullName }} - {{ emp.departmentName || 'Chưa có PB' }}
-                                    </option>
-                                </datalist>
+                                <input v-model="modalForm.fullName" type="text" class="sleek-input" placeholder="Ví dụ: Nguyễn Văn A" maxlength="100" />
                             </div>
 
                             <div class="grid-2">
@@ -240,9 +235,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { getAll, create, update, deleteUser } from '../services/userApi'
-import { getAll as getAllEmployees } from '../services/employeeApi'
-
-const employees = ref([])
 
 const users = ref([])
 const loading = ref(true)
@@ -395,19 +387,7 @@ function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-async function fetchEmployees() {
-    try {
-        const res = await getAllEmployees()
-        employees.value = res.data
-    } catch (err) {
-        console.error('Lỗi tải danh sách nhân viên:', err)
-    }
-}
-
-onMounted(() => {
-    fetchUsers()
-    fetchEmployees()
-})
+onMounted(fetchUsers)
 </script>
 
 <style scoped>

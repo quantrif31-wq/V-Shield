@@ -63,7 +63,7 @@
 
             <nav class="sidebar-nav">
                 <transition name="fade">
-                    <div v-if="!collapsed && authState.user?.role !== 'Staff'" class="sidebar-search" ref="searchContainerRef">
+                    <div v-if="!collapsed" class="sidebar-search" ref="searchContainerRef">
                         <label class="search-label" for="sidebar-search">Tra cứu nhanh</label>
                         <div class="search-shell">
                             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -460,49 +460,36 @@ const systemItems = [
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
     },
 ]
-const visibleGroups = computed(() => {
-    if (authState.user?.role === 'Staff') return []
-    return navGroups.value
+const visibleGroups = computed(() =>
+    navGroups.value
         .map((group) => ({
             ...group,
             items: group.items.filter((item) => !item.adminOnly || authState.user?.role === 'Admin'),
         }))
         .filter((group) => group.items.length > 0)
-})
+)
 
-const passageItems = computed(() => {
-    if (authState.user?.role === 'Staff') {
-        return [
-            {
-                path: '/tao_qr_d',
-                label: 'Tạo QR động',
-                hint: 'Sinh mã QR realtime cho nhân viên',
-                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
-            }
-        ]
-    }
-    return [
-        {
-            path: '/thonghanh',
-            label: 'Điều phối thông hành',
-            hint: 'Face + biển số theo từng làn',
-            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18"/><path d="M6 7v10"/><path d="M18 7v10"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M12 7v10"/></svg>',
-            badge: '2 làn',
-        },
-        {
-            path: '/scan_qr_d',
-            label: 'Quét QR động',
-            hint: 'Giải mã và xác thực tại cổng',
-            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h5v5H4z"/><path d="M15 4h5v5h-5z"/><path d="M4 15h5v5H4z"/><path d="M16 16h1"/><path d="M19 16h1"/><path d="M16 19h4"/><path d="M12 7h1"/><path d="M12 12h1"/><path d="M7 12h5"/></svg>',
-        },
-        {
-            path: '/tao_qr_d',
-            label: 'Tạo QR động',
-            hint: 'Sinh mã QR realtime cho nhân viên',
-            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
-        },
-    ]
-})
+const passageItems = computed(() => [
+    {
+        path: '/thonghanh',
+        label: 'Điều phối thông hành',
+        hint: 'Face + biển số theo từng làn',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18"/><path d="M6 7v10"/><path d="M18 7v10"/><path d="M9 11h6"/><path d="M9 15h6"/><path d="M12 7v10"/></svg>',
+        badge: '2 làn',
+    },
+    {
+        path: '/scan_qr_d',
+        label: 'Quét QR động',
+        hint: 'Giải mã và xác thực tại cổng',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h5v5H4z"/><path d="M15 4h5v5h-5z"/><path d="M4 15h5v5H4z"/><path d="M16 16h1"/><path d="M19 16h1"/><path d="M16 19h4"/><path d="M12 7h1"/><path d="M12 12h1"/><path d="M7 12h5"/></svg>',
+    },
+    {
+        path: '/tao_qr_d',
+        label: 'Tạo QR động',
+        hint: 'Sinh mã QR realtime cho nhân viên',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
+    },
+])
 
 const navigationGroupCount = computed(() => visibleGroups.value.length + (passageItems.value.length ? 1 : 0))
 

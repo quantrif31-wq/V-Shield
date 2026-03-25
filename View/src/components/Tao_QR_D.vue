@@ -70,7 +70,6 @@
                             class="filter-select"
                             placeholder="Nhập Employee ID"
                             @keyup.enter="startGenerate"
-                            :readonly="authState.user?.role === 'Staff' && !!employeeId"
                         />
                     </label>
                 </div>
@@ -150,11 +149,9 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, onMounted } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import QRCode from 'qrcode'
 import { generateDynamicQr } from '../services/dynamicQrApi'
-import { authState } from '../stores/auth'
-import { getAll as getAllEmployees } from '../services/employeeApi'
 
 const employeeId = ref('')
 const loading = ref(false)
@@ -248,29 +245,6 @@ function formatDate(dateValue) {
     if (!dateValue) return ''
     return new Date(dateValue).toLocaleString('vi-VN')
 }
-
-onMounted(async () => {
-    if (authState.user?.role === 'Staff') {
-        const identifier = (authState.user?.fullName || authState.user?.username || '').trim().toLowerCase()
-        if (!identifier) return
-
-        try {
-            const res = await getAllEmployees()
-            const employees = res.data || []
-            const matched = employees.find(emp => 
-                (emp.fullName || '').trim().toLowerCase() === identifier
-            )
-            
-            if (matched) {
-                employeeId.value = matched.employeeId
-            } else {
-                errorMessage.value = `Không tìm thấy hồ sơ nhân sự khớp với tài khoản (${authState.user?.fullName || authState.user?.username}). Vui lòng kiểm tra lại Danh sách Nhân viên.`
-            }
-        } catch (err) {
-            console.error('Lỗi tự động lấy Employee ID:', err)
-        }
-    }
-})
 
 onBeforeUnmount(() => {
     stopAutoRefresh()

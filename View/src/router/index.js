@@ -111,11 +111,6 @@ router.beforeEach((to, from, next) => {
         }
     }
 
-    // Nếu user là Staff thì chỉ được vào tạo QR động
-    if (hasRole('Staff') && to.name !== 'tao_qr_d' && to.name !== 'Login' && to.name !== 'GuestRegister') {
-        return next({ name: 'tao_qr_d' })
-    }
-
     // Nếu đã đăng nhập mà vào trang login → redirect Dashboard
     // Nhưng cho phép truy cập trang đăng ký khách (GuestRegister) dù đã đăng nhập
     if (to.meta.guest && isLoggedIn() && to.name !== 'GuestRegister') {
