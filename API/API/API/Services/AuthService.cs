@@ -48,6 +48,7 @@ public class AuthService : IAuthService
             new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim("fullName", user.FullName ?? string.Empty),
+            new Claim("employeeId", user.EmployeeId?.ToString() ?? string.Empty),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
@@ -65,6 +66,7 @@ public class AuthService : IAuthService
             Username = user.Username,
             FullName = user.FullName ?? user.Username,
             Role = user.Role,
+            EmployeeId = user.EmployeeId,
             ExpiresAt = expiresAt
         };
     }

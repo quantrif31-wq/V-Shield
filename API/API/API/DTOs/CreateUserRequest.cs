@@ -19,4 +19,6 @@ public class CreateUserRequest
     [Required]
     [RegularExpression("^(Admin|Staff|BaoVe)$", ErrorMessage = "Role phải là Admin, Staff hoặc BaoVe")]
     public string Role { get; set; } = "Staff";
+
+    public int? EmployeeId { get; set; }
 }

@@ -37,7 +37,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="camera in cameras" :key="camera.cameraId">
+                            <tr v-for="camera in paginatedCameras" :key="camera.cameraId">
                                 <td>{{ camera.cameraName }}</td>
                                 <td>{{ camera.cameraType || '—' }}</td>
                                 <td>{{ camera.gateName || 'Chưa gắn cổng' }}</td>
@@ -54,6 +54,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Camera Pagination -->
+                <div v-if="!isLoading && cameras.length > 0" class="pagination-bar">
+                    <span>Hiển thị {{ camPagStart }}–{{ camPagEnd }} / {{ cameras.length }}</span>
+                    <div class="page-buttons">
+                        <button class="page-btn" :disabled="cameraCurrentPage <= 1" @click="cameraCurrentPage--">‹</button>
+                        <button class="page-btn" disabled>{{ cameraCurrentPage }} / {{ cameraTotalPages }}</button>
+                        <button class="page-btn" :disabled="cameraCurrentPage >= cameraTotalPages" @click="cameraCurrentPage++">›</button>
+                    </div>
                 </div>
             </article>
 
@@ -80,7 +89,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="gate in gates" :key="gate.gateId">
+                            <tr v-for="gate in paginatedGates" :key="gate.gateId">
                                 <td>{{ gate.gateName }}</td>
                                 <td>{{ gate.location || '—' }}</td>
                                 <td>{{ gate.cameraCount }}</td>
@@ -94,6 +103,15 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <!-- Gate Pagination -->
+                <div v-if="!isLoading && gates.length > 0" class="pagination-bar">
+                    <span>Hiển thị {{ gatePagStart }}–{{ gatePagEnd }} / {{ gates.length }}</span>
+                    <div class="page-buttons">
+                        <button class="page-btn" :disabled="gateCurrentPage <= 1" @click="gateCurrentPage--">‹</button>
+                        <button class="page-btn" disabled>{{ gateCurrentPage }} / {{ gateTotalPages }}</button>
+                        <button class="page-btn" :disabled="gateCurrentPage >= gateTotalPages" @click="gateCurrentPage++">›</button>
+                    </div>
                 </div>
             </article>
         </section>
@@ -171,7 +189,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import CameraNetworkPanel from '../components/CameraNetworkPanel.vue'
 import {
     createCamera,
@@ -193,6 +211,27 @@ const summary = ref({
 })
 const cameras = ref([])
 const gates = ref([])
+
+// Pagination
+const itemsPerPage = 4
+
+const cameraCurrentPage = ref(1)
+const cameraTotalPages = computed(() => Math.max(1, Math.ceil(cameras.value.length / itemsPerPage)))
+const paginatedCameras = computed(() => {
+    const start = (cameraCurrentPage.value - 1) * itemsPerPage
+    return cameras.value.slice(start, start + itemsPerPage)
+})
+const camPagStart = computed(() => cameras.value.length === 0 ? 0 : (cameraCurrentPage.value - 1) * itemsPerPage + 1)
+const camPagEnd = computed(() => Math.min(cameraCurrentPage.value * itemsPerPage, cameras.value.length))
+
+const gateCurrentPage = ref(1)
+const gateTotalPages = computed(() => Math.max(1, Math.ceil(gates.value.length / itemsPerPage)))
+const paginatedGates = computed(() => {
+    const start = (gateCurrentPage.value - 1) * itemsPerPage
+    return gates.value.slice(start, start + itemsPerPage)
+})
+const gatePagStart = computed(() => gates.value.length === 0 ? 0 : (gateCurrentPage.value - 1) * itemsPerPage + 1)
+const gatePagEnd = computed(() => Math.min(gateCurrentPage.value * itemsPerPage, gates.value.length))
 
 const showCameraModal = ref(false)
 const showGateModal = ref(false)
@@ -218,6 +257,8 @@ const fetchOverview = async () => {
         summary.value = { ...summary.value, ...(data.summary || {}) }
         cameras.value = data.cameras || []
         gates.value = data.gates || []
+        cameraCurrentPage.value = 1
+        gateCurrentPage.value = 1
     } catch (error) {
         console.error('Device overview error:', error)
         cameras.value = []
@@ -382,5 +423,47 @@ onMounted(fetchOverview)
     .aside-metrics {
         grid-template-columns: 1fr;
     }
+}
+
+/* Pagination */
+.pagination-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: transparent;
+}
+.page-buttons {
+    display: flex;
+    gap: 4px;
+}
+.page-btn {
+    width: auto;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+.page-btn:hover:not(:disabled) {
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    background: transparent;
+    border-color: transparent;
 }
 </style>

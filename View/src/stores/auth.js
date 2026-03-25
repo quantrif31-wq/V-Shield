@@ -21,6 +21,7 @@ export async function login(username, password) {
         username: data.username,
         fullName: data.fullName,
         role: data.role,
+        employeeId: data.employeeId,
     }
 
     localStorage.setItem('v_shield_token', data.token)
@@ -55,6 +56,7 @@ export async function fetchUser() {
             username: res.data.username,
             fullName: res.data.fullName,
             role: res.data.role,
+            employeeId: res.data.employeeId,
         }
         localStorage.setItem('v_shield_user', JSON.stringify(state.user))
         return true

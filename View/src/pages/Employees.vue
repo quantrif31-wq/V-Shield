@@ -222,17 +222,39 @@
                         <!-- Face Upload -->
                         <div class="input-pane">
                             <label>Dữ liệu nhận diện (Face ID)</label>
-                            <div class="face-dropzone" @click="$refs.faceInput.click()" @dragover.prevent @drop.prevent="handleDrop">
-                                <img v-if="facePreview" :src="facePreview" class="face-preview-img" />
-                                <div v-else class="dropzone-text">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
-                                    <span>Tải ảnh khuôn mặt lên</span>
-                                    <small>Định dạng JPG/PNG/WebP, Max 5MB</small>
+                            
+                            <div class="face-input-tabs">
+                                <button type="button" class="pill-btn" :class="{ active: uploadMode === 'file' }" @click="uploadMode = 'file'; urlError = false">Tải file lên</button>
+                                <button type="button" class="pill-btn" :class="{ active: uploadMode === 'url' }" @click="uploadMode = 'url'">Dùng URL ảnh</button>
+                            </div>
+
+                            <div v-show="uploadMode === 'file'">
+                                <div class="face-dropzone" @click="$refs.faceInput.click()" @dragover.prevent @drop.prevent="handleDrop">
+                                    <img v-if="facePreview" :src="facePreview" class="face-preview-img" />
+                                    <div v-else class="dropzone-text">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
+                                        <span>Tải ảnh khuôn mặt lên</span>
+                                        <small>Định dạng JPG/PNG/WebP, Max 5MB</small>
+                                    </div>
+                                </div>
+                                <input ref="faceInput" type="file" accept="image/*" hidden @change="handleFaceSelect" />
+                                <div class="text-right" v-if="facePreview" style="margin-top: 8px;">
+                                    <button type="button" class="btn-text danger" @click.stop="removeFace">Xóa ảnh này</button>
                                 </div>
                             </div>
-                            <input ref="faceInput" type="file" accept="image/*" hidden @change="handleFaceSelect" />
-                            <div class="text-right" v-if="facePreview" style="margin-top: 8px;">
-                                <button type="button" class="btn-text danger" @click.stop="removeFace">Xóa ảnh này</button>
+
+                            <div v-show="uploadMode === 'url'" class="url-input-pane">
+                                <input v-model="modalForm.faceImageUrl" type="url" class="sleek-input" placeholder="https://example.com/face.jpg" @input="urlError = false" />
+                                <div v-if="modalForm.faceImageUrl" class="face-dropzone url-preview">
+                                    <img v-show="!urlError" :src="modalForm.faceImageUrl" @error="urlError = true" @load="urlError = false" class="face-preview-img" />
+                                    <div v-show="urlError" class="dropzone-text" style="color: var(--accent-danger);">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        <span>URL ảnh không hợp lệ</span>
+                                    </div>
+                                </div>
+                                <div class="text-right" v-if="modalForm.faceImageUrl" style="margin-top: 8px;">
+                                    <button type="button" class="btn-text danger" @click.stop="modalForm.faceImageUrl = ''; urlError = false">Xóa đường dẫn</button>
+                                </div>
                             </div>
                         </div>
 
@@ -304,9 +326,11 @@ const editingId = ref(null)
 const saving = ref(false)
 const modalError = ref('')
 
-const modalForm = reactive({ fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true })
+const modalForm = reactive({ fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true, faceImageUrl: null })
 const faceFile = ref(null)
 const facePreview = ref(null)
+const uploadMode = ref('file')
+const urlError = ref(false)
 
 const showDeleteModal = ref(false)
 const deleteTarget = ref(null)
@@ -377,19 +401,32 @@ async function fetchEmployees() {
 
 function openCreateModal() {
     isEditing.value = false; editingId.value = null; modalError.value = ''; faceFile.value = null; facePreview.value = null;
+    uploadMode.value = 'file'; urlError.value = false;
     empNameValidation.touched = false; empNameValidation.isValid = false; empNameValidation.error = '';
-    Object.assign(modalForm, { fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true })
+    Object.assign(modalForm, { fullName: '', phone: '', email: '', departmentId: null, positionId: null, status: true, faceImageUrl: null })
     showModal.value = true
 }
 
 function openEditModal(emp) {
-    isEditing.value = true; editingId.value = emp.employeeId; modalError.value = ''; faceFile.value = null;
-    facePreview.value = emp.faceImageUrl ? (API_BASE + emp.faceImageUrl) : null
-    Object.assign(modalForm, { fullName: emp.fullName, phone: emp.phone || '', email: emp.email || '', departmentId: emp.departmentId || null, positionId: emp.positionId || null, status: emp.status ?? true })
+    isEditing.value = true; editingId.value = emp.employeeId; modalError.value = ''; faceFile.value = null; urlError.value = false;
+    
+    const isUrl = emp.faceImageUrl && (emp.faceImageUrl.startsWith('http://') || emp.faceImageUrl.startsWith('https://'));
+    uploadMode.value = isUrl ? 'url' : 'file';
+    
+    facePreview.value = emp.faceImageUrl ? (isUrl ? null : API_BASE + emp.faceImageUrl) : null
+    Object.assign(modalForm, { 
+        fullName: emp.fullName, 
+        phone: emp.phone || '', 
+        email: emp.email || '', 
+        departmentId: emp.departmentId || null, 
+        positionId: emp.positionId || null, 
+        status: emp.status ?? true,
+        faceImageUrl: isUrl ? emp.faceImageUrl : null
+    })
     showModal.value = true
 }
 
-function closeModal() { showModal.value = false; modalError.value = ''; faceFile.value = null; facePreview.value = null; }
+function closeModal() { showModal.value = false; modalError.value = ''; faceFile.value = null; facePreview.value = null; urlError.value = false; }
 
 async function handleSubmit() {
     // Validate name
@@ -404,11 +441,20 @@ async function handleSubmit() {
     saving.value = true; modalError.value = ''
     try {
         const data = { fullName: modalForm.fullName, phone: modalForm.phone || null, email: modalForm.email || null, departmentId: modalForm.departmentId || null, positionId: modalForm.positionId || null }
+        
+        if (uploadMode.value === 'url') {
+            data.faceImageUrl = modalForm.faceImageUrl || '';
+        } else if (uploadMode.value === 'file') {
+            if (!faceFile.value && !facePreview.value) {
+                data.faceImageUrl = '';
+            }
+        }
+
         let employeeId = editingId.value
         if (isEditing.value) { data.status = modalForm.status; await update(editingId.value, data) } 
         else { data.status = true; const res = await create(data); employeeId = res.data.employeeId }
         
-        if (faceFile.value && employeeId) await uploadFace(employeeId, faceFile.value)
+        if (uploadMode.value === 'file' && faceFile.value && employeeId) await uploadFace(employeeId, faceFile.value)
         showToast(isEditing.value ? 'Đã lưu thay đổi' : 'Đã tạo hồ sơ nhân sự')
         closeModal(); await fetchEmployees()
     } catch (err) { modalError.value = err.response?.data?.message || 'Có lỗi khi lưu dữ liệu' } 
@@ -585,4 +631,11 @@ watch(() => route.query.search, (val) => { if (val !== undefined) { searchQuery.
     .modal-top { padding: 16px; }
     .face-dropzone { height: 100px; }
 }
+
+/* Face mode tabs */
+.face-input-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.pill-btn { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.pill-btn:hover { background: var(--bg-input); }
+.pill-btn.active { background: rgba(16, 121, 196, 0.1); color: var(--accent-primary); border-color: rgba(16, 121, 196, 0.3); font-weight: 600; }
+.url-preview { margin-top: 12px; cursor: default; border-style: solid; height: 120px; }
 </style>

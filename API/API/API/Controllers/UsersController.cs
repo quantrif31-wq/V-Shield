@@ -33,7 +33,8 @@ public class UsersController : ControllerBase
                 FullName = u.FullName,
                 Role = u.Role,
                 IsActive = u.IsActive,
-                CreatedAt = u.CreatedAt
+                CreatedAt = u.CreatedAt,
+                EmployeeId = u.EmployeeId
             })
             .ToListAsync();
 
@@ -55,7 +56,8 @@ public class UsersController : ControllerBase
             FullName = user.FullName,
             Role = user.Role,
             IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            EmployeeId = user.EmployeeId
         });
     }
 
@@ -70,6 +72,12 @@ public class UsersController : ControllerBase
         if (await _context.AppUsers.AnyAsync(u => u.Username == request.Username))
             return Conflict(new { message = $"Tên đăng nhập '{request.Username}' đã tồn tại" });
 
+        if (request.EmployeeId.HasValue && request.EmployeeId.Value > 0)
+        {
+            if (!await _context.Employees.AnyAsync(e => e.EmployeeId == request.EmployeeId))
+                return BadRequest(new { message = $"EmployeeID {request.EmployeeId} không tồn tại" });
+        }
+
         var user = new AppUser
         {
             Username = request.Username,
@@ -77,7 +85,8 @@ public class UsersController : ControllerBase
             FullName = request.FullName,
             Role = request.Role,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            EmployeeId = (request.EmployeeId.HasValue && request.EmployeeId.Value > 0) ? request.EmployeeId : null
         };
 
         _context.AppUsers.Add(user);
@@ -90,7 +99,8 @@ public class UsersController : ControllerBase
             FullName = user.FullName,
             Role = user.Role,
             IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            EmployeeId = user.EmployeeId
         });
     }
 
@@ -117,6 +127,20 @@ public class UsersController : ControllerBase
         if (!string.IsNullOrWhiteSpace(request.Password))
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
+        if (request.EmployeeId.HasValue)
+        {
+            if (request.EmployeeId.Value > 0)
+            {
+                if (!await _context.Employees.AnyAsync(e => e.EmployeeId == request.EmployeeId))
+                    return BadRequest(new { message = $"EmployeeID {request.EmployeeId} không tồn tại" });
+                user.EmployeeId = request.EmployeeId;
+            }
+            else
+            {
+                user.EmployeeId = null;
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(new UserResponse
@@ -126,7 +150,8 @@ public class UsersController : ControllerBase
             FullName = user.FullName,
             Role = user.Role,
             IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            EmployeeId = user.EmployeeId
         });
     }
 

@@ -16,4 +16,6 @@ public class UpdateUserRequest
     /// <summary>Để trống nếu không muốn đổi mật khẩu</summary>
     [MinLength(6)]
     public string? Password { get; set; }
+
+    public int? EmployeeId { get; set; }
 }

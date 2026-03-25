@@ -52,15 +52,15 @@
                 <div class="panel-head">
                     <div>
                         <span class="panel-kicker">Generate form</span>
-                        <h2 class="panel-title">Sinh QR theo Employee ID</h2>
-                        <p class="panel-copy">
+                        <h2 class="panel-title">{{ isAdmin ? 'Sinh QR theo Employee ID' : 'Mã QR Cá Nhân' }}</h2>
+                        <p class="panel-copy" v-if="isAdmin">
                             Controller mới chỉ cần <code>employeeId</code>. Backend sẽ tự sinh secret nếu nhân viên chưa có cấu
                             hình QR động.
                         </p>
                     </div>
                 </div>
 
-                <div class="form-stack">
+                <div class="form-stack" v-if="isAdmin">
                     <label class="form-field">
                         <span class="field-label">Employee ID</span>
                         <input
@@ -72,6 +72,10 @@
                             @keyup.enter="startGenerate"
                         />
                     </label>
+                </div>
+                <div v-else class="empty-card" style="text-align: left; padding: 20px; background: rgba(24, 49, 77, 0.04); border: 1px dashed rgba(24, 49, 77, 0.1);">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Chế độ cá nhân</div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Mã QR sẽ được tạo cho ID nhân sự của bạn ({{ employeeId || 'Chưa liên kết' }}).</div>
                 </div>
 
                 <div v-if="errorMessage" class="empty-card error-card">{{ errorMessage }}</div>
@@ -141,7 +145,7 @@
                 </div>
 
                 <div v-else class="empty-card">
-                    Chưa có mã QR nào được tạo. Nhập <code>Employee ID</code> và bấm <strong>Tạo QR động</strong> để bắt đầu.
+                    Chưa có mã QR nào được tạo. {{ isAdmin ? 'Nhập Employee ID và bấm' : 'Bấm' }} <strong>Tạo QR động</strong> để bắt đầu.
                 </div>
             </article>
         </section>
@@ -152,8 +156,10 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import QRCode from 'qrcode'
 import { generateDynamicQr } from '../services/dynamicQrApi'
+import { authState } from '../stores/auth'
 
-const employeeId = ref('')
+const isAdmin = computed(() => authState.user?.role === 'Admin')
+const employeeId = ref(isAdmin.value ? '' : (authState.user?.employeeId?.toString() || ''))
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
@@ -218,7 +224,9 @@ async function fetchQr(employeeIdValue) {
 
 async function startGenerate() {
     if (!employeeId.value) {
-        errorMessage.value = 'Vui lòng nhập Employee ID.'
+        errorMessage.value = isAdmin.value 
+            ? 'Vui lòng nhập Employee ID.' 
+            : 'Tài khoản của bạn chưa được liên kết với nhân sự nào. Vui lòng liên hệ Admin.'
         return
     }
 

@@ -162,9 +162,50 @@
                                 <input v-model="modalForm.password" type="password" class="sleek-input" :placeholder="isEditing ? 'Để trống nếu không đổi' : 'Tối thiểu 6 ký tự'" :required="!isEditing" minlength="6" />
                             </div>
 
-                            <div class="input-pane">
+                            <div class="input-pane employee-search-pane">
                                 <label>Họ và tên</label>
-                                <input v-model="modalForm.fullName" type="text" class="sleek-input" placeholder="Ví dụ: Nguyễn Văn A" maxlength="100" />
+                                <div class="combo-box-wrapper" ref="comboBoxRef">
+                                    <div class="combo-input-row">
+                                        <svg class="combo-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+                                        <input
+                                            v-model="employeeSearchText"
+                                            type="text"
+                                            class="sleek-input combo-input"
+                                            placeholder="Tìm và chọn nhân viên..."
+                                            @focus="showEmployeeDropdown = true"
+                                            @input="onEmployeeSearchInput"
+                                            autocomplete="off"
+                                        />
+                                        <button v-if="modalForm.fullName" type="button" class="combo-clear-btn" @click="clearEmployeeSelection" title="Xóa">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    </div>
+                                    <transition name="dropdown">
+                                        <div v-if="showEmployeeDropdown" class="combo-dropdown">
+                                            <div v-if="loadingEmployees" class="combo-loading">
+                                                <span class="spinner-sm"></span> Đang tải...
+                                            </div>
+                                            <template v-else>
+                                                <div v-if="filteredEmployees.length === 0" class="combo-empty">
+                                                    Không tìm thấy nhân viên
+                                                </div>
+                                                <div
+                                                    v-for="emp in filteredEmployees"
+                                                    :key="emp.employeeId"
+                                                    class="combo-option"
+                                                    :class="{ selected: modalForm.fullName === emp.fullName }"
+                                                    @mousedown.prevent="selectEmployee(emp)"
+                                                >
+                                                    <div class="combo-opt-avatar" :style="{ background: getAvatarColor(getInitials(emp.fullName)) }">{{ getInitials(emp.fullName) }}</div>
+                                                    <div class="combo-opt-info">
+                                                        <span class="combo-opt-name">{{ emp.fullName }}</span>
+                                                        <span class="combo-opt-detail">{{ emp.departmentName || 'Chưa xếp phòng' }} · {{ emp.phone || 'N/A' }}</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </transition>
+                                </div>
                             </div>
 
                             <div class="grid-2">
@@ -233,8 +274,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { getAll, create, update, deleteUser } from '../services/userApi'
+import { getAll as getAllEmployees } from '../services/employeeApi'
 
 const users = ref([])
 const loading = ref(true)
@@ -256,7 +298,67 @@ const modalForm = reactive({
     fullName: '',
     role: 'Staff',
     isActive: true,
+    employeeId: null
 })
+
+// Employee combo box state
+const employeesList = ref([])
+const loadingEmployees = ref(false)
+const showEmployeeDropdown = ref(false)
+const employeeSearchText = ref('')
+const comboBoxRef = ref(null)
+
+const filteredEmployees = computed(() => {
+    const q = employeeSearchText.value.toLowerCase().trim()
+    if (!q) return employeesList.value
+    return employeesList.value.filter(e =>
+        e.fullName.toLowerCase().includes(q) ||
+        (e.phone && e.phone.includes(q)) ||
+        (e.email && e.email.toLowerCase().includes(q))
+    )
+})
+
+async function fetchEmployeesList() {
+    if (employeesList.value.length > 0) return
+    loadingEmployees.value = true
+    try {
+        const res = await getAllEmployees()
+        employeesList.value = res.data
+    } catch (e) {
+        console.error('Failed to load employees', e)
+    } finally {
+        loadingEmployees.value = false
+    }
+}
+
+function onEmployeeSearchInput() {
+    showEmployeeDropdown.value = true
+    // If user edits text after selecting, clear fullName so they must re-select
+    if (modalForm.fullName && employeeSearchText.value !== modalForm.fullName) {
+        modalForm.fullName = ''
+    }
+}
+
+function selectEmployee(emp) {
+    modalForm.fullName = emp.fullName
+    modalForm.employeeId = emp.employeeId
+    employeeSearchText.value = emp.fullName
+    showEmployeeDropdown.value = false
+}
+
+function clearEmployeeSelection() {
+    modalForm.fullName = ''
+    modalForm.employeeId = null
+    employeeSearchText.value = ''
+    showEmployeeDropdown.value = false
+}
+
+// Close dropdown on outside click
+function handleClickOutside(e) {
+    if (comboBoxRef.value && !comboBoxRef.value.contains(e.target)) {
+        showEmployeeDropdown.value = false
+    }
+}
 
 // Delete modal
 const showDeleteModal = ref(false)
@@ -302,7 +404,10 @@ function openCreateModal() {
     isEditing.value = false
     editingId.value = null
     modalError.value = ''
-    Object.assign(modalForm, { username: '', password: '', fullName: '', role: 'Staff', isActive: true })
+    Object.assign(modalForm, { username: '', password: '', fullName: '', role: 'Staff', isActive: true, employeeId: null })
+    employeeSearchText.value = ''
+    showEmployeeDropdown.value = false
+    fetchEmployeesList()
     showModal.value = true
 }
 
@@ -310,7 +415,10 @@ function openEditModal(user) {
     isEditing.value = true
     editingId.value = user.userId
     modalError.value = ''
-    Object.assign(modalForm, { username: user.username, password: '', fullName: user.fullName || '', role: user.role, isActive: user.isActive })
+    Object.assign(modalForm, { username: user.username, password: '', fullName: user.fullName || '', role: user.role, isActive: user.isActive, employeeId: user.employeeId || null })
+    employeeSearchText.value = user.fullName || ''
+    showEmployeeDropdown.value = false
+    fetchEmployeesList()
     showModal.value = true
 }
 
@@ -324,11 +432,11 @@ async function handleSubmit() {
     modalError.value = ''
     try {
         if (isEditing.value) {
-            const data = { fullName: modalForm.fullName || null, role: modalForm.role, isActive: modalForm.isActive }
+            const data = { fullName: modalForm.fullName || null, role: modalForm.role, isActive: modalForm.isActive, employeeId: modalForm.employeeId || null }
             if (modalForm.password) data.password = modalForm.password
             await update(editingId.value, data)
         } else {
-            await create({ username: modalForm.username, password: modalForm.password, fullName: modalForm.fullName || null, role: modalForm.role })
+            await create({ username: modalForm.username, password: modalForm.password, fullName: modalForm.fullName || null, role: modalForm.role, employeeId: modalForm.employeeId || null })
         }
         closeModal()
         await fetchUsers()
@@ -387,7 +495,14 @@ function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-onMounted(fetchUsers)
+onMounted(() => {
+    fetchUsers()
+    document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
@@ -494,6 +609,39 @@ onMounted(fetchUsers)
 .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
 
 @media (max-width: 1200px) { .bento-grid-mini { grid-template-columns: repeat(2, 1fr); } }
+/* Employee Combo Box */
+.employee-search-pane { position: relative; }
+.combo-box-wrapper { position: relative; }
+.combo-input-row { position: relative; display: flex; align-items: center; }
+.combo-search-icon { position: absolute; left: 14px; width: 16px; height: 16px; color: var(--text-muted); pointer-events: none; z-index: 1; }
+.combo-input { padding-left: 40px !important; padding-right: 36px !important; }
+.combo-clear-btn { position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; transition: all 0.2s; }
+.combo-clear-btn:hover { background: rgba(239, 68, 68, 0.1); color: var(--accent-danger); }
+.combo-clear-btn svg { width: 14px; height: 14px; }
+
+.combo-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: var(--shadow-xl); max-height: 220px; overflow-y: auto; z-index: 1001; }
+.combo-dropdown::-webkit-scrollbar { width: 6px; }
+.combo-dropdown::-webkit-scrollbar-track { background: transparent; }
+.combo-dropdown::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+.combo-option { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; transition: background 0.15s; }
+.combo-option:hover { background: var(--bg-card-hover); }
+.combo-option.selected { background: rgba(16, 121, 196, 0.08); }
+.combo-option:first-child { border-radius: 10px 10px 0 0; }
+.combo-option:last-child { border-radius: 0 0 10px 10px; }
+
+.combo-opt-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.combo-opt-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.combo-opt-name { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-opt-detail { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.combo-loading, .combo-empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.88rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+.dropdown-enter-active { transition: all 0.2s ease; }
+.dropdown-leave-active { transition: all 0.15s ease; }
+.dropdown-enter-from { opacity: 0; transform: translateY(-6px); }
+.dropdown-leave-to { opacity: 0; transform: translateY(-4px); }
+
 @media (max-width: 768px) {
     .bento-grid-mini { grid-template-columns: 1fr; }
     .grid-2 { grid-template-columns: 1fr; }

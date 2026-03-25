@@ -6,5 +6,6 @@ public class LoginResponse
     public string Username { get; set; } = null!;
     public string FullName { get; set; } = null!;
     public string Role { get; set; } = null!;
+    public int? EmployeeId { get; set; }
     public DateTime ExpiresAt { get; set; }
 }

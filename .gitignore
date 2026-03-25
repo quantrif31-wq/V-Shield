@@ -1,5 +1,7 @@
 .vs/
 .dotnet-cli/
+.artifacts/
+.dotnet/
 # ===== Python =====
 __pycache__/
 *.pyc
@@ -26,6 +28,7 @@ dist/
 bin/
 obj/
 API/API/API/wwwroot/uploads/faces/
+API/API/API/appsettings.Production.json
 
 # ===== VSCode =====
 .vscode/
