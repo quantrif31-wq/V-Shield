@@ -16,6 +16,7 @@ from paddleocr import PaddleOCR
 from collections import Counter
 from queue import Queue, Full, Empty
 from flask import Flask, request, jsonify, Response, stream_with_context
+from flasgger import Swagger
 from flask_cors import CORS
 
 # =========================================================
@@ -93,6 +94,29 @@ RECONNECT_DELAY_SEC = 1.0
 # APP
 # =========================================================
 app = Flask(__name__)
+app.config["SWAGGER"] = {
+    "title": "LPR Camera API",
+    "uiversion": 3,
+    "openapi": "3.0.2",
+    "specs_route": "/docs/"
+}
+
+swagger_template = {
+    "openapi": "3.0.2",
+    "info": {
+        "title": "LPR Camera API",
+        "description": "API điều khiển camera, stream, OCR biển số, trạng thái realtime",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": f"http://127.0.0.1:{API_PORT}"
+        }
+    ]
+}
+
+Swagger(app, template=swagger_template)
+
 CORS(
     app,
     resources={r"/api/*": {"origins": "*"}},
@@ -1025,6 +1049,20 @@ def close_camera():
 # =========================================================
 @app.route("/api/camera/on", methods=["POST"])
 def api_camera_on():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     try:
         data = request.get_json(silent=True) or {}
         ip = str(data.get("ip", "")).strip()
@@ -1061,6 +1099,20 @@ def api_camera_on():
 
 @app.route("/api/camera/off", methods=["POST"])
 def api_camera_off():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     try:
         with api_lock:
             close_camera()
@@ -1079,6 +1131,20 @@ def api_camera_off():
 
 @app.route("/api/camera/reset", methods=["POST"])
 def api_camera_reset():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     try:
         with api_lock:
             reset_recognition_state(
@@ -1109,6 +1175,20 @@ def api_camera_reset():
 
 @app.route("/api/camera/status", methods=["GET"])
 def api_camera_status():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     try:
         snapshot = get_recognition_snapshot(include_images=False)
         return jsonify({
@@ -1139,6 +1219,20 @@ def api_camera_status():
 
 @app.route("/api/camera/result", methods=["GET"])
 def api_camera_result():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     try:
         return jsonify(get_recognition_snapshot(include_images=True)), 200
     except Exception as e:
@@ -1149,6 +1243,20 @@ def api_camera_result():
 
 @app.route("/api/camera/locked-images", methods=["GET"])
 def api_camera_locked_images():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     try:
         snapshot = get_recognition_snapshot(include_images=True)
         return jsonify({
@@ -1166,6 +1274,20 @@ def api_camera_locked_images():
 
 @app.route("/api/camera/stream", methods=["GET"])
 def api_camera_stream():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     response = Response(
         stream_with_context(mjpeg_generator()),
         mimetype="multipart/x-mixed-replace; boundary=frame"
@@ -1178,6 +1300,20 @@ def api_camera_stream():
 
 @app.route("/api/camera/events", methods=["GET"])
 def api_camera_events():
+    """
+    Camera status
+    ---
+    tags:
+      - Camera
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            example:
+              success: true
+              message: running
+    """
     def event_stream():
         last_payload = None
 
@@ -1234,6 +1370,20 @@ def api_camera_events():
 
 @app.route("/api/health", methods=["GET"])
 def api_health():
+    """
+    Health check API
+    ---
+    tags:
+      - System
+    responses:
+      200:
+        description: API is running
+        content:
+          application/json:
+            example:
+              success: true
+              message: LPR API is running
+    """
     enabled, ip, connected = get_camera_flags()
     return jsonify({
         "success": True,
