@@ -101,7 +101,7 @@
                                     <div class="avatar" v-if="!emp.faceImageUrl" :style="{ background: getAvatarColor(emp.employeeId) }">
                                         {{ getInitials(emp.fullName) }}
                                     </div>
-                                    <img v-else :src="API_BASE + emp.faceImageUrl" class="avatar-img" @error="$event.target.style.display = 'none'" />
+                                    <img v-else :src="(emp.faceImageUrl.startsWith('http://') || emp.faceImageUrl.startsWith('https://')) ? emp.faceImageUrl : API_BASE + emp.faceImageUrl" class="avatar-img" @error="$event.target.style.display = 'none'" />
                                     <div class="user-info">
                                         <span class="user-name">{{ emp.fullName }}</span>
                                         <span class="user-id">ID: {{ emp.employeeId }}</span>

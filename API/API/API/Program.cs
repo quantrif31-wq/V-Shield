@@ -145,7 +145,8 @@ namespace API
                         FullName = "Quản trị viên",
                         Role = "Admin",
                         IsActive = true,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.UtcNow,
+                        EmployeeId = null
                     });
                     db.SaveChanges();
                 }
