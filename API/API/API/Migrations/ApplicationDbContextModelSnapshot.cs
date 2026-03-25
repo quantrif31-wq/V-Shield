@@ -153,18 +153,6 @@ namespace API.Migrations
                         .IsUnique();
 
                     b.ToTable("AppUsers");
-
-                    b.HasData(
-                        new
-                        {
-                            UserId = 1,
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            FullName = "Quản trị viên",
-                            IsActive = true,
-                            PasswordHash = "$2a$11$pUWX4MoFOOTCBP/BnANHoeZStrKmbETeVVxh6wjD09SEfWNutGZZe",
-                            Role = "Admin",
-                            Username = "admin"
-                        });
                 });
 
             modelBuilder.Entity("API.Models.Camera", b =>

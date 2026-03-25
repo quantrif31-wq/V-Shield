@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using API.Models;
 using Microsoft.EntityFrameworkCore;
@@ -187,19 +187,6 @@ public partial class ApplicationDbContext : DbContext
                   .HasForeignKey<AppUser>(u => u.EmployeeId)
                   .OnDelete(DeleteBehavior.SetNull)
                   .HasConstraintName("FK_AppUser_Employee");
-
-            // Seed tài khoản admin mặc định
-            entity.HasData(new AppUser
-            {
-                UserId = 1,
-                Username = "admin",
-                // BCrypt hash của "Admin@123"
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-                FullName = "Quản trị viên",
-                Role = "Admin",
-                IsActive = true,
-                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            });
         });
         modelBuilder.Entity<EmployeeFaceVideo>(entity =>
         {
