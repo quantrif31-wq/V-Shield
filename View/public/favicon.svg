@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="V-Shield favicon">
+  <defs>
+    <linearGradient id="shieldGradient" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#54c4d3" />
+      <stop offset="0.55" stop-color="#0f7c82" />
+      <stop offset="1" stop-color="#2b6d8a" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M32 4 51 11v17c0 13.1-7.7 24.9-19 30C20.7 52.9 13 41.1 13 28V11L32 4Z"
+    fill="url(#shieldGradient)"
+  />
+  <path
+    d="M22.5 19 32 43l9.5-24"
+    fill="none"
+    stroke="#ffffff"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="6"
+  />
+  <path
+    d="M32 8.5 47 14v13.4c0 10.4-5.7 19.6-15 24.2-9.3-4.6-15-13.8-15-24.2V14l15-5.5Z"
+    fill="none"
+    stroke="rgba(255,255,255,0.28)"
+    stroke-width="1.6"
+  />
+</svg>
