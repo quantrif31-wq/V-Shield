@@ -21,8 +21,12 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request)
     {
+        var normalizedUsername = NormalizeUsername(request.Username);
+        if (string.IsNullOrEmpty(normalizedUsername))
+            return null;
+
         var user = await _context.AppUsers
-            .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
+            .FirstOrDefaultAsync(u => u.IsActive && u.Username.Trim().ToUpper() == normalizedUsername);
 
         if (user == null)
             return null;
@@ -70,4 +74,7 @@ public class AuthService : IAuthService
             ExpiresAt = expiresAt
         };
     }
+
+    private static string NormalizeUsername(string? username) =>
+        string.IsNullOrWhiteSpace(username) ? string.Empty : username.Trim().ToUpperInvariant();
 }
