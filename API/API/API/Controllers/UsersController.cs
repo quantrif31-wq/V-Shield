@@ -1,10 +1,10 @@
+using System.Security.Claims;
 using API.Data;
 using API.DTOs;
 using API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace API.Controllers;
 
@@ -20,7 +20,6 @@ public class UsersController : ControllerBase
         _context = context;
     }
 
-    /// <summary>Lấy danh sách tất cả tài khoản (chỉ Admin)</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -41,13 +40,12 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    /// <summary>Lấy thông tin tài khoản theo ID (chỉ Admin)</summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
         var user = await _context.AppUsers.FindAsync(id);
         if (user == null)
-            return NotFound(new { message = $"Không tìm thấy tài khoản ID {id}" });
+            return NotFound(new { message = $"Khong tim thay tai khoan ID {id}" });
 
         return Ok(new UserResponse
         {
@@ -61,26 +59,30 @@ public class UsersController : ControllerBase
         });
     }
 
-    /// <summary>Tạo tài khoản mới (chỉ Admin)</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Kiểm tra username đã tồn tại chưa
-        if (await _context.AppUsers.AnyAsync(u => u.Username == request.Username))
-            return Conflict(new { message = $"Tên đăng nhập '{request.Username}' đã tồn tại" });
+        var username = request.Username.Trim();
+        if (string.IsNullOrWhiteSpace(username))
+            return BadRequest(new { message = "Ten dang nhap khong duoc de trong" });
+
+        var normalizedUsername = NormalizeUsername(username);
+
+        if (await _context.AppUsers.AnyAsync(u => u.Username.Trim().ToUpper() == normalizedUsername))
+            return Conflict(new { message = $"Ten dang nhap '{username}' da ton tai" });
 
         if (request.EmployeeId.HasValue && request.EmployeeId.Value > 0)
         {
             if (!await _context.Employees.AnyAsync(e => e.EmployeeId == request.EmployeeId))
-                return BadRequest(new { message = $"EmployeeID {request.EmployeeId} không tồn tại" });
+                return BadRequest(new { message = $"EmployeeID {request.EmployeeId} khong ton tai" });
         }
 
         var user = new AppUser
         {
-            Username = request.Username,
+            Username = username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName,
             Role = request.Role,
@@ -104,7 +106,6 @@ public class UsersController : ControllerBase
         });
     }
 
-    /// <summary>Cập nhật tài khoản (chỉ Admin)</summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserRequest request)
     {
@@ -113,7 +114,7 @@ public class UsersController : ControllerBase
 
         var user = await _context.AppUsers.FindAsync(id);
         if (user == null)
-            return NotFound(new { message = $"Không tìm thấy tài khoản ID {id}" });
+            return NotFound(new { message = $"Khong tim thay tai khoan ID {id}" });
 
         if (request.FullName != null)
             user.FullName = request.FullName;
@@ -132,7 +133,8 @@ public class UsersController : ControllerBase
             if (request.EmployeeId.Value > 0)
             {
                 if (!await _context.Employees.AnyAsync(e => e.EmployeeId == request.EmployeeId))
-                    return BadRequest(new { message = $"EmployeeID {request.EmployeeId} không tồn tại" });
+                    return BadRequest(new { message = $"EmployeeID {request.EmployeeId} khong ton tai" });
+
                 user.EmployeeId = request.EmployeeId;
             }
             else
@@ -155,22 +157,23 @@ public class UsersController : ControllerBase
         });
     }
 
-    /// <summary>Xóa tài khoản (chỉ Admin). Không thể xóa chính mình.</summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
         var user = await _context.AppUsers.FindAsync(id);
         if (user == null)
-            return NotFound(new { message = $"Không tìm thấy tài khoản ID {id}" });
+            return NotFound(new { message = $"Khong tim thay tai khoan ID {id}" });
 
-        // Lấy ID người dùng hiện tại để tránh tự xóa mình
         var currentUserIdClaim = User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
         if (currentUserIdClaim != null && int.TryParse(currentUserIdClaim, out var currentUserId) && currentUserId == id)
-            return BadRequest(new { message = "Không thể xóa tài khoản đang đăng nhập" });
+            return BadRequest(new { message = "Khong the xoa tai khoan dang dang nhap" });
 
         _context.AppUsers.Remove(user);
         await _context.SaveChangesAsync();
 
         return NoContent();
     }
+
+    private static string NormalizeUsername(string username) =>
+        username.Trim().ToUpperInvariant();
 }

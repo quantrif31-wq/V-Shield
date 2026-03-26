@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using API.Data;
 using API.Hubs;
@@ -16,11 +17,9 @@ namespace API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ── Database ──────────────────────────────────────────────────────────
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // ── JWT Authentication ────────────────────────────────────────────────
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
             var secretKey = jwtSettings["Secret"]!;
 
@@ -39,25 +38,22 @@ namespace API
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtSettings["Issuer"],
                     ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+                    NameClaimType = System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.UniqueName,
+                    RoleClaimType = ClaimTypes.Role
                 };
             });
 
             builder.Services.AddAuthorization();
 
-            // ── Application Services ──────────────────────────────────────────────
             builder.Services.AddMemoryCache();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IVehicleService, VehicleService>();
             builder.Services.AddScoped<ILanCameraDiscoveryService, LanCameraDiscoveryService>();
             builder.Services.AddHttpClient();
-            // ── SignalR ───────────────────────────────────────────────────────────
             builder.Services.AddSignalR();
-
-            // ── Controllers ───────────────────────────────────────────────────────
             builder.Services.AddControllers();
 
-            // ── Swagger với hỗ trợ Bearer Token ──────────────────────────────────
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
@@ -65,10 +61,9 @@ namespace API
                 {
                     Title = "V-Shield API",
                     Version = "v1",
-                    Description = "API quản lý hệ thống V-Shield với phân quyền Admin/Staff/BaoVe"
+                    Description = "API quan ly he thong V-Shield voi phan quyen Admin/Staff/BaoVe"
                 });
 
-                // Thêm nút Authorize trên Swagger UI
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Name = "Authorization",
@@ -76,7 +71,7 @@ namespace API
                     Scheme = "bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
-                    Description = "Nhập JWT token. Ví dụ: Bearer {token}"
+                    Description = "Nhap JWT token. Vi du: Bearer {token}"
                 });
 
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -95,7 +90,6 @@ namespace API
                 });
             });
 
-            // ── CORS (cho phép Vue.js gọi) ────────────────────────────────────────
             builder.Services.AddCors(options =>
             {
                 var configuredOrigins = builder.Configuration.GetSection("AppSettings:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -128,31 +122,8 @@ namespace API
             });
 
             var app = builder.Build();
-            using (var scope = app.Services.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                db.Database.Migrate();
+            EnsureSeedAdmin(app.Services, builder.Configuration);
 
-                if (!db.AppUsers.Any(u => u.Username == "admin"))
-                {
-                    // Reset IDENTITY về 0 trước khi seed để admin luôn là UserId = 1
-                    db.Database.ExecuteSqlRaw("DBCC CHECKIDENT ('AppUsers', RESEED, 0)");
-
-                    db.AppUsers.Add(new AppUser
-                    {
-                        Username = "admin",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-                        FullName = "Quản trị viên",
-                        Role = "Admin",
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow,
-                        EmployeeId = null
-                    });
-                    db.SaveChanges();
-                }
-            }
-
-            // ── HTTP Pipeline ─────────────────────────────────────────────────────
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -160,19 +131,96 @@ namespace API
             }
 
             // app.UseHttpsRedirection();
-            app.UseStaticFiles(); // Serve files từ wwwroot/
+            app.UseStaticFiles();
             app.UseCors("AllowVue");
-
-            // Authentication PHẢI trước Authorization
             app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();
-
-            // ── SignalR Hub ───────────────────────────────────────────────────────
             app.MapHub<EmployeeStatsHub>("/hubs/employee-stats");
 
             app.Run();
         }
+
+        private static void EnsureSeedAdmin(IServiceProvider services, IConfiguration configuration)
+        {
+            using var scope = services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            db.Database.Migrate();
+
+            var seedSection = configuration.GetSection("SeedAdmin");
+            var adminUsername = (seedSection["Username"] ?? "admin").Trim();
+            var adminPassword = seedSection["Password"] ?? "Admin@123";
+            var adminFullName = seedSection["FullName"] ?? "Quan tri vien";
+            var resetPasswordOnStartup = seedSection.GetValue("ResetPasswordOnStartup", false);
+            var normalizedAdminUsername = NormalizeUsername(adminUsername);
+
+            var adminUser = db.AppUsers.FirstOrDefault(u =>
+                u.Username.Trim().ToUpper() == normalizedAdminUsername);
+
+            if (adminUser == null)
+            {
+                if (!db.AppUsers.Any())
+                {
+                    // Only reseed when the table is empty so existing IDs are not disturbed.
+                    db.Database.ExecuteSqlRaw("DBCC CHECKIDENT ('AppUsers', RESEED, 0)");
+                }
+
+                db.AppUsers.Add(new AppUser
+                {
+                    Username = adminUsername,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                    FullName = adminFullName,
+                    Role = "Admin",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    EmployeeId = null
+                });
+
+                db.SaveChanges();
+                return;
+            }
+
+            var hasChanges = false;
+
+            if (!string.Equals(adminUser.Username, adminUsername, StringComparison.Ordinal))
+            {
+                adminUser.Username = adminUsername;
+                hasChanges = true;
+            }
+
+            if (!string.Equals(adminUser.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                adminUser.Role = "Admin";
+                hasChanges = true;
+            }
+
+            if (!adminUser.IsActive)
+            {
+                adminUser.IsActive = true;
+                hasChanges = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(adminUser.FullName))
+            {
+                adminUser.FullName = adminFullName;
+                hasChanges = true;
+            }
+
+            if (resetPasswordOnStartup && !BCrypt.Net.BCrypt.Verify(adminPassword, adminUser.PasswordHash))
+            {
+                adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword);
+                hasChanges = true;
+            }
+
+            if (hasChanges)
+            {
+                db.SaveChanges();
+            }
+        }
+
+        private static string NormalizeUsername(string username) =>
+            username.Trim().ToUpperInvariant();
     }
 }
