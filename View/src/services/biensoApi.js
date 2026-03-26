@@ -1,7 +1,8 @@
 import axios from "axios"
+import { PLATE_API_BASE_URL } from "../config/api"
 
 const API = axios.create({
-  baseURL: "http://127.0.0.1:5002/api",
+  baseURL: PLATE_API_BASE_URL,
   timeout: 15000
 })
 
