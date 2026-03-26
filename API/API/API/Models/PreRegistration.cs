@@ -16,9 +16,6 @@ public partial class PreRegistration
 
     public int? HostEmployeeId { get; set; }
 
-    [StringLength(20)]
-    public string? ExpectedLicensePlate { get; set; }
-
     [Column(TypeName = "datetime")]
     public DateTime ExpectedTimeIn { get; set; }
 

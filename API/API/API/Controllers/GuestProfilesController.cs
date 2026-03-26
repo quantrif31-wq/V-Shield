@@ -92,7 +92,7 @@ public class GuestProfilesController : ControllerBase
                         registration.ExpectedTimeIn,
                         registration.ExpectedTimeOut,
                         registration.Status,
-                        registration.ExpectedLicensePlate,
+                        // Đã xóa dòng registration.ExpectedLicensePlate ở đây
                         registration.NumberOfVisitors,
                         hostEmployeeName = registration.HostEmployee != null ? registration.HostEmployee.FullName : null
                     })

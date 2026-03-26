@@ -88,10 +88,6 @@ public class PreRegistrationController : ControllerBase
         guest.FullName = dto.FullName;
         guest.Phone = dto.Phone;
 
-        // Biển số mặc định: chỉ set lần đầu, không override
-        if (string.IsNullOrEmpty(guest.DefaultLicensePlate))
-            guest.DefaultLicensePlate = dto.ExpectedLicensePlate;
-
         if (guest.GuestId == 0)
             _context.GuestProfiles.Add(guest);
 
@@ -102,7 +98,6 @@ public class PreRegistrationController : ControllerBase
         {
             GuestId = guest.GuestId,
             HostEmployeeId = link.HostEmployeeId,
-            ExpectedLicensePlate = dto.ExpectedLicensePlate,
             ExpectedTimeIn = dto.ExpectedTimeIn,
             ExpectedTimeOut = dto.ExpectedTimeOut,
             NumberOfVisitors = dto.NumberOfVisitors,
@@ -174,7 +169,6 @@ public class PreRegistrationController : ControllerBase
                 GuestId = r.Guest!.GuestId,
                 GuestFullName = r.Guest.FullName,
                 GuestPhone = r.Guest.Phone,
-                ExpectedLicensePlate = r.ExpectedLicensePlate,
                 ExpectedTimeIn = r.ExpectedTimeIn,
                 ExpectedTimeOut = r.ExpectedTimeOut,
                 NumberOfVisitors = r.NumberOfVisitors,
@@ -213,7 +207,6 @@ public class PreRegistrationController : ControllerBase
             GuestId = reg.Guest!.GuestId,
             GuestFullName = reg.Guest.FullName,
             GuestPhone = reg.Guest.Phone,
-            ExpectedLicensePlate = reg.ExpectedLicensePlate,
             ExpectedTimeIn = reg.ExpectedTimeIn,
             ExpectedTimeOut = reg.ExpectedTimeOut,
             NumberOfVisitors = reg.NumberOfVisitors,
@@ -229,16 +222,16 @@ public class PreRegistrationController : ControllerBase
             }).ToList(),
 
             AccessLogs = reg.AccessLogs
-    .OrderBy(l => l.Timestamp)
-    .Select(l => new AccessLogDto
-    {
-        LogId = l.LogId,
-        Timestamp = l.Timestamp,
-        Direction = l.Direction,   // "IN" / "OUT"
-        CapturedLicensePlate = l.CapturedLicensePlate,
-        ResultStatus = l.ResultStatus,
-        Note = l.Note
-    }).ToList()
+                .OrderBy(l => l.Timestamp)
+                .Select(l => new AccessLogDto
+                {
+                    LogId = l.LogId,
+                    Timestamp = l.Timestamp,
+                    Direction = l.Direction,   // "IN" / "OUT"
+                    CapturedLicensePlate = l.CapturedLicensePlate,
+                    ResultStatus = l.ResultStatus,
+                    Note = l.Note
+                }).ToList()
         });
     }
 

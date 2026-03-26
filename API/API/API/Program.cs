@@ -162,11 +162,6 @@ namespace API
             if (adminUser == null)
             {
                 if (!db.AppUsers.Any())
-                {
-                    // Only reseed when the table is empty so existing IDs are not disturbed.
-                    db.Database.ExecuteSqlRaw("DBCC CHECKIDENT ('AppUsers', RESEED, 0)");
-                }
-
                 db.AppUsers.Add(new AppUser
                 {
                     Username = adminUsername,
