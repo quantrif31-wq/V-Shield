@@ -213,6 +213,20 @@ export default {
     this.resetDirectPreview()
   },
 
+  activated() {
+    this.destroyed = false
+    if (this.cameraRunning) {
+      if (this.currentIp && !this.previewRunning) {
+        this.mountDirectPreview(this.currentIp)
+      }
+      this.startResultLoop()
+    }
+  },
+
+  deactivated() {
+    this.stopResultLoop()
+  },
+
   methods: {
     formatConf(value) {
       const num = Number(value)

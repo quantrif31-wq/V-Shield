@@ -248,6 +248,22 @@ export default {
     this.resetDirectPreview()
   },
 
+  activated() {
+    // Resuming from keep-alive: restart timers if camera was running
+    this.destroyed = false
+    if (this.cameraRunning) {
+      if (this.currentIp && !this.previewRunning) {
+        this.mountDirectPreview(this.currentIp)
+      }
+      this.startResultLoop()
+    }
+  },
+
+  deactivated() {
+    // Pausing for keep-alive: stop timers but keep state
+    this.stopResultLoop()
+  },
+
   methods: {
     buildDirectCameraUrl(inputUrl) {
       const raw = String(inputUrl || "").trim()

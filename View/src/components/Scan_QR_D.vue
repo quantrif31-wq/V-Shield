@@ -222,6 +222,22 @@ export default {
     this.resetDirectPreview()
   },
 
+  activated() {
+    this.destroyed = false
+    if (this.cameraRunning) {
+      if (this.currentIp && !this.previewRunning) {
+        this.mountDirectPreview(this.currentIp)
+      }
+      this.startPreviewLoop()
+      this.startSessionLoop()
+    }
+  },
+
+  deactivated() {
+    this.stopPreviewLoop()
+    this.stopSessionLoop()
+  },
+
   methods: {
     nowText() {
       return new Date().toLocaleString()

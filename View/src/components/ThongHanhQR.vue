@@ -401,6 +401,35 @@ export default {
     }
   },
 
+  activated() {
+    for (const lane of this.lanes) {
+      lane.qr.destroyed = false
+      lane.plate.destroyed = false
+
+      if (lane.qr.cameraRunning) {
+        if (lane.qr.currentIp && !lane.qr.previewRunning) {
+          this.mountPreview(lane.qr, lane.qr.currentIp)
+        }
+        this.startQrPreviewLoop(lane)
+        this.startQrSessionLoop(lane)
+      }
+
+      if (lane.plate.cameraRunning) {
+        if (lane.plate.currentIp && !lane.plate.previewRunning) {
+          this.mountPreview(lane.plate, lane.plate.currentIp)
+        }
+        this.startPlateLoop(lane)
+      }
+    }
+  },
+
+  deactivated() {
+    for (const lane of this.lanes) {
+      this.stopQrLoops(lane)
+      this.stopPlateLoop(lane)
+    }
+  },
+
   methods: {
     setQrCanvasRef(laneId, el) {
       if (el) this.qrCanvasRefs[laneId] = el

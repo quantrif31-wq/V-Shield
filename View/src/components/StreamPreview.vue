@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, ref, watch } from 'vue'
 import { isBrowserVideoCameraUrl, isHlsCameraUrl, isHttpCameraUrl, isRtspCameraUrl } from '../utils/cameraNetwork'
 
 const props = defineProps({
@@ -235,6 +235,22 @@ watch(
 
 onBeforeUnmount(() => {
     resetState()
+})
+
+onDeactivated(() => {
+    // Pause video when component is deactivated via keep-alive
+    const element = videoRef.value
+    if (element) {
+        try { element.pause() } catch { /* ignore */ }
+    }
+})
+
+onActivated(() => {
+    // Resume video when component is re-activated via keep-alive
+    const element = videoRef.value
+    if (element && resolvedUrl.value) {
+        try { element.play() } catch { /* ignore */ }
+    }
 })
 </script>
 
