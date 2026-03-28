@@ -2,6 +2,8 @@ export const CAMERA_NETWORK_STORAGE_KEY = "vshield-camera-network-settings-v2"
 
 const HTTP_CAMERA_PROTOCOL_REGEX = /^https?:\/\//i
 const RTSP_CAMERA_PROTOCOL_REGEX = /^rtsp:\/\//i
+const HLS_CAMERA_PATH_REGEX = /\.m3u8($|[?#])/i
+const BROWSER_VIDEO_PATH_REGEX = /\.(mp4|webm|ogg)($|[?#])/i
 const STREAM_PREVIEW_PATHS = new Set(["/video", "/videofeed"])
 
 export const DEFAULT_CAMERA_SETTINGS = [
@@ -10,6 +12,7 @@ export const DEFAULT_CAMERA_SETTINGS = [
     name: "CAM-01",
     label: "Cổng A - Trước",
     url: "",
+    previewUrl: "",
     location: "Cổng A - Trước",
     online: false,
     enabled: false,
@@ -19,6 +22,7 @@ export const DEFAULT_CAMERA_SETTINGS = [
     name: "CAM-02",
     label: "Cổng A - Sau",
     url: "",
+    previewUrl: "",
     location: "Cổng A - Sau",
     online: false,
     enabled: false,
@@ -28,6 +32,7 @@ export const DEFAULT_CAMERA_SETTINGS = [
     name: "CAM-03",
     label: "Cổng B - Trước",
     url: "",
+    previewUrl: "",
     location: "Cổng B - Trước",
     online: false,
     enabled: false,
@@ -37,6 +42,7 @@ export const DEFAULT_CAMERA_SETTINGS = [
     name: "CAM-04",
     label: "Cổng B - Sau",
     url: "",
+    previewUrl: "",
     location: "Cổng B - Sau",
     online: false,
     enabled: false,
@@ -49,6 +55,16 @@ export const createDefaultCameraSettings = () =>
 export const isHttpCameraUrl = (url) => HTTP_CAMERA_PROTOCOL_REGEX.test(url || "")
 
 export const isRtspCameraUrl = (url) => RTSP_CAMERA_PROTOCOL_REGEX.test(url || "")
+
+export const isHlsCameraUrl = (url) => {
+  const value = (url || "").trim()
+  return isHttpCameraUrl(value) && HLS_CAMERA_PATH_REGEX.test(value)
+}
+
+export const isBrowserVideoCameraUrl = (url) => {
+  const value = (url || "").trim()
+  return isHttpCameraUrl(value) && BROWSER_VIDEO_PATH_REGEX.test(value)
+}
 
 export const looksLikeHostInput = (value) =>
   /^[\w.-]+(?::\d+)?(?:\/.*)?$/i.test((value || "").trim())
@@ -113,6 +129,9 @@ export const buildCameraHealthProbeUrl = (url) => {
 export const shouldAppendPreviewCacheBust = (url) =>
   isHttpCameraUrl(url) && !isKnownStreamPreviewUrl(url)
 
+export const resolveCameraPreviewUrl = (camera) =>
+  camera?.previewUrl?.trim() || camera?.url?.trim() || ""
+
 const parseLegacyCameraName = (value, fallbackName, fallbackLabel) => {
   const name = (value || "").trim()
   if (!name) {
@@ -150,6 +169,8 @@ export const normalizeCameraSettings = (settings) =>
     )
 
     const normalizedUrl = savedCameraData.url?.trim() || ""
+    const normalizedPreviewUrl = savedCameraData.previewUrl?.trim() || ""
+    const hasAnyUrl = Boolean(normalizedUrl || normalizedPreviewUrl)
 
     return {
       ...fallbackCamera,
@@ -162,9 +183,10 @@ export const normalizeCameraSettings = (settings) =>
         ? savedCameraData.label.trim()
         : legacyParts.label,
       url: normalizedUrl,
+      previewUrl: normalizedPreviewUrl,
       location: savedCameraData.location?.trim() || fallbackCamera.location,
-      online: Boolean(savedCameraData.online && normalizedUrl),
-      enabled: Boolean(savedCameraData.enabled && normalizedUrl),
+      online: Boolean(savedCameraData.online && hasAnyUrl),
+      enabled: Boolean(savedCameraData.enabled && hasAnyUrl),
     }
   })
 

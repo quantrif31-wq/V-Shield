@@ -3,50 +3,70 @@
         <div class="panel-head">
             <div>
                 <span class="panel-kicker">Network sources</span>
-                <h2 class="panel-title">Dò camera từ IP Webcam và IP Camera Lite</h2>
+                <h2 class="panel-title">Nguon camera local va preview tren web</h2>
                 <p class="panel-copy">
-                    Phần này quản lý nguồn stream trực tiếp từ điện thoại hoặc camera LAN. Dữ liệu được lưu cục bộ để phục vụ
-                    giám sát nhanh, vì bảng <code>Camera</code> hiện chưa có cột IP hoặc URL stream.
+                    RTSP co the dung cho AI va xu ly backend. Neu muon xem tren trinh duyet, hay them mot
+                    <code>Preview URL</code> dang HLS, MJPEG, MP4 hoac WebRTC gateway.
                 </p>
             </div>
             <div class="panel-actions">
                 <button class="btn btn-secondary btn-sm" :disabled="isRefreshingAll" @click="refreshAllCameraStatuses">
-                    {{ isRefreshingAll ? 'Đang kiểm tra...' : 'Kiểm tra tất cả' }}
+                    {{ isRefreshingAll ? "Dang kiem tra..." : "Kiem tra tat ca" }}
                 </button>
-                <router-link to="/monitoring" class="btn btn-primary btn-sm">Mở giám sát</router-link>
+                <router-link to="/monitoring" class="btn btn-primary btn-sm">Mo giam sat</router-link>
             </div>
         </div>
 
         <div class="network-summary">
             <div class="network-stat">
-                <span>Slot có stream</span>
+                <span>Slot co nguon</span>
                 <strong>{{ localSummary.connected }}</strong>
             </div>
             <div class="network-stat">
-                <span>Đang bật</span>
+                <span>Dang bat</span>
                 <strong>{{ localSummary.enabled }}</strong>
             </div>
             <div class="network-stat">
-                <span>Đang online</span>
+                <span>Preview online</span>
                 <strong>{{ localSummary.online }}</strong>
             </div>
         </div>
 
         <div class="network-toolbar">
             <label class="network-field">
-                <span class="field-label">Tên hiển thị</span>
-                <input v-model="manualCameraName" class="filter-select" type="text" placeholder="Ví dụ: iPhone cổng phụ" />
+                <span class="field-label">Ten hien thi</span>
+                <input
+                    v-model="manualCameraName"
+                    class="filter-select"
+                    type="text"
+                    placeholder="Vi du: Imou cong truoc"
+                />
             </label>
 
             <label class="network-field">
-                <span class="field-label">URL hoặc IP camera</span>
-                <input v-model="manualCameraUrl" class="filter-select mono" type="text" placeholder="http://IP:8081/video" />
+                <span class="field-label">URL stream cho AI / nguon goc</span>
+                <input
+                    v-model="manualCameraUrl"
+                    class="filter-select mono"
+                    type="text"
+                    placeholder="rtsp://... hoac http://IP:8081/video"
+                />
             </label>
 
             <label class="network-field">
-                <span class="field-label">Nạp vào slot</span>
+                <span class="field-label">Preview URL tren web (tuy chon)</span>
+                <input
+                    v-model="manualCameraPreviewUrl"
+                    class="filter-select mono"
+                    type="text"
+                    placeholder="http://.../videofeed hoac https://.../stream.m3u8"
+                />
+            </label>
+
+            <label class="network-field">
+                <span class="field-label">Nap vao slot</span>
                 <select v-model="manualTargetId" class="filter-select">
-                    <option value="auto">Tự động</option>
+                    <option value="auto">Tu dong</option>
                     <option v-for="camera in cameraSettings" :key="camera.id" :value="String(camera.id)">
                         {{ camera.name }}
                     </option>
@@ -55,25 +75,25 @@
 
             <div class="network-actions">
                 <button class="btn btn-secondary btn-sm" :disabled="discoveryLoading" @click="discoverLanCameras">
-                    {{ discoveryLoading ? 'Đang quét camera LAN...' : 'Tự tìm camera LAN' }}
+                    {{ discoveryLoading ? "Dang quet camera LAN..." : "Tu tim camera LAN" }}
                 </button>
                 <button class="btn btn-primary btn-sm" :disabled="connectLoading" @click="applyManualCamera">
-                    {{ connectLoading ? 'Đang nạp...' : 'Nạp vào mạng lưới' }}
+                    {{ connectLoading ? "Dang nap..." : "Nap vao mang luoi" }}
                 </button>
                 <button
                     class="btn btn-secondary btn-sm"
                     :disabled="connectLoading || !discoveredCameras.length"
                     @click="applyAllDiscoveredCameras"
                 >
-                    {{ connectLoading ? 'Đang nạp...' : 'Nạp tất cả camera tìm thấy' }}
+                    {{ connectLoading ? "Dang nap..." : "Nap tat ca camera tim thay" }}
                 </button>
             </div>
         </div>
 
         <p class="network-note">
-            iPhone IP Camera Lite nên dùng <code>http://IP:8081/video</code>. Nếu chỉ nhập <code>IP:8081</code>, hệ thống sẽ tự
-            bổ sung. Với IP Webcam Android, cổng phổ biến là <code>8080</code> và hệ thống sẽ tự thêm
-            <code>/videofeed</code> khi cần.
+            IP Webcam / IP Camera Lite van co the tu nhan URL HTTP. Voi Imou hoac RTSP, ban nen luu RTSP o
+            <code>URL stream</code> va them mot <code>Preview URL</code> da duoc bridge sang HLS, MJPEG hoac WebRTC
+            neu muon xem tren web.
         </p>
 
         <div v-if="discoveryMessage || connectMessage || discoveryError || connectError" class="network-messages">
@@ -88,16 +108,16 @@
                 <div>
                     <strong>{{ camera.name }}</strong>
                     <p class="muted small">{{ camera.ipAddress }}:{{ camera.port }}</p>
-                    <p class="small">URL chính: {{ getPreferredConnectUrl(camera) || 'Chưa có URL phù hợp' }}</p>
+                    <p class="small">Nguon uu tien: {{ getPreferredConnectUrl(camera) || "Chua co URL phu hop" }}</p>
                 </div>
                 <div class="discovery-actions">
                     <select v-model="discoveredTargetIds[getCameraKey(camera)]" class="filter-select mini-select">
-                        <option value="auto">Tự động</option>
+                        <option value="auto">Tu dong</option>
                         <option v-for="item in cameraSettings" :key="item.id" :value="String(item.id)">
                             {{ item.name }}
                         </option>
                     </select>
-                    <button class="btn btn-primary btn-sm" @click="applyDiscoveredCamera(camera)">Nạp vào slot</button>
+                    <button class="btn btn-primary btn-sm" @click="applyDiscoveredCamera(camera)">Nap vao slot</button>
                 </div>
             </article>
         </div>
@@ -107,7 +127,7 @@
                 <div class="camera-slot-head">
                     <div>
                         <h3>{{ camera.name }}</h3>
-                        <p>{{ camera.label || 'Chưa đặt tên hiển thị' }}</p>
+                        <p>{{ camera.label || "Chua dat ten hien thi" }}</p>
                     </div>
                     <label class="toggle">
                         <input v-model="camera.enabled" type="checkbox" @change="handleCameraToggle(camera)" />
@@ -117,44 +137,74 @@
 
                 <div class="chip-row">
                     <span class="soft-chip" :class="getCameraStatusClass(camera)">{{ getCameraStatusText(camera) }}</span>
+                    <span v-if="camera.previewUrl" class="soft-chip success">Preview web</span>
+                    <span v-else-if="camera.url && isRtspCameraUrl(camera.url)" class="soft-chip warn">Can gateway web</span>
                 </div>
 
                 <div class="slot-form">
                     <label class="network-field">
-                        <span class="field-label">Tên hiển thị trên giám sát</span>
+                        <span class="field-label">Ten hien thi tren giam sat</span>
                         <input
                             v-model="camera.label"
                             class="filter-select"
                             type="text"
-                            placeholder="Ví dụ: iPhone cổng phụ"
+                            placeholder="Vi du: Imou cong truoc"
                             @blur="persistCameraSettingsOnly"
                         />
                     </label>
 
                     <label class="network-field">
-                        <span class="field-label">URL stream</span>
+                        <span class="field-label">URL stream cho AI / backend</span>
                         <input
                             v-model="camera.url"
                             class="filter-select mono"
                             type="text"
-                            placeholder="http://IP:8081/video"
-                            @blur="normalizeCameraCardUrl(camera.id)"
+                            placeholder="rtsp://... hoac http://IP:8081/video"
+                            @blur="normalizeCameraCardUrls(camera.id)"
                         />
+                    </label>
+
+                    <label class="network-field">
+                        <span class="field-label">Preview URL tren web</span>
+                        <input
+                            v-model="camera.previewUrl"
+                            class="filter-select mono"
+                            type="text"
+                            placeholder="https://.../stream.m3u8 hoac http://IP:8080/videofeed"
+                            @blur="normalizeCameraCardUrls(camera.id)"
+                        />
+                        <span class="field-hint">
+                            Neu chi co RTSP, browser se khong phat truc tiep. Hay them URL HLS, MJPEG, MP4 hoac
+                            WebRTC gateway.
+                        </span>
                     </label>
 
                     <div class="slot-meta-grid">
                         <label class="network-field">
-                            <span class="field-label">Vị trí lắp đặt</span>
-                            <input v-model="camera.location" class="filter-select" type="text" @blur="persistCameraSettingsOnly" />
+                            <span class="field-label">Vi tri lap dat</span>
+                            <input
+                                v-model="camera.location"
+                                class="filter-select"
+                                type="text"
+                                @blur="persistCameraSettingsOnly"
+                            />
                         </label>
                     </div>
                 </div>
 
+                <div class="slot-preview">
+                    <div class="slot-preview-head">
+                        <strong>Preview tren web</strong>
+                        <span>{{ camera.previewUrl ? "Dang dung Preview URL" : "Dang dung nguon hien co" }}</span>
+                    </div>
+                    <StreamPreview :url="resolveCameraPreviewUrl(camera)" :label="camera.label || camera.name" />
+                </div>
+
                 <div class="panel-actions">
                     <button class="btn btn-secondary btn-sm" :disabled="checkingIds.includes(camera.id)" @click="refreshSingleCameraStatus(camera.id)">
-                        {{ checkingIds.includes(camera.id) ? 'Đang kiểm tra...' : 'Kiểm tra lại' }}
+                        {{ checkingIds.includes(camera.id) ? "Dang kiem tra..." : "Kiem tra lai" }}
                     </button>
-                    <button class="btn btn-danger btn-sm" @click="clearCamera(camera.id)">Xóa camera</button>
+                    <button class="btn btn-danger btn-sm" @click="clearCamera(camera.id)">Xoa camera</button>
                 </div>
             </article>
         </div>
@@ -162,9 +212,10 @@
 </template>
 
 <script setup>
-import axios from 'axios'
-import { computed, onMounted, ref } from 'vue'
-import { API_ORIGIN } from '../config/api'
+import axios from "axios"
+import { computed, onMounted, ref } from "vue"
+import { API_ORIGIN } from "../config/api"
+import StreamPreview from "./StreamPreview.vue"
 import {
     buildCameraHealthProbeUrl,
     createDefaultCameraSettings,
@@ -172,31 +223,35 @@ import {
     isRtspCameraUrl,
     loadCameraNetworkSettings,
     normalizeCameraUrl,
+    resolveCameraPreviewUrl,
     saveCameraNetworkSettings,
-} from '../utils/cameraNetwork'
+} from "../utils/cameraNetwork"
 
 const DISCOVERY_API_BASE = `${API_ORIGIN}/api/FaceID`
 const CAMERA_PROBE_TIMEOUT_MS = 3500
 
 const cameraSettings = ref(createDefaultCameraSettings())
-const manualCameraName = ref('')
-const manualCameraUrl = ref('')
-const manualTargetId = ref('auto')
+const manualCameraName = ref("")
+const manualCameraUrl = ref("")
+const manualCameraPreviewUrl = ref("")
+const manualTargetId = ref("auto")
 const discoveredCameras = ref([])
 const discoveredTargetIds = ref({})
 const discoveryLoading = ref(false)
 const connectLoading = ref(false)
-const discoveryMessage = ref('')
-const discoveryError = ref('')
-const connectMessage = ref('')
-const connectError = ref('')
+const discoveryMessage = ref("")
+const discoveryError = ref("")
+const connectMessage = ref("")
+const connectError = ref("")
 const checkingIds = ref([])
 const isRefreshingAll = ref(false)
 
+const hasCameraSource = (camera) => Boolean(camera?.url?.trim() || camera?.previewUrl?.trim())
+
 const localSummary = computed(() => {
-    const connected = cameraSettings.value.filter((camera) => camera.url).length
-    const enabled = cameraSettings.value.filter((camera) => camera.url && camera.enabled).length
-    const online = cameraSettings.value.filter((camera) => camera.url && camera.enabled && camera.online).length
+    const connected = cameraSettings.value.filter((camera) => hasCameraSource(camera)).length
+    const enabled = cameraSettings.value.filter((camera) => hasCameraSource(camera) && camera.enabled).length
+    const online = cameraSettings.value.filter((camera) => hasCameraSource(camera) && camera.enabled && camera.online).length
 
     return { connected, enabled, online }
 })
@@ -220,9 +275,9 @@ const probeHttpCameraUrl = async (url, timeoutMs = CAMERA_PROBE_TIMEOUT_MS) => {
 
     try {
         await fetch(probeUrl, {
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-store',
+            method: "GET",
+            mode: "no-cors",
+            cache: "no-store",
             signal: controller.signal,
         })
         return true
@@ -250,10 +305,11 @@ const refreshSingleCameraStatus = async (cameraId) => {
 
     markChecking(cameraId, true)
     try {
-        if (!camera.url || !camera.enabled) {
+        const previewCandidate = resolveCameraPreviewUrl(camera)
+        if (!hasCameraSource(camera) || !camera.enabled) {
             camera.online = false
-        } else if (isHttpCameraUrl(camera.url)) {
-            camera.online = await probeHttpCameraUrl(camera.url)
+        } else if (isHttpCameraUrl(previewCandidate)) {
+            camera.online = await probeHttpCameraUrl(previewCandidate)
         } else {
             camera.online = true
         }
@@ -275,48 +331,51 @@ const refreshAllCameraStatuses = async () => {
 }
 
 const getCameraStatusText = (camera) => {
-    if (!camera.url) return 'Chưa gắn'
-    if (!camera.enabled) return 'Đã tắt'
-    if (checkingIds.value.includes(camera.id)) return 'Đang kiểm tra'
-    if (isRtspCameraUrl(camera.url)) return 'RTSP'
-    return camera.online ? 'Trực tuyến' : 'Ngoại tuyến'
+    if (!hasCameraSource(camera)) return "Chua gan"
+    if (!camera.enabled) return "Da tat"
+    if (checkingIds.value.includes(camera.id)) return "Dang kiem tra"
+    if (camera.url && isRtspCameraUrl(camera.url) && camera.previewUrl) return "RTSP + preview"
+    if (camera.url && isRtspCameraUrl(camera.url)) return "RTSP cho AI"
+    return camera.online ? "Truc tuyen" : "Ngoai tuyen"
 }
 
 const getCameraStatusClass = (camera) => {
-    if (!camera.url || !camera.enabled) return 'warn'
-    if (checkingIds.value.includes(camera.id)) return ''
-    if (isRtspCameraUrl(camera.url)) return ''
-    return camera.online ? 'success' : 'danger'
+    if (!hasCameraSource(camera) || !camera.enabled) return "warn"
+    if (checkingIds.value.includes(camera.id)) return ""
+    if (camera.url && isRtspCameraUrl(camera.url) && !camera.previewUrl) return ""
+    return camera.online ? "success" : "danger"
 }
 
 const clearDiscoveryState = () => {
-    discoveryMessage.value = ''
-    discoveryError.value = ''
+    discoveryMessage.value = ""
+    discoveryError.value = ""
 }
 
 const clearConnectState = () => {
-    connectMessage.value = ''
-    connectError.value = ''
+    connectMessage.value = ""
+    connectError.value = ""
 }
 
 const getCameraKey = (camera) => `${camera.ipAddress}:${camera.port}`
-const getPreferredConnectUrl = (camera) => camera?.previewUrl || camera?.rtspUrls?.[0] || camera?.baseUrl || ''
+const getPreferredConnectUrl = (camera) => camera?.previewUrl || camera?.rtspUrls?.[0] || camera?.baseUrl || ""
 
 const guessCameraLabel = (url) => {
     try {
         return `Camera ${new URL(url).hostname}`
     } catch {
-        return 'Camera LAN'
+        return "Camera LAN"
     }
 }
 
-const resolveTargetCameraId = (preferredId = 'auto', preferredUrl = '') => {
-    if (preferredId !== 'auto') return Number(preferredId)
+const resolveTargetCameraId = (preferredId = "auto", urlCandidates = []) => {
+    if (preferredId !== "auto") return Number(preferredId)
 
-    const existing = cameraSettings.value.find((camera) => camera.url === preferredUrl)
+    const existing = cameraSettings.value.find((camera) =>
+        urlCandidates.some((candidate) => candidate && (camera.url === candidate || camera.previewUrl === candidate))
+    )
     if (existing) return existing.id
 
-    const empty = cameraSettings.value.find((camera) => !camera.url)
+    const empty = cameraSettings.value.find((camera) => !hasCameraSource(camera))
     if (empty) return empty.id
 
     const disabled = cameraSettings.value.find((camera) => !camera.enabled)
@@ -325,30 +384,34 @@ const resolveTargetCameraId = (preferredId = 'auto', preferredUrl = '') => {
     return null
 }
 
-const applyCameraToNetwork = async (payload, preferredId = 'auto') => {
+const applyCameraToNetwork = async (payload, preferredId = "auto") => {
     const normalizedUrl = normalizeCameraUrl(payload.url)
-    if (!normalizedUrl) {
-        return { ok: false, error: 'Hãy nhập URL camera hợp lệ trước khi nạp.' }
+    const normalizedPreviewUrl = normalizeCameraUrl(payload.previewUrl)
+    const primaryUrl = normalizedUrl || normalizedPreviewUrl
+
+    if (!primaryUrl) {
+        return { ok: false, error: "Hay nhap it nhat mot URL hop le truoc khi nap." }
     }
 
-    const targetId = resolveTargetCameraId(preferredId, normalizedUrl)
+    const targetId = resolveTargetCameraId(preferredId, [normalizedUrl, normalizedPreviewUrl, primaryUrl])
     if (!targetId) {
         return {
             ok: false,
-            error: 'Mạng lưới camera đã đầy. Hãy chọn một slot cụ thể hoặc xóa bớt camera cũ.',
+            error: "Mang luoi camera da day. Hay chon mot slot cu the hoac xoa bot camera cu.",
         }
     }
 
     const index = cameraSettings.value.findIndex((camera) => camera.id === targetId)
     if (index < 0) {
-        return { ok: false, error: 'Không tìm thấy slot camera phù hợp.' }
+        return { ok: false, error: "Khong tim thay slot camera phu hop." }
     }
 
     const current = cameraSettings.value[index]
     cameraSettings.value[index] = {
         ...current,
-        label: payload.label?.trim() || current.label || guessCameraLabel(normalizedUrl),
+        label: payload.label?.trim() || current.label || guessCameraLabel(primaryUrl),
         url: normalizedUrl,
+        previewUrl: normalizedPreviewUrl,
         enabled: true,
         online: false,
         location: payload.location?.trim() || current.location,
@@ -360,7 +423,7 @@ const applyCameraToNetwork = async (payload, preferredId = 'auto') => {
     return {
         ok: true,
         camera: cameraSettings.value[index],
-        message: `Đã nạp ${cameraSettings.value[index].label} vào ${cameraSettings.value[index].name}.`,
+        message: `Da nap ${cameraSettings.value[index].label} vao ${cameraSettings.value[index].name}.`,
     }
 }
 
@@ -369,7 +432,11 @@ const applyManualCamera = async () => {
     connectLoading.value = true
     try {
         const result = await applyCameraToNetwork(
-            { label: manualCameraName.value, url: manualCameraUrl.value },
+            {
+                label: manualCameraName.value,
+                url: manualCameraUrl.value,
+                previewUrl: manualCameraPreviewUrl.value,
+            },
             manualTargetId.value
         )
 
@@ -379,6 +446,7 @@ const applyManualCamera = async () => {
         }
 
         manualCameraUrl.value = normalizeCameraUrl(manualCameraUrl.value)
+        manualCameraPreviewUrl.value = normalizeCameraUrl(manualCameraPreviewUrl.value)
         connectMessage.value = result.message
     } finally {
         connectLoading.value = false
@@ -395,20 +463,32 @@ const discoverLanCameras = async () => {
         const nextSelections = { ...discoveredTargetIds.value }
         for (const camera of discoveredCameras.value) {
             const key = getCameraKey(camera)
-            if (!nextSelections[key]) nextSelections[key] = 'auto'
+            if (!nextSelections[key]) nextSelections[key] = "auto"
         }
         discoveredTargetIds.value = nextSelections
 
         if (!discoveredCameras.value.length) {
-            discoveryError.value = 'Chưa tìm thấy camera LAN phù hợp trong cùng mạng.'
+            discoveryError.value = "Chua tim thay camera LAN phu hop trong cung mang."
             return
         }
 
-        discoveryMessage.value = `Tìm thấy ${discoveredCameras.value.length} thiết bị camera LAN.`
+        discoveryMessage.value = `Tim thay ${discoveredCameras.value.length} thiet bi camera LAN.`
     } catch (error) {
-        discoveryError.value = error?.response?.data?.message || error?.message || 'Quét camera LAN thất bại.'
+        discoveryError.value = error?.response?.data?.message || error?.message || "Quet camera LAN that bai."
     } finally {
         discoveryLoading.value = false
+    }
+}
+
+const buildDiscoveredCameraPayload = (camera) => {
+    const previewUrl = camera?.previewUrl || camera?.baseUrl || ""
+    const rtspUrl = camera?.rtspUrls?.[0] || ""
+    const sourceUrl = rtspUrl || previewUrl
+
+    return {
+        label: camera.name,
+        url: sourceUrl,
+        previewUrl,
     }
 }
 
@@ -416,15 +496,15 @@ const applyDiscoveredCamera = async (camera) => {
     clearConnectState()
     connectLoading.value = true
     try {
-        const connectUrl = getPreferredConnectUrl(camera)
-        if (!connectUrl) {
-            connectError.value = `Thiết bị ${camera.name} chưa có URL phù hợp để nạp.`
+        const payload = buildDiscoveredCameraPayload(camera)
+        if (!payload.url && !payload.previewUrl) {
+            connectError.value = `Thiet bi ${camera.name} chua co URL phu hop de nap.`
             return
         }
 
         const result = await applyCameraToNetwork(
-            { label: camera.name, url: connectUrl },
-            discoveredTargetIds.value[getCameraKey(camera)] || 'auto'
+            payload,
+            discoveredTargetIds.value[getCameraKey(camera)] || "auto"
         )
 
         if (!result.ok) {
@@ -441,7 +521,7 @@ const applyDiscoveredCamera = async (camera) => {
 const applyAllDiscoveredCameras = async () => {
     clearConnectState()
     if (!discoveredCameras.value.length) {
-        connectError.value = 'Hãy quét camera LAN trước khi nạp toàn bộ.'
+        connectError.value = "Hay quet camera LAN truoc khi nap toan bo."
         return
     }
 
@@ -451,15 +531,15 @@ const applyAllDiscoveredCameras = async () => {
         const skipped = []
 
         for (const camera of discoveredCameras.value) {
-            const connectUrl = getPreferredConnectUrl(camera)
-            if (!connectUrl) {
+            const payload = buildDiscoveredCameraPayload(camera)
+            if (!payload.url && !payload.previewUrl) {
                 skipped.push(camera.name || `${camera.ipAddress}:${camera.port}`)
                 continue
             }
 
             const result = await applyCameraToNetwork(
-                { label: camera.name, url: connectUrl },
-                discoveredTargetIds.value[getCameraKey(camera)] || 'auto'
+                payload,
+                discoveredTargetIds.value[getCameraKey(camera)] || "auto"
             )
 
             if (!result.ok) {
@@ -471,24 +551,26 @@ const applyAllDiscoveredCameras = async () => {
         }
 
         if (!assigned.length) {
-            connectError.value = 'Không thể nạp camera nào vào mạng lưới.'
+            connectError.value = "Khong the nap camera nao vao mang luoi."
             return
         }
 
-        connectMessage.value = `Đã nạp ${assigned.length} camera vào ${assigned.join(', ')}${
-            skipped.length ? `. Bỏ qua ${skipped.length} thiết bị.` : '.'
+        connectMessage.value = `Da nap ${assigned.length} camera vao ${assigned.join(", ")}${
+            skipped.length ? `. Bo qua ${skipped.length} thiet bi.` : "."
         }`
     } finally {
         connectLoading.value = false
     }
 }
 
-const normalizeCameraCardUrl = async (cameraId) => {
+const normalizeCameraCardUrls = async (cameraId) => {
     const camera = cameraSettings.value.find((item) => item.id === cameraId)
     if (!camera) return
 
     camera.url = normalizeCameraUrl(camera.url)
-    if (!camera.url) {
+    camera.previewUrl = normalizeCameraUrl(camera.previewUrl)
+
+    if (!hasCameraSource(camera)) {
         camera.enabled = false
         camera.online = false
         persistCameraSettingsOnly()
@@ -501,9 +583,9 @@ const normalizeCameraCardUrl = async (cameraId) => {
 
 const handleCameraToggle = async (camera) => {
     clearConnectState()
-    if (!camera.url && camera.enabled) {
+    if (!hasCameraSource(camera) && camera.enabled) {
         camera.enabled = false
-        connectError.value = `Hãy nhập URL trước khi bật ${camera.name}.`
+        connectError.value = `Hay nhap it nhat mot URL truoc khi bat ${camera.name}.`
         persistCameraSettingsOnly()
         return
     }
@@ -525,14 +607,15 @@ const clearCamera = (cameraId) => {
     const current = cameraSettings.value[index]
     cameraSettings.value[index] = {
         ...current,
-        url: '',
+        url: "",
+        previewUrl: "",
         enabled: false,
         online: false,
     }
 
     persistCameraSettingsOnly()
     clearConnectState()
-    connectMessage.value = `Đã xóa cấu hình khỏi ${current.name}.`
+    connectMessage.value = `Da xoa cau hinh khoi ${current.name}.`
 }
 
 onMounted(async () => {
@@ -575,7 +658,7 @@ onMounted(async () => {
 
 .network-toolbar {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(180px, 0.7fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
 }
 
@@ -591,11 +674,18 @@ onMounted(async () => {
     font-weight: 700;
 }
 
+.field-hint {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+}
+
 .network-actions {
     display: flex;
     align-items: flex-end;
     gap: 10px;
     flex-wrap: wrap;
+    grid-column: 1 / -1;
 }
 
 .network-note {
@@ -608,7 +698,7 @@ onMounted(async () => {
     padding: 2px 6px;
     border-radius: 6px;
     background: rgba(15, 23, 42, 0.06);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
 }
 
 .network-messages {
@@ -701,8 +791,22 @@ onMounted(async () => {
     grid-template-columns: 1fr;
 }
 
+.slot-preview {
+    display: grid;
+    gap: 10px;
+}
+
+.slot-preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+}
+
 .mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
 }
 
 .toggle {
@@ -727,7 +831,7 @@ onMounted(async () => {
 }
 
 .toggle span::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 3px;
     top: 3px;
@@ -763,7 +867,8 @@ onMounted(async () => {
 @media (max-width: 768px) {
     .discovery-card,
     .discovery-actions,
-    .camera-slot-head {
+    .camera-slot-head,
+    .slot-preview-head {
         flex-direction: column;
         align-items: stretch;
     }
