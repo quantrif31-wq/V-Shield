@@ -13,11 +13,14 @@
             v-else-if="playerMode === 'video' || playerMode === 'hls'"
             ref="videoRef"
             class="stream-media"
-            controls
+            :controls="showControls"
             autoplay
             muted
             playsinline
+            disablepictureinpicture
+            controlslist="nodownload noplaybackrate noremoteplayback"
             @loadeddata="handleReady"
+            @ended="handleEnded"
             @error="handleError('Khong tai duoc luong video tren trinh duyet.')"
         ></video>
 
@@ -53,6 +56,10 @@ const props = defineProps({
     label: {
         type: String,
         default: 'Camera preview',
+    },
+    showControls: {
+        type: Boolean,
+        default: false,
     },
 })
 
@@ -107,6 +114,11 @@ const handleReady = () => {
 const handleError = (message) => {
     errorMessage.value = message
     isLoading.value = false
+}
+
+const handleEnded = async () => {
+    if (playerMode.value !== 'video' || !resolvedUrl.value) return
+    await attachVideoPreview()
 }
 
 const ensureHlsLibrary = async () => {
