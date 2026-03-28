@@ -1,6 +1,5 @@
 <template>
     <div class="page-container animate-in">
-        <!-- Minimalist Header -->
         <header class="page-header bento-header">
             <div class="greeting">
                 <h1 class="page-title">Đăng ký trước</h1>
@@ -17,7 +16,6 @@
             </div>
         </header>
 
-        <!-- Stats Overview Row -->
         <div class="bento-grid-mini" style="grid-template-columns: repeat(4, 1fr);">
             <div class="bento-card stat-card">
                 <div class="stat-icon-wrapper blue">
@@ -57,7 +55,6 @@
             </div>
         </div>
 
-        <!-- Main Content Box -->
         <div class="bento-card table-section">
             <div class="table-toolbar">
                 <div class="search-box">
@@ -75,7 +72,6 @@
                 </div>
             </div>
 
-            <!-- States -->
             <div v-if="isLoading" class="empty-layout">
                 <div class="spinner-lg"></div>
                 <p>Đang tải dữ liệu đăng ký...</p>
@@ -86,14 +82,12 @@
                 <p style="font-size: 0.9rem;">Tạo link đăng ký và gửi cho khách để bắt đầu</p>
             </div>
             
-            <!-- Sleek Table -->
             <div v-else class="sleek-table-container">
                 <table class="sleek-table">
                     <thead>
                         <tr>
                             <th>Khách</th>
                             <th>Host / Thời gian</th>
-                            <th>Biển số</th>
                             <th>Khách đi cùng</th>
                             <th>Trạng thái</th>
                             <th class="text-right">Hành động</th>
@@ -121,10 +115,6 @@
                                         {{ formatDateTime(reg.expectedTimeOut) }}
                                     </span>
                                 </div>
-                            </td>
-                            <td>
-                                <span v-if="reg.expectedLicensePlate" class="plate">{{ reg.expectedLicensePlate }}</span>
-                                <span v-else class="walk-txt">—</span>
                             </td>
                             <td>
                                 <div class="visitors-count">
@@ -155,7 +145,6 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
             <div class="pagination-footer" v-if="registrations.length > 0">
                 <span class="showing-txt">Hiển thị {{ registrations.length }} / {{ totalItems }} đơn</span>
                 <div class="pg-controls">
@@ -166,7 +155,6 @@
             </div>
         </div>
 
-        <!-- Detail Modal Modern -->
         <transition name="modal">
             <div v-if="showDetailModal" class="modal-backdrop" @click.self="showDetailModal = false">
                 <div class="modern-modal" style="max-width: 720px;">
@@ -180,7 +168,6 @@
                         <p>Đang tải dữ liệu...</p>
                     </div>
                     <div v-else-if="detail" class="modal-body scrollable-body">
-                        <!-- Guest info -->
                         <div class="detail-section-bento">
                             <h4 class="bento-subtitle">Thông tin Đăng ký</h4>
                             <div class="mini-grid-info">
@@ -191,10 +178,6 @@
                                 <div class="info-block">
                                     <span class="lbl">Liên hệ</span>
                                     <span class="val">{{ detail.guestPhone || '—' }}</span>
-                                </div>
-                                <div class="info-block">
-                                    <span class="lbl">Biển số PT</span>
-                                    <span class="val plate-val">{{ detail.expectedLicensePlate || '—' }}</span>
                                 </div>
                                 <div class="info-block">
                                     <span class="lbl">Nhân sự Host</span>
@@ -214,7 +197,6 @@
                             </div>
                         </div>
 
-                        <!-- Visitors Array -->
                         <div v-if="detail.visitors && detail.visitors.length > 0" class="detail-section-bento mt-2">
                             <h4 class="bento-subtitle">Đoàn khách đi cùng ({{ detail.visitors.length }})</h4>
                             <div class="pill-list mt-1">
@@ -228,7 +210,6 @@
                             </div>
                         </div>
 
-                        <!-- Access Logs -->
                         <div v-if="detail.accessLogs && detail.accessLogs.length > 0" class="detail-section-bento mt-2">
                             <h4 class="bento-subtitle">Lịch sử check-in / check-out</h4>
                             <div class="timeline-box mt-1">
@@ -254,7 +235,6 @@
             </div>
         </transition>
 
-        <!-- Create Link Modal Modern -->
         <transition name="modal">
             <div v-if="showCreateLinkModal" class="modal-backdrop" @click.self="showCreateLinkModal = false">
                 <div class="modern-modal" style="max-width: 480px;">
@@ -677,10 +657,6 @@ input[type="date"].minimal-select { padding: 8px 14px; }
 .status-pill.inactive { background: rgba(239, 68, 68, 0.05); color: var(--accent-danger); border-color: rgba(239, 68, 68, 0.2); }
 .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-.plate { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.85rem; padding: 4px 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); }
-.plate-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; letter-spacing: 0.5px;}
-.walk-txt { color: var(--text-muted); font-size: 0.9rem; font-style: italic; }
-
 .visitors-count { display: inline-flex; padding: 4px 10px; background: var(--bg-input); border-radius: 6px; font-size: 0.85rem; color: var(--text-secondary); border: 1px solid var(--border-color); }
 
 .action-menu { display: flex; gap: 8px; justify-content: flex-end; }
@@ -801,5 +777,3 @@ input[type="date"].minimal-select { padding: 8px 14px; }
     .timeline-row { flex-wrap: wrap; }
 }
 </style>
-
-

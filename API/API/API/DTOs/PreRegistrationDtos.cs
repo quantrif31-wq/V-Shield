@@ -28,10 +28,7 @@ public class SubmitRegistrationDto
     [StringLength(20)]
     public string? Phone { get; set; }
 
-    // ── Thông tin xe ──────────────────────────────────────
-    [Required, StringLength(20)]
-    public string ExpectedLicensePlate { get; set; } = null!;
-
+    // ── Thời gian dự kiến ─────────────────────────────────
     [Required]
     public DateTime ExpectedTimeIn { get; set; }
 
@@ -95,7 +92,6 @@ public class RegistrationListItemDto
     public int GuestId { get; set; }
     public string GuestFullName { get; set; } = null!;
     public string? GuestPhone { get; set; }
-    public string? ExpectedLicensePlate { get; set; }
     public DateTime ExpectedTimeIn { get; set; }
     public DateTime ExpectedTimeOut { get; set; }
     public int NumberOfVisitors { get; set; }
