@@ -6,7 +6,7 @@
             :alt="label"
             class="stream-media"
             @load="handleReady"
-            @error="handleError('Khong tai duoc anh preview tu camera.')"
+            @error="handleError('Không tải được ảnh preview từ camera.')"
         />
 
         <video
@@ -21,25 +21,25 @@
             controlslist="nodownload noplaybackrate noremoteplayback"
             @loadeddata="handleReady"
             @ended="handleEnded"
-            @error="handleError('Khong tai duoc luong video tren trinh duyet.')"
+            @error="handleError('Không tải được luồng video trên trình duyệt.')"
         ></video>
 
         <div v-else-if="playerMode === 'rtsp'" class="preview-message">
-            <strong>RTSP da san sang cho AI</strong>
-            <p>Trinh duyet khong phat truc tiep RTSP. Hay them Preview URL dang HLS/WebRTC/MJPEG de xem tren web.</p>
+            <strong>RTSP đã sẵn sàng cho AI</strong>
+            <p>Trình duyệt không phát trực tiếp RTSP. Hãy thêm Preview URL dạng HLS/WebRTC/MJPEG để xem trên web.</p>
         </div>
 
         <div v-else-if="playerMode === 'empty'" class="preview-message">
-            <strong>Chua co preview</strong>
-            <p>Hay nhap URL xem tren web trong phan quan ly camera de hien thi tai day.</p>
+            <strong>Chưa có preview</strong>
+            <p>Hãy nhập URL xem trên web trong phần quản lý camera để hiển thị tại đây.</p>
         </div>
 
         <div v-else class="preview-message">
-            <strong>Khong ho tro xem truc tiep</strong>
-            <p>{{ errorMessage || 'URL nay can mot bridge de chuyen sang dinh dang trinh duyet phat duoc.' }}</p>
+            <strong>Không hỗ trợ xem trực tiếp</strong>
+            <p>{{ errorMessage || 'URL này cần một bridge để chuyển sang định dạng trình duyệt phát được.' }}</p>
         </div>
 
-        <div v-if="isLoading" class="preview-overlay">Dang tai stream...</div>
+        <div v-if="isLoading" class="preview-overlay">Đang tải stream...</div>
         <div v-else-if="errorMessage && playerMode !== 'unsupported'" class="preview-overlay error">{{ errorMessage }}</div>
     </div>
 </template>
@@ -129,7 +129,7 @@ const ensureHlsLibrary = async () => {
             const existing = document.querySelector(`script[src="${HLS_SCRIPT_SRC}"]`)
             if (existing) {
                 existing.addEventListener('load', () => resolve(window.Hls), { once: true })
-                existing.addEventListener('error', () => reject(new Error('Khong tai duoc HLS player.')), { once: true })
+                existing.addEventListener('error', () => reject(new Error('Không tải được HLS player.')), { once: true })
                 return
             }
 
@@ -137,7 +137,7 @@ const ensureHlsLibrary = async () => {
             script.src = HLS_SCRIPT_SRC
             script.async = true
             script.onload = () => resolve(window.Hls)
-            script.onerror = () => reject(new Error('Khong tai duoc HLS player.'))
+            script.onerror = () => reject(new Error('Không tải được HLS player.'))
             document.head.appendChild(script)
         })
     }
@@ -183,7 +183,7 @@ const attachHlsPreview = async () => {
     try {
         const Hls = await ensureHlsLibrary()
         if (!Hls?.isSupported?.()) {
-            handleError('Trinh duyet nay khong ho tro HLS player.')
+            handleError('Trình duyệt này không hỗ trợ HLS player.')
             return
         }
 
@@ -194,7 +194,7 @@ const attachHlsPreview = async () => {
 
         hlsInstance.on(Hls.Events.ERROR, (_, data) => {
             if (data?.fatal) {
-                handleError('Khong mo duoc luong HLS tu camera.')
+                handleError('Không mở được luồng HLS từ camera.')
             }
         })
 
@@ -208,7 +208,7 @@ const attachHlsPreview = async () => {
             }
         })
     } catch (error) {
-        handleError(error instanceof Error ? error.message : 'Khong tai duoc HLS player.')
+        handleError(error instanceof Error ? error.message : 'Không tải được HLS player.')
     }
 }
 

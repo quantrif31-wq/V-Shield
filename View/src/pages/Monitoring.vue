@@ -3,34 +3,34 @@
         <div class="page-header-bar">
             <div>
                 <span class="panel-kicker">Live monitoring</span>
-                <h1 class="page-title">Giam sat truc tiep</h1>
+                <h1 class="page-title">Giám sát trực tiếp</h1>
             </div>
             <div class="header-actions">
-                <router-link to="/device-management" class="btn btn-primary">Quan ly camera & cong</router-link>
-                <router-link to="/exceptions" class="btn btn-secondary">Xem ngoai le</router-link>
+                <router-link to="/device-management" class="btn btn-primary">Quản lý camera & cổng</router-link>
+                <router-link to="/exceptions" class="btn btn-secondary">Xem ngoại lệ</router-link>
             </div>
         </div>
 
         <section class="metric-grid">
             <article class="metric-tile">
-                <span class="metric-label">Camera da cau hinh</span>
+                <span class="metric-label">Camera đã cấu hình</span>
                 <strong class="metric-value">{{ summary.camerasConfigured }}</strong>
-                <span class="metric-note">Doc tu bang <code>Camera</code> trong he thong.</span>
+                <span class="metric-note">Đọc từ bảng <code>Camera</code> trong hệ thống.</span>
             </article>
             <article class="metric-tile">
-                <span class="metric-label">Cong dang quan ly</span>
+                <span class="metric-label">Cổng đang quản lý</span>
                 <strong class="metric-value">{{ summary.gatesConfigured }}</strong>
-                <span class="metric-note">So vi tri cong dang duoc khai bao.</span>
+                <span class="metric-note">Số vị trí cổng đang được khai báo.</span>
             </article>
             <article class="metric-tile">
-                <span class="metric-label">Camera co gan cong</span>
+                <span class="metric-label">Camera có gắn cổng</span>
                 <strong class="metric-value">{{ summary.camerasLinkedToGate }}</strong>
-                <span class="metric-note">Cac camera da lien ket dung diem truy cap.</span>
+                <span class="metric-note">Các camera đã liên kết đúng điểm truy cập.</span>
             </article>
             <article class="metric-tile">
-                <span class="metric-label">Camera chua gan cong</span>
+                <span class="metric-label">Camera chưa gắn cổng</span>
                 <strong class="metric-value">{{ summary.unassignedCameras }}</strong>
-                <span class="metric-note">Can kiem tra lai cau hinh thiet bi.</span>
+                <span class="metric-note">Cần kiểm tra lại cấu hình thiết bị.</span>
             </article>
         </section>
 
@@ -38,15 +38,15 @@
             <div class="panel-head">
                 <div>
                     <span class="panel-kicker">Local camera previews</span>
-                    <h2 class="panel-title">Preview tu cau hinh local</h2>
+                    <h2 class="panel-title">Preview từ cấu hình local</h2>
                     <p class="panel-copy">
-                        Muc nay doc du lieu da nhap o trang Quan ly camera. RTSP chi dung cho AI; de xem tren web, hay
-                        them <code>Preview URL</code> dang HLS, MJPEG, MP4 hoac WebRTC gateway.
+                        Mục này đọc dữ liệu đã nhập ở trang Quản lý camera. RTSP chỉ dùng cho AI; để xem trên web, hãy
+                        thêm <code>Preview URL</code> dạng HLS, MJPEG, MP4 hoặc WebRTC gateway.
                     </p>
                 </div>
                 <div class="panel-actions">
-                    <button class="btn btn-secondary btn-sm" @click="loadLocalCameraSettings">Tai lai preview</button>
-                    <router-link to="/device-management" class="btn btn-primary btn-sm">Sua cau hinh</router-link>
+                    <button class="btn btn-secondary btn-sm" @click="loadLocalCameraSettings">Tải lại preview</button>
+                    <router-link to="/device-management" class="btn btn-primary btn-sm">Sửa cấu hình</router-link>
                 </div>
             </div>
 
@@ -80,13 +80,13 @@
                             Preview: {{ camera.previewUrl }}
                         </p>
                         <p v-else class="surface-item-sub">
-                            Chua co Preview URL cho browser. Neu slot nay chi co RTSP, web se hien thong bao thay vi video.
+                            Chưa có Preview URL cho browser. Nếu slot này chỉ có RTSP, web sẽ hiện thông báo thay vì video.
                         </p>
                     </div>
                 </article>
             </div>
             <div v-else class="empty-card">
-                Chua co camera local nao duoc bat trong trinh duyet nay. Hay vao Quan ly camera de them RTSP va Preview
+                Chưa có camera local nào được bật trong trình duyệt này. Hãy vào Quản lý camera để thêm RTSP và Preview
                 URL.
             </div>
         </section>
@@ -96,9 +96,9 @@
                 <div class="panel-head">
                     <div>
                         <span class="panel-kicker">Configured cameras</span>
-                        <h2 class="panel-title">Camera & diem dat</h2>
+                        <h2 class="panel-title">Camera & điểm đặt</h2>
                     </div>
-                    <router-link to="/device-management" class="btn btn-secondary btn-sm">Mo cau hinh</router-link>
+                    <router-link to="/device-management" class="btn btn-secondary btn-sm">Mở cấu hình</router-link>
                 </div>
 
                 <div v-if="cameras.length" class="camera-grid scrollable-panel">
@@ -106,37 +106,37 @@
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ camera.cameraName }}</strong>
-                                <span>{{ camera.gateName || "Chua gan cong" }}</span>
+                                <span>{{ camera.gateName || "Chưa gắn cổng" }}</span>
                             </div>
                             <span class="soft-chip" :class="camera.gateId ? 'success' : 'warn'">
-                                {{ camera.cameraType || "Khong ro loai" }}
+                                {{ camera.cameraType || "Không rõ loại" }}
                             </span>
                         </div>
                         <div class="chip-row">
                             <span class="soft-chip">{{ camera.accessLogCount }} log</span>
                             <span v-if="camera.latestPlate" class="soft-chip success">{{ camera.latestPlate }}</span>
-                            <span v-else class="soft-chip warn">Chua co bien so</span>
+                            <span v-else class="soft-chip warn">Chưa có biển số</span>
                         </div>
                         <p class="surface-item-sub">
-                            {{ camera.gateLocation || "Chua co vi tri cong" }}
+                            {{ camera.gateLocation || "Chưa có vị trí cổng" }}
                             <template v-if="camera.lastAccessAt">
-                                - hoat dong gan nhat {{ formatDateTime(camera.lastAccessAt) }}
+                                - hoạt động gần nhất {{ formatDateTime(camera.lastAccessAt) }}
                             </template>
                         </p>
                     </article>
                     <div v-if="cameras.length > maxCameras" class="show-more-hint">
-                        Hien thi {{ maxCameras }}/{{ cameras.length }} camera. Vao
-                        <router-link to="/device-management">Quan ly thiet bi</router-link> de xem tat ca.
+                        Hiển thị {{ maxCameras }}/{{ cameras.length }} camera. Vào
+                        <router-link to="/device-management">Quản lý thiết bị</router-link> để xem tất cả.
                     </div>
                 </div>
-                <div v-else class="empty-card">Chua co camera nao trong co so du lieu.</div>
+                <div v-else class="empty-card">Chưa có camera nào trong cơ sở dữ liệu.</div>
             </article>
 
             <article class="ops-panel">
                 <div class="panel-head">
                     <div>
                         <span class="panel-kicker">Plate recognition</span>
-                        <h2 class="panel-title">Bien so nhan dien gan nhat</h2>
+                        <h2 class="panel-title">Biển số nhận diện gần nhất</h2>
                     </div>
                 </div>
 
@@ -150,11 +150,11 @@
                             <span class="soft-chip success">{{ formatTime(plate.lastUpdate) }}</span>
                         </div>
                         <p class="surface-item-sub">
-                            Ban ghi bien so moi nhat tu camera, dung de doi soat nhanh voi dong ra vao.
+                            Bản ghi biển số mới nhất từ camera, dùng để đối soát nhanh với dòng ra vào.
                         </p>
                     </article>
                 </div>
-                <div v-else class="empty-card">Chua co du lieu nhan dien bien so gan day.</div>
+                <div v-else class="empty-card">Chưa có dữ liệu nhận diện biển số gần đây.</div>
             </article>
         </section>
 
@@ -163,9 +163,9 @@
                 <div class="panel-head">
                     <div>
                         <span class="panel-kicker">Face & access</span>
-                        <h2 class="panel-title">Dong xac minh khuon mat gan nhat</h2>
+                        <h2 class="panel-title">Dòng xác minh khuôn mặt gần nhất</h2>
                     </div>
-                    <router-link to="/access-logs" class="btn btn-secondary btn-sm">Mo nhat ky</router-link>
+                    <router-link to="/access-logs" class="btn btn-secondary btn-sm">Mở nhật ký</router-link>
                 </div>
 
                 <div v-if="recentActivities.length" class="surface-list scrollable-panel">
@@ -173,10 +173,10 @@
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ activity.actorName }}</strong>
-                                <span>{{ activity.gateName || "Chua gan cong" }}</span>
+                                <span>{{ activity.gateName || "Chưa gắn cổng" }}</span>
                             </div>
                             <span class="soft-chip" :class="activity.direction === 'IN' ? 'success' : 'warn'">
-                                {{ activity.direction === "IN" ? "Vao" : "Ra" }}
+                                {{ activity.direction === "IN" ? "Vào" : "Ra" }}
                             </span>
                         </div>
                         <div class="chip-row">
@@ -185,18 +185,18 @@
                             <span v-if="activity.isBypass" class="soft-chip danger">BYPASS</span>
                         </div>
                         <p class="surface-item-sub">
-                            {{ activity.cameraName || "Khong co camera" }} - {{ formatDateTime(activity.timestamp) }}
+                            {{ activity.cameraName || "Không có camera" }} - {{ formatDateTime(activity.timestamp) }}
                         </p>
                     </article>
                 </div>
-                <div v-else class="empty-card">Chua co log nhan dien nao gan day.</div>
+                <div v-else class="empty-card">Chưa có log nhận diện nào gần đây.</div>
             </article>
 
             <article class="ops-panel">
                 <div class="panel-head">
                     <div>
                         <span class="panel-kicker">Gate posture</span>
-                        <h2 class="panel-title">Tinh trang cong truy cap</h2>
+                        <h2 class="panel-title">Tình trạng cổng truy cập</h2>
                     </div>
                 </div>
 
@@ -205,19 +205,19 @@
                         <div class="camera-card-head">
                             <div>
                                 <strong>{{ gate.gateName }}</strong>
-                                <span>{{ gate.location || "Chua co vi tri" }}</span>
+                                <span>{{ gate.location || "Chưa có vị trí" }}</span>
                             </div>
                             <span class="soft-chip">{{ gate.cameraCount }} camera</span>
                         </div>
                         <p class="surface-item-sub">
-                            {{ gate.accessLogCount }} log lien quan
+                            {{ gate.accessLogCount }} log liên quan
                             <template v-if="gate.lastAccessAt">
-                                - gan nhat {{ formatDateTime(gate.lastAccessAt) }}
+                                - gần nhất {{ formatDateTime(gate.lastAccessAt) }}
                             </template>
                         </p>
                     </article>
                 </div>
-                <div v-else class="empty-card">Chua khai bao cong nao trong he thong.</div>
+                <div v-else class="empty-card">Chưa khai báo cổng nào trong hệ thống.</div>
             </article>
         </section>
     </div>
@@ -282,7 +282,7 @@ const formatTime = (value) => {
 const getLocalCameraChipText = (camera) => {
     if (camera.previewUrl && camera.url && isRtspCameraUrl(camera.url)) return "RTSP + preview"
     if (camera.url && isRtspCameraUrl(camera.url)) return "RTSP cho AI"
-    return camera.online ? "Preview online" : "Preview chua xac nhan"
+    return camera.online ? "Preview online" : "Preview chưa xác nhận"
 }
 
 const getLocalCameraChipClass = (camera) => {
