@@ -54,3 +54,7 @@ pip install pyodbc
 
 pip install flask flask-cors
 
+
+
+dotnet run --launch-profile "https"
+

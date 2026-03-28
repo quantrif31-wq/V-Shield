@@ -1,28 +1,7 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\controllers\\qr_dongcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\controllers\\qr_dongcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\dtos\\dynamicqrdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\dtos\\dynamicqrdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\models\\dynamicqrscanlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\models\\dynamicqrscanlog.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\models\\employeedynamicqr.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\models\\employeedynamicqr.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|c:\\doantotnghiep\\v-shield\\api\\api\\api\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}|API\\API.csproj|solutionrelative:api\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -30,7 +9,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 9,
+          "SelectedChildIndex": -1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -55,67 +34,6 @@
             {
               "$type": "Bookmark",
               "Name": "ST:132:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "DynamicQrScanLog.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\DynamicQrScanLog.cs",
-              "RelativeDocumentMoniker": "API\\Models\\DynamicQrScanLog.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\DynamicQrScanLog.cs",
-              "RelativeToolTip": "API\\Models\\DynamicQrScanLog.cs",
-              "ViewState": "AgIAAAkAAAAAAAAAAAAiwBQAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-24T06:07:55.422Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "EmployeeDynamicQr.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\EmployeeDynamicQr.cs",
-              "RelativeDocumentMoniker": "API\\Models\\EmployeeDynamicQr.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Models\\EmployeeDynamicQr.cs",
-              "RelativeToolTip": "API\\Models\\EmployeeDynamicQr.cs",
-              "ViewState": "AgIAABAAAAAAAAAAAAA4wBsAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-24T06:01:09.915Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "ApplicationDbContext.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Data\\ApplicationDbContext.cs",
-              "RelativeDocumentMoniker": "API\\Data\\ApplicationDbContext.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Data\\ApplicationDbContext.cs",
-              "RelativeToolTip": "API\\Data\\ApplicationDbContext.cs",
-              "ViewState": "AgIAACgAAAAAAAAAAAAqwAIAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-24T05:55:47.816Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "QR_DongController.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\QR_DongController.cs",
-              "RelativeDocumentMoniker": "API\\Controllers\\QR_DongController.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\Controllers\\QR_DongController.cs",
-              "RelativeToolTip": "API\\Controllers\\QR_DongController.cs",
-              "ViewState": "AgIAAL0BAAAAAAAAAAAiwL8BAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-24T05:52:24.042Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "DynamicQrDtos.cs",
-              "DocumentMoniker": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\DTOs\\DynamicQrDtos.cs",
-              "RelativeDocumentMoniker": "API\\DTOs\\DynamicQrDtos.cs",
-              "ToolTip": "C:\\DoAnTotNghiep\\V-Shield\\API\\API\\API\\DTOs\\DynamicQrDtos.cs",
-              "RelativeToolTip": "API\\DTOs\\DynamicQrDtos.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAiwBEAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-24T06:11:44.768Z"
             }
           ]
         }
