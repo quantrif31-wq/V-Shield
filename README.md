@@ -58,3 +58,9 @@ pip install flask flask-cors
 
 dotnet run --launch-profile "https"
 
+cho view
+
+npm install @ffmpeg-installer/ffmpeg
+
+http://localhost:1984
+
