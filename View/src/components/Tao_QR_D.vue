@@ -693,7 +693,8 @@ onBeforeUnmount(() => {
 .hero-copy {
     max-width: 58ch;
     color: var(--text-secondary);
-    font-size: 0.96rem;
+    font-size: 1.03rem;
+    line-height: 1.65;
 }
 
 .hero-tags,
@@ -745,7 +746,7 @@ onBeforeUnmount(() => {
 }
 
 .hero-metric strong {
-    font-size: 1.15rem;
+    font-size: 1.22rem;
 }
 
 .metric-eyebrow,
@@ -760,10 +761,29 @@ onBeforeUnmount(() => {
 }
 
 .metric-eyebrow {
-    font-size: 0.76rem;
+    font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.field-label {
+    font-size: 0.92rem;
+}
+
+.input-hint,
+.hero-metric small,
+.control-card small,
+.info-card small,
+.support-card p,
+.account-card p,
+.panel-copy {
+    font-size: 0.98rem;
+    line-height: 1.6;
+}
+
+.soft-chip {
+    font-size: 0.84rem;
 }
 
 .metric-eyebrow.inverse {
@@ -784,7 +804,7 @@ onBeforeUnmount(() => {
     min-height: 38px;
     padding: 0 14px;
     border-radius: 999px;
-    font-size: 0.78rem;
+    font-size: 0.84rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -805,7 +825,7 @@ onBeforeUnmount(() => {
 }
 
 .control-card strong {
-    font-size: 1.28rem;
+    font-size: 1.38rem;
 }
 
 .form-field,
@@ -872,7 +892,8 @@ onBeforeUnmount(() => {
     display: grid;
     gap: 8px;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.98rem;
+    line-height: 1.65;
 }
 
 .live-layout {
@@ -908,7 +929,7 @@ onBeforeUnmount(() => {
 .stage-head h3 {
     margin-top: 6px;
     font-family: var(--font-heading);
-    font-size: 1.6rem;
+    font-size: 1.72rem;
     color: #ffffff;
 }
 
@@ -925,7 +946,7 @@ onBeforeUnmount(() => {
     padding: 0 12px;
     background: rgba(255, 255, 255, 0.08);
     color: #eefbfc;
-    font-size: 0.78rem;
+    font-size: 0.84rem;
     font-weight: 700;
 }
 
@@ -976,12 +997,12 @@ onBeforeUnmount(() => {
 
 .stage-stat span {
     color: rgba(239, 251, 252, 0.72);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
 }
 
 .stage-stat strong {
     color: #ffffff;
-    font-size: 1rem;
+    font-size: 1.08rem;
 }
 
 .ghost-copy {
@@ -990,7 +1011,7 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(255, 255, 255, 0.16);
     background: rgba(255, 255, 255, 0.08);
     color: #eff7f8;
-    font-size: 0.82rem;
+    font-size: 0.9rem;
     font-weight: 700;
     transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
 }
@@ -1023,7 +1044,8 @@ onBeforeUnmount(() => {
 
 .countdown-card p {
     color: var(--text-secondary);
-    font-size: 0.92rem;
+    font-size: 1rem;
+    line-height: 1.6;
 }
 
 .countdown-card.stable {
@@ -1071,18 +1093,19 @@ onBeforeUnmount(() => {
 
 .info-card span {
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
 }
 
 .info-card strong {
-    font-size: 1.02rem;
+    font-size: 1.12rem;
     line-height: 1.3;
 }
 
 .payload-head p {
     margin-top: 4px;
     color: var(--text-secondary);
-    font-size: 0.88rem;
+    font-size: 0.96rem;
+    line-height: 1.6;
 }
 
 .payload-box {
@@ -1094,7 +1117,7 @@ onBeforeUnmount(() => {
     background: rgba(255, 255, 255, 0.82);
     color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.86rem;
+    font-size: 0.95rem;
     line-height: 1.55;
     resize: vertical;
 }
