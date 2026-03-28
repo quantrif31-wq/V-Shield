@@ -136,7 +136,7 @@
                 </div>
 
                 <div class="chip-row">
-                    <span class="soft-chip" :class="getCameraStatusClass(camera)">{{ getCameraStatusText(camera) }}</span>
+                    <span class="soft-chip status-chip" :class="getCameraStatusClass(camera)">{{ getCameraStatusText(camera) }}</span>
                     <span v-if="camera.previewUrl" class="soft-chip success">Preview web</span>
                     <span v-else-if="camera.url && isRtspCameraUrl(camera.url)" class="soft-chip warn">Can gateway web</span>
                 </div>
@@ -678,6 +678,12 @@ onMounted(async () => {
     color: var(--text-muted);
     font-size: 0.78rem;
     line-height: 1.5;
+}
+
+.status-chip {
+    padding: 4px 9px;
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .network-actions {
