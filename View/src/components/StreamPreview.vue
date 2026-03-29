@@ -5,6 +5,7 @@
         ref="containerRef"
         @dblclick="handleDoubleClick"
         @contextmenu="handleRightClick"
+        :style="{ cursor: isStreamReady ? 'pointer' : 'default' }"
     >
         <img
             v-if="playerMode === 'image'"
@@ -81,9 +82,19 @@ const errorMessage = ref('')
 const isLoading = ref(false)
 let hlsInstance = null
 
+// Stream is considered ready when it has loaded successfully without errors
+const isStreamReady = computed(() => {
+    const mode = playerMode.value
+    const hasPlayableMode = mode === 'video' || mode === 'hls' || mode === 'image'
+    return hasPlayableMode && !errorMessage.value && !isLoading.value
+})
+
 const handleDoubleClick = async () => {
     try {
         if (!document.fullscreenElement) {
+            // Only allow entering fullscreen when the camera stream is ready
+            if (!isStreamReady.value) return
+
             const el = containerRef.value
             if (!el) return
             
