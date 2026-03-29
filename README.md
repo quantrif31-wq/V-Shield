@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 python lpr\_ipcam.py
 
-uvicorn docbien:app --reload --port 8000
+uvicorn QR\_Dong:app --reload --port 8001
 
 
 

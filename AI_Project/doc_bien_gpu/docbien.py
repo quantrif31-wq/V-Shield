@@ -1149,7 +1149,7 @@ def api_camera_reset():
         with api_lock:
             reset_recognition_state(
                 reason="Đã reset trạng thái nhận diện",
-                new_session=True
+                new_session=False
             )
             enabled, ip, connected = get_camera_flags()
             update_recognition_state(
@@ -1767,7 +1767,7 @@ def main():
             with api_lock:
                 reset_recognition_state(
                     reason="Manual reset done. Ready to scan again.",
-                    new_session=True
+                    new_session=False
                 )
                 enabled2, ip2, connected2 = get_camera_flags()
                 update_recognition_state(

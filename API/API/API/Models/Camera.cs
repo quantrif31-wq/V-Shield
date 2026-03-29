@@ -20,6 +20,11 @@ public partial class Camera
     [StringLength(50)]
     [Unicode(false)]
     public string? CameraType { get; set; }
+    [StringLength(500)]
+    public string? StreamUrl { get; set; }
+    [StringLength(500)]
+    public string? UrlView { get; set; }
+
 
     [InverseProperty("Camera")]
     public virtual ICollection<AccessLog> AccessLogs { get; set; } = new List<AccessLog>();

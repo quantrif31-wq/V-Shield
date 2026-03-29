@@ -511,6 +511,13 @@ const allPassageItems = [
         icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
         roles: ['Admin', 'Staff', 'BaoVe'],
     },
+    {
+        path: '/setcam',
+        label: 'Quản trị camera',
+        hint: 'Quản lý tất cả camera giám sát',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M15 15h2"/><path d="M19 15v5"/><path d="M14 19h5"/></svg>',
+        roles: ['Admin', 'Staff', 'BaoVe'],
+    },
 ]
 
 const passageItems = computed(() => allPassageItems.filter((item) => canSeeItem(item)))

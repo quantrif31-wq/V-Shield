@@ -1,10 +1,10 @@
 streams:
-  cam1:
-    - rtsp://192.168.9.198:1945/?rtsp_transport=udp&fflags=nobuffer&flags=low_delay
-  cam2:
-    - rtsp://192.168.9.198:1945/?rtsp_transport=udp&fflags=nobuffer&flags=low_delay
+  cam14:
+    - rtsp://192.168.9.198:1945/
 
 webrtc:
   listen: ":8555"
   candidates:
     - 127.0.0.1:8555
+api:
+  origin: "*"

@@ -30,6 +30,8 @@ import DeviceManagement from '../pages/DeviceManagement.vue'
 import Biometrics from '../pages/Biometrics.vue'
 import SystemCatalog from '../pages/SystemCatalog.vue'
 
+import SetCam from '../components/SetCam.vue'
+
 const routes = [
     {
         path: '/login',
@@ -67,6 +69,7 @@ const routes = [
             { path: 'thonghanh', name: 'thonghanh', component: ThongHanh, meta: { allowedRoles: ['Admin', 'BaoVe'], keepAlive: true } },
             { path: 'tao_qr_d', name: 'tao_qr_d', component: Tao_QR_D, meta: { allowedRoles: ['Admin', 'Staff', 'BaoVe'], keepAlive: true } },
             { path: 'scan_qr_d', name: 'scan_qr_d', component: Scan_QR_D, meta: { allowedRoles: ['Admin', 'BaoVe'], keepAlive: true } },
+            { path: 'setcam', name: 'setcam', component: SetCam, meta: { allowedRoles: ['Admin', 'BaoVe'], keepAlive: true } },
             { path: 'employees', name: 'Employees', component: Employees, meta: { allowedRoles: ['Admin'] } },
             { path: 'vehicles', name: 'Vehicles', component: Vehicles, meta: { allowedRoles: ['Admin'] } },
             { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement, meta: { allowedRoles: ['Admin'], keepAlive: true } },
