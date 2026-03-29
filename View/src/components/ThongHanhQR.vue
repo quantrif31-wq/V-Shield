@@ -121,13 +121,25 @@
             <div class="cam-head">
               <span>QR Camera</span>
               <span class="mini-status" :class="lane.qr.previewHealthy ? 'ok' : 'wait'">
-                {{ lane.qr.previewRunning ? (lane.qr.previewHealthy ? "Preview OK" : "Preview...") : "Preview OFF" }}
+                {{
+                  !lane.qr.previewRunning
+                    ? "Preview OFF"
+                    : lane.qr.lockedSnapshot
+                      ? "Ảnh đã chụp"
+                      : (lane.qr.previewHealthy ? "Preview OK" : "Preview...")
+                }}
               </span>
             </div>
 
             <div class="cam-preview">
               <img
-                v-if="lane.qr.previewRunning && lane.qr.previewMode === 'image' && lane.qr.directCameraUrl"
+                v-if="lane.qr.previewRunning && lane.qr.lockedSnapshot"
+                :src="lane.qr.lockedSnapshot"
+                class="preview-image"
+                alt="QR Snapshot"
+              />
+              <img
+                v-else-if="lane.qr.previewRunning && lane.qr.previewMode === 'image' && lane.qr.directCameraUrl"
                 :ref="el => setQrImageRef(lane.id, el)"
                 :key="lane.qr.directCameraKey"
                 :src="lane.qr.directCameraUrl"
@@ -355,7 +367,8 @@ function createQrModule(defaultScannerDevice) {
     frameHeight: 0,
 
     alert: false,
-    sessionLocked: false
+    sessionLocked: false,
+    lockedSnapshot: ""
   }
 }
 
@@ -853,6 +866,7 @@ export default {
       qr.message = ""
       qr.alert = false
       qr.sessionLocked = false
+      qr.lockedSnapshot = ""
     },
 
     clearPlateState(plate) {
@@ -930,6 +944,7 @@ export default {
 
     checkQrSessionExpiry(lane) {
       const qr = lane.qr
+      if (qr.sessionLocked) return
       if (!qr.activeSessionPayload || !qr.lastSeenAt) return
 
       const now = Date.now()
@@ -1031,6 +1046,7 @@ export default {
           qr.activeSessionVerifyState = "success"
           qr.activeSessionVerifyMessage = result.message || "Xác thực QR thành công."
           qr.sessionLocked = true
+          qr.lockedSnapshot = canvas.toDataURL("image/jpeg", 0.92)
           qr.alert = false
           qr.employeeId = result?.data?.employeeId ? String(result.data.employeeId) : ""
           qr.employeeName = result?.data?.employeeName || ""
