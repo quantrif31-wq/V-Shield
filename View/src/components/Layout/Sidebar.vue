@@ -506,7 +506,16 @@ const allPassageItems = [
     },
 ]
 
-const passageItems = computed(() => allPassageItems.filter((item) => canSeeItem(item)))
+const passageItems = computed(() =>
+    allPassageItems
+        .filter((item) => item.path !== '/scan_qr_d')
+        .map((item) =>
+            item.path === '/thonghanh'
+                ? { ...item, hint: 'QR + biển số theo từng làn' }
+                : item
+        )
+        .filter((item) => canSeeItem(item))
+)
 
 const navigationGroupCount = computed(() => visibleGroups.value.length + (passageItems.value.length ? 1 : 0))
 
