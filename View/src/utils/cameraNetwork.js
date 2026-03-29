@@ -132,6 +132,9 @@ export const shouldAppendPreviewCacheBust = (url) =>
 export const resolveCameraPreviewUrl = (camera) =>
   camera?.previewUrl?.trim() || camera?.url?.trim() || ""
 
+export const resolveCameraSourceUrl = (camera) =>
+  camera?.url?.trim() || camera?.previewUrl?.trim() || ""
+
 const parseLegacyCameraName = (value, fallbackName, fallbackLabel) => {
   const name = (value || "").trim()
   if (!name) {
@@ -211,6 +214,15 @@ export const saveCameraNetworkSettings = (settings) => {
   )
   return normalizedSettings
 }
+
+export const getConfiguredCameraSettings = (
+  settings = loadCameraNetworkSettings()
+) =>
+  normalizeCameraSettings(settings).filter((camera) => {
+    const sourceUrl = resolveCameraSourceUrl(camera)
+    const previewUrl = resolveCameraPreviewUrl(camera)
+    return Boolean(camera?.enabled && (sourceUrl || previewUrl))
+  })
 
 export const extractCameraDisplayParts = (cameraLike, fallbackIndex = 1) => {
   const fallbackSlotName = `CAM-${String(fallbackIndex).padStart(2, "0")}`

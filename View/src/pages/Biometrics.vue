@@ -234,6 +234,11 @@ onMounted(fetchOverview)
     font-size: 0.8rem;
 }
 
+.surface-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 @media (max-width: 1180px) {
     }
 </style>

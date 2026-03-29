@@ -1,5 +1,11 @@
 <template>
-    <div class="stream-preview" :class="[`mode-${playerMode}`, { loading: isLoading }]">
+    <div 
+        class="stream-preview" 
+        :class="[`mode-${playerMode}`, { loading: isLoading }]"
+        ref="containerRef"
+        @dblclick="handleDoubleClick"
+        @contextmenu="handleRightClick"
+    >
         <img
             v-if="playerMode === 'image'"
             :src="resolvedUrl"
@@ -63,14 +69,61 @@ const props = defineProps({
     },
 })
 
+const emit = defineEmits(['ready', 'error'])
+
 const HLS_SCRIPT_SRC = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js'
 
 let hlsScriptPromise
 
 const videoRef = ref(null)
+const containerRef = ref(null)
 const errorMessage = ref('')
 const isLoading = ref(false)
 let hlsInstance = null
+
+const handleDoubleClick = async () => {
+    try {
+        if (!document.fullscreenElement) {
+            const el = containerRef.value
+            if (!el) return
+            
+            if (el.requestFullscreen) {
+                await el.requestFullscreen()
+            } else if (el.webkitRequestFullscreen) {
+                await el.webkitRequestFullscreen()
+            } else if (el.msRequestFullscreen) {
+                await el.msRequestFullscreen()
+            }
+        } else {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen()
+            } else if (document.webkitExitFullscreen) {
+                await document.webkitExitFullscreen()
+            } else if (document.msExitFullscreen) {
+                await document.msExitFullscreen()
+            }
+        }
+    } catch (error) {
+        console.error('Lỗi khi chuyển đổi toàn màn hình:', error)
+    }
+}
+
+const handleRightClick = async (event) => {
+    if (document.fullscreenElement) {
+        event.preventDefault()
+        try {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen()
+            } else if (document.webkitExitFullscreen) {
+                await document.webkitExitFullscreen()
+            } else if (document.msExitFullscreen) {
+                await document.msExitFullscreen()
+            }
+        } catch (error) {
+            console.error('Lỗi khi thoát toàn màn hình:', error)
+        }
+    }
+}
 
 const resolvedUrl = computed(() => String(props.url || '').trim())
 
@@ -109,11 +162,13 @@ const resetState = () => {
 const handleReady = () => {
     errorMessage.value = ''
     isLoading.value = false
+    emit('ready')
 }
 
 const handleError = (message) => {
     errorMessage.value = message
     isLoading.value = false
+    emit('error', message)
 }
 
 const handleEnded = async () => {
@@ -270,7 +325,8 @@ onActivated(() => {
     display: block;
     width: 100%;
     aspect-ratio: 16 / 9;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     background: rgba(15, 23, 42, 0.92);
 }
 
@@ -311,5 +367,22 @@ onActivated(() => {
     border-radius: 14px;
     background: rgba(127, 29, 29, 0.88);
     color: #fee2e2;
+}
+
+/* Fullscreen mode */
+.stream-preview:fullscreen {
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    background: #000;
+}
+
+.stream-preview:fullscreen .stream-media {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    aspect-ratio: auto;
+    background: #000;
 }
 </style>

@@ -1,18 +1,59 @@
 <template>
   <div class="security-container">
-    <h1 class="title">Gate Camera Monitor</h1>
+    <h1 class="title">Quét biển số</h1>
+
+    <div class="source-panel">
+      <div class="source-field">
+        <label class="source-label">Camera đã cấu hình</label>
+        <select
+          v-model="selectedConfiguredCameraId"
+          class="ip-input source-select"
+          :disabled="loading || configuredCameras.length === 0"
+          @change="handleConfiguredCameraChange"
+        >
+          <option value="">Chọn camera đã cấu hình</option>
+          <option
+            v-for="camera in configuredCameras"
+            :key="camera.id"
+            :value="String(camera.id)"
+          >
+            {{ camera.name }} - {{ camera.label }}
+          </option>
+        </select>
+      </div>
+
+      <button
+        class="btn btn-config"
+        @click="applyConfiguredCameraSelection()"
+        :disabled="loading || !selectedConfiguredCameraId"
+      >
+        Dùng camera này
+      </button>
+    </div>
+
+    <div class="source-hint">
+      {{ configuredCameraSummary }}
+    </div>
 
     <div class="control-panel">
       <input
         v-model="cameraIp"
         type="text"
         class="ip-input"
-        placeholder="Nhập URL camera / stream URL..."
+        placeholder="Nguồn backend (RTSP / stream URL)..."
+        :disabled="loading"
+      />
+
+      <input
+        v-model="previewUrl"
+        type="text"
+        class="ip-input"
+        placeholder="Preview URL trên web (MP4/HLS/MJPEG)..."
         :disabled="loading"
       />
 
       <button class="btn btn-on" @click="handleTurnOnPreview" :disabled="loading">
-        {{ loading ? "Đang xử lý..." : "Bật camera" }}
+        {{ loading ? "Đang xử lý..." : "Bật preview" }}
       </button>
 
       <button
@@ -31,41 +72,41 @@
     <div class="status-bar">
       <span><b>Trạng thái:</b> {{ cameraRunning ? "Đang chạy" : "Đang tắt" }}</span>
       <span><b>Preview:</b> {{ previewRunning ? "Đang mở" : "Đang tắt" }}</span>
-      <span><b>Input URL:</b> {{ currentIp || cameraIp || "-----" }}</span>
+      <span><b>Nguồn backend:</b> {{ currentIp || cameraIp || "-----" }}</span>
+      <span><b>Preview URL:</b> {{ effectivePreviewUrl || "-----" }}</span>
       <span><b>Session:</b> {{ sessionId || 0 }}</span>
       <span><b>FPS:</b> {{ fps }}</span>
       <span><b>OCR:</b> {{ ocrRunning ? "Đang xử lý" : "Sẵn sàng" }}</span>
-      <span><b>Mode:</b> Direct Preview + Polling</span>
       <span><b>Khóa phiên:</b> {{ scanLocked ? "Đã khóa" : "Đang quét" }}</span>
-      <span><b>Preview Health:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
+      <span><b>Preview health:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
     </div>
 
     <div class="video-wrapper">
-      <img
-        v-if="previewRunning && directCameraUrl"
-        :key="directCameraKey"
-        :src="directCameraUrl"
-        class="video"
-        alt="Direct Camera Preview"
-        @load="handleDirectPreviewLoaded"
-        @error="handleDirectPreviewError"
+      <StreamPreview
+        v-if="previewRunning && effectivePreviewUrl"
+        :url="effectivePreviewUrl"
+        class="video-stream"
+        label="Plate camera preview"
+        :show-controls="false"
+        @ready="handlePreviewReady"
+        @error="handlePreviewError"
       />
 
       <div v-else class="video-off">
-        Camera Offline
+        Camera chưa chạy
       </div>
     </div>
 
     <div class="plate-panel">
       <div class="plate-box">
-        <div class="plate-label">Confirmed Plate</div>
+        <div class="plate-label">Biển số đã chốt</div>
         <div class="plate-number confirmed">
           {{ confirmedPlate || "-----" }}
         </div>
       </div>
 
       <div class="plate-box">
-        <div class="plate-label">Last Raw Plate</div>
+        <div class="plate-label">Biển số thô gần nhất</div>
         <div class="plate-number raw">
           {{ lastRawPlate || "-----" }}
         </div>
@@ -73,12 +114,12 @@
     </div>
 
     <div class="lock-banner" v-if="scanLocked">
-      Đã đọc xong và khóa kết quả. Bấm “{{ sessionActionLabel }}” để quét biển mới.
+      Đã khóa kết quả hiện tại. Bấm “{{ sessionActionLabel }}” để quét biển số mới.
     </div>
 
     <div class="evidence-panel">
       <div class="evidence-card">
-        <div class="evidence-title">Ảnh chụp toàn khung</div>
+        <div class="evidence-title">Ảnh toàn khung</div>
         <img
           v-if="lockedSnapshot"
           :src="lockedSnapshot"
@@ -101,7 +142,7 @@
     </div>
 
     <div class="live-panel">
-      <div class="live-title">OCR Candidates</div>
+      <div class="live-title">Ứng viên OCR</div>
 
       <div v-if="liveCandidates.length > 0" class="candidate-list">
         <div
@@ -132,6 +173,7 @@
 </template>
 
 <script>
+import StreamPreview from "./StreamPreview.vue"
 import {
   turnOnCamera,
   turnOffCamera,
@@ -140,24 +182,37 @@ import {
   getCameraResult,
   getLockedImages
 } from "../services/biensoApi"
+import {
+  getConfiguredCameraSettings,
+  resolveCameraPreviewUrl,
+  resolveCameraSourceUrl
+} from "../utils/cameraNetwork"
+
+const PLATE_CAMERA_SELECTION_STORAGE_KEY = "vshield-plate-selected-camera"
 
 export default {
   name: "BienSoSecurity",
+  components: {
+    StreamPreview
+  },
 
   data() {
     return {
       cameraIp: "",
+      previewUrl: "",
+      activePreviewUrl: "",
       currentIp: "",
-      cameraRunning: false, // backend OCR/camera state
-      previewRunning: false, // chỉ preview Vue
+      cameraRunning: false,
+      previewRunning: false,
       loading: false,
 
-      // session / state chống dữ liệu cũ
+      configuredCameras: [],
+      selectedConfiguredCameraId: "",
+
       sessionId: 0,
       lastAppliedSessionId: 0,
       lastLockedImageSessionId: 0,
 
-      // result state
       confirmedPlate: "",
       lastRawPlate: "",
       liveCandidates: [],
@@ -173,12 +228,8 @@ export default {
       message: "",
       lastUpdate: "",
 
-      // direct preview từ camera
-      directCameraUrl: "",
-      directCameraKey: 0,
       previewHealthy: false,
 
-      // polling
       resultTimer: null,
       busyResult: false,
       isFetchingLockedImages: false,
@@ -195,11 +246,37 @@ export default {
 
     sessionActionLabel() {
       return this.cameraRunning ? "Reset phiên đọc" : "Khởi tạo phiên đọc"
+    },
+
+    selectedConfiguredCamera() {
+      return this.configuredCameras.find(
+        (camera) => String(camera.id) === String(this.selectedConfiguredCameraId || "")
+      ) || null
+    },
+
+    configuredCameraSummary() {
+      if (this.configuredCameras.length === 0) {
+        return "Chưa có camera nào được bật trong Quản lý camera."
+      }
+
+      if (!this.selectedConfiguredCamera) {
+        return "Chọn một camera đã cấu hình để nạp đồng thời nguồn backend và preview URL."
+      }
+
+      const sourceUrl = this.selectedConfiguredCamera.sourceUrl || "-----"
+      const previewUrl = this.selectedConfiguredCamera.browserPreviewUrl || "-----"
+
+      return `Đang chọn ${this.selectedConfiguredCamera.name}: backend = ${sourceUrl} | preview = ${previewUrl}`
+    },
+
+    effectivePreviewUrl() {
+      return String(this.activePreviewUrl || this.previewUrl || "").trim()
     }
   },
 
   async mounted() {
     this.destroyed = false
+    this.loadConfiguredCameras()
     await this.loadCurrentStatus()
 
     if (this.cameraRunning) {
@@ -210,14 +287,16 @@ export default {
   beforeUnmount() {
     this.destroyed = true
     this.stopResultLoop()
-    this.resetDirectPreview()
+    this.resetPreviewState()
   },
 
   activated() {
     this.destroyed = false
+    this.loadConfiguredCameras()
+
     if (this.cameraRunning) {
-      if (this.currentIp && !this.previewRunning) {
-        this.mountDirectPreview(this.currentIp)
+      if (!this.previewRunning && this.effectivePreviewUrl) {
+        this.activatePreview(this.effectivePreviewUrl)
       }
       this.startResultLoop()
     }
@@ -228,18 +307,78 @@ export default {
   },
 
   methods: {
+    loadConfiguredCameras() {
+      const cameras = getConfiguredCameraSettings().map((camera) => ({
+        ...camera,
+        sourceUrl: resolveCameraSourceUrl(camera),
+        browserPreviewUrl: resolveCameraPreviewUrl(camera),
+      }))
+
+      this.configuredCameras = cameras
+
+      const savedCameraId = localStorage.getItem(PLATE_CAMERA_SELECTION_STORAGE_KEY) || ""
+      const currentSelectionValid = cameras.some(
+        (camera) => String(camera.id) === String(this.selectedConfiguredCameraId || "")
+      )
+
+      if (!currentSelectionValid) {
+        if (savedCameraId && cameras.some((camera) => String(camera.id) === savedCameraId)) {
+          this.selectedConfiguredCameraId = savedCameraId
+        } else if (cameras.length === 1) {
+          this.selectedConfiguredCameraId = String(cameras[0].id)
+        } else if (!cameras.length) {
+          this.selectedConfiguredCameraId = ""
+        }
+      }
+
+      if (!this.cameraIp && !this.previewUrl && this.selectedConfiguredCameraId) {
+        this.applyConfiguredCameraSelection({ silent: true, autoPreview: false })
+      }
+    },
+
+    rememberConfiguredCameraSelection() {
+      if (this.selectedConfiguredCameraId) {
+        localStorage.setItem(
+          PLATE_CAMERA_SELECTION_STORAGE_KEY,
+          String(this.selectedConfiguredCameraId)
+        )
+      } else {
+        localStorage.removeItem(PLATE_CAMERA_SELECTION_STORAGE_KEY)
+      }
+    },
+
+    handleConfiguredCameraChange() {
+      this.rememberConfiguredCameraSelection()
+      this.applyConfiguredCameraSelection({ silent: true, autoPreview: false })
+    },
+
+    applyConfiguredCameraSelection(options = {}) {
+      const { silent = false, autoPreview = false } = options
+      const selectedCamera = this.selectedConfiguredCamera
+
+      if (!selectedCamera) {
+        if (!silent) {
+          alert("Vui lòng chọn một camera đã cấu hình.")
+        }
+        return
+      }
+
+      this.cameraIp = selectedCamera.sourceUrl || ""
+      this.previewUrl = selectedCamera.browserPreviewUrl || ""
+      this.rememberConfiguredCameraSelection()
+
+      if (autoPreview && this.previewUrl) {
+        this.activatePreview(this.previewUrl)
+      }
+
+      this.message = `Đã nạp ${selectedCamera.name} vào màn quét biển số`
+      this.lastUpdate = new Date().toLocaleString()
+    },
+
     formatConf(value) {
       const num = Number(value)
       if (Number.isNaN(num)) return value
       return num.toFixed(4)
-    },
-
-    buildDirectCameraUrl(inputUrl) {
-      const raw = String(inputUrl || "").trim()
-      if (!raw) return ""
-
-      const sep = raw.includes("?") ? "&" : "?"
-      return `${raw}${sep}t=${Date.now()}`
     },
 
     clearResultStateOnly() {
@@ -267,19 +406,17 @@ export default {
       this.clearResultStateOnly()
     },
 
-    mountDirectPreview(url) {
+    activatePreview(url) {
       const cleanUrl = String(url || "").trim()
       if (!cleanUrl) return
 
-      this.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
-      this.directCameraKey += 1
-      this.previewHealthy = false
+      this.activePreviewUrl = cleanUrl
       this.previewRunning = true
+      this.previewHealthy = false
     },
 
-    resetDirectPreview() {
-      this.directCameraUrl = ""
-      this.directCameraKey += 1
+    resetPreviewState() {
+      this.activePreviewUrl = ""
       this.previewHealthy = false
       this.previewRunning = false
     },
@@ -318,40 +455,39 @@ export default {
           this.cameraIp = this.currentIp
         }
 
-        // Khi load lại trang:
-        // - backend có thể đang chạy
-        // - preview Vue thì tự mở lại để đồng bộ trải nghiệm
-        if (this.currentIp) {
-          this.mountDirectPreview(this.currentIp)
+        if ((!this.cameraIp || !this.previewUrl) && this.selectedConfiguredCameraId) {
+          this.applyConfiguredCameraSelection({ silent: true, autoPreview: false })
+        }
+
+        const previewSource = this.previewUrl || this.cameraIp
+        if (previewSource) {
+          this.activatePreview(previewSource)
         } else {
-          this.resetDirectPreview()
+          this.resetPreviewState()
         }
 
         if (this.cameraRunning) {
           await this.fetchLockedImagesIfNeeded(true)
         }
-      } catch (e) {
-        console.error("Load status error:", e)
+      } catch (error) {
+        console.error("Load status error:", error)
       }
     },
 
     async handleTurnOnPreview() {
-      const ip = (this.cameraIp || this.currentIp || "").trim()
-      if (!ip) {
-        alert("Vui lòng nhập URL camera")
+      const previewSource = (this.previewUrl || this.cameraIp || "").trim()
+      if (!previewSource) {
+        alert("Vui lòng nhập Preview URL hoặc chọn camera đã cấu hình.")
         return
       }
 
       try {
         this.loading = true
-
-        // Chỉ mở preview Vue, không gọi backend
-        this.currentIp = ip
-        this.mountDirectPreview(ip)
+        this.activatePreview(previewSource)
         this.message = "Đã mở preview camera trên giao diện"
-      } catch (e) {
-        console.error("Turn on preview error:", e)
-        alert(e?.message || "Lỗi mở preview camera")
+      } catch (error) {
+        console.error("Turn on preview error:", error)
+        alert(error?.message || "Lỗi mở preview camera")
       } finally {
         this.loading = false
       }
@@ -360,23 +496,21 @@ export default {
     async handleInitOrResetSession() {
       const ip = (this.cameraIp || this.currentIp || "").trim()
       if (!ip) {
-        alert("Vui lòng nhập URL camera")
+        alert("Vui lòng nhập URL camera cho backend OCR")
         return
       }
 
       try {
         this.loading = true
 
-        // luôn đảm bảo preview có thể xem được
         this.currentIp = ip
-        if (!this.previewRunning) {
-          this.mountDirectPreview(ip)
+        const previewSource = (this.previewUrl || ip).trim()
+        if (!this.previewRunning && previewSource) {
+          this.activatePreview(previewSource)
         }
 
-        // clear dữ liệu UI trước khi bắt đầu/reset
         this.clearResultStateOnly()
 
-        // Trường hợp 1: backend chưa chạy -> gửi URL để mở camera backend
         if (!this.cameraRunning) {
           this.stopResultLoop()
 
@@ -397,7 +531,6 @@ export default {
           return
         }
 
-        // Trường hợp 2: backend đang chạy -> reset phiên đọc
         const res = await resetCameraState()
         this.message = res?.message || "Đã reset phiên đọc"
 
@@ -412,9 +545,9 @@ export default {
         if (!this.resultTimer) {
           this.startResultLoop()
         }
-      } catch (e) {
-        console.error("Init/Reset session error:", e)
-        alert(e?.message || "Lỗi khởi tạo / reset phiên đọc")
+      } catch (error) {
+        console.error("Init/Reset session error:", error)
+        alert(error?.message || "Lỗi khởi tạo / reset phiên đọc")
       } finally {
         this.loading = false
       }
@@ -423,21 +556,20 @@ export default {
     async handleTurnOff() {
       try {
         this.loading = true
-
         this.stopResultLoop()
 
         try {
           const res = await turnOffCamera()
           this.message = res?.message || "Đã tắt camera"
-        } catch (e) {
-          console.warn("Turn off warning:", e)
+        } catch (error) {
+          console.warn("Turn off warning:", error)
         }
 
         this.hardResetUiState()
-        this.resetDirectPreview()
-      } catch (e) {
-        console.error("Turn off error:", e)
-        alert(e?.message || "Lỗi tắt camera")
+        this.resetPreviewState()
+      } catch (error) {
+        console.error("Turn off error:", error)
+        alert(error?.message || "Lỗi tắt camera")
       } finally {
         this.loading = false
       }
@@ -447,14 +579,13 @@ export default {
       try {
         const res = await getCameraResult()
         await this.applyRealtimeState(res, true)
-      } catch (e) {
-        console.warn("Result polling error:", e)
+      } catch (error) {
+        console.warn("Result polling error:", error)
       }
     },
 
     async fetchLockedImagesIfNeeded(force = false) {
-      if (this.destroyed) return
-      if (!this.cameraRunning) return
+      if (this.destroyed || !this.cameraRunning) return
 
       if (!this.scanLocked) {
         this.lockedSnapshot = ""
@@ -484,8 +615,8 @@ export default {
           this.lockedPlateCrop = ""
           this.lastLockedImageSessionId = 0
         }
-      } catch (e) {
-        console.warn("Fetch locked images error:", e)
+      } catch (error) {
+        console.warn("Fetch locked images error:", error)
       } finally {
         this.isFetchingLockedImages = false
       }
@@ -531,9 +662,6 @@ export default {
       this.message = res.message || ""
       this.lastUpdate = res.last_update || ""
 
-      // nếu preview đang tắt nhưng đã có IP thì không tự ép mở,
-      // vì theo yêu cầu preview phải do nút Vue điều khiển.
-      // Chỉ mounted() mới tự restore preview khi reload trang.
       if (!this.scanLocked) {
         this.lockedSnapshot = ""
         this.lockedPlateCrop = ""
@@ -551,11 +679,11 @@ export default {
       }
     },
 
-    handleDirectPreviewLoaded() {
+    handlePreviewReady() {
       this.previewHealthy = true
     },
 
-    handleDirectPreviewError() {
+    handlePreviewError() {
       this.previewHealthy = false
     }
   }
@@ -564,7 +692,7 @@ export default {
 
 <style scoped>
 .security-container {
-  width: 1100px;
+  width: min(1180px, 100%);
   margin: auto;
   text-align: center;
   font-family: Arial, sans-serif;
@@ -573,6 +701,40 @@ export default {
 
 .title {
   margin-bottom: 20px;
+}
+
+.source-panel {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.source-field {
+  min-width: 320px;
+  flex: 1 1 420px;
+  text-align: left;
+}
+
+.source-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.source-select {
+  width: 100%;
+}
+
+.source-hint {
+  margin: 0 auto 16px;
+  max-width: 1060px;
+  font-size: 0.92rem;
+  color: #5c6f82;
+  text-align: left;
 }
 
 .control-panel {
@@ -585,7 +747,7 @@ export default {
 }
 
 .ip-input {
-  width: 420px;
+  width: 320px;
   padding: 10px 12px;
   font-size: 15px;
   border: 1px solid #ccc;
@@ -599,7 +761,7 @@ export default {
   color: white;
   cursor: pointer;
   font-size: 14px;
-  min-width: 170px;
+  min-width: 150px;
 }
 
 .btn:disabled {
@@ -619,9 +781,13 @@ export default {
   background: #dc3545;
 }
 
+.btn-config {
+  background: #0f7c82;
+}
+
 .status-bar {
   display: flex;
-  gap: 20px;
+  gap: 18px;
   justify-content: center;
   flex-wrap: wrap;
   margin-bottom: 20px;
@@ -629,21 +795,15 @@ export default {
 }
 
 .video-wrapper {
-  width: 800px;
-  height: 450px;
+  width: min(900px, 100%);
   background: black;
-  margin: auto;
-  position: relative;
-  margin-top: 20px;
+  margin: 20px auto 0;
   overflow: hidden;
   border-radius: 12px;
 }
 
-.video {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
+.video-stream {
+  min-height: 0;
 }
 
 .video-off {
@@ -651,7 +811,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
+  min-height: 450px;
   font-size: 20px;
 }
 
@@ -676,119 +836,121 @@ export default {
 .plate-number {
   font-size: 36px;
   font-weight: bold;
+  letter-spacing: 2px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: #111;
+  color: #fff;
+  min-width: 280px;
 }
 
-.confirmed {
-  color: #00aa00;
+.plate-number.confirmed {
+  border: 2px solid #198754;
 }
 
-.raw {
-  color: #ff8800;
+.plate-number.raw {
+  border: 2px solid #6c757d;
 }
 
 .lock-banner {
-  width: 800px;
-  margin: 20px auto 0;
-  padding: 12px 16px;
+  margin: 18px auto 0;
   background: #fff3cd;
-  border: 1px solid #ffe69c;
+  color: #7a4d00;
+  border: 1px solid #f5d48c;
+  padding: 12px 16px;
   border-radius: 10px;
-  color: #7a5b00;
-  font-weight: bold;
+  max-width: 920px;
 }
 
 .evidence-panel {
-  width: 1000px;
-  margin: 20px auto 0;
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
-.evidence-card {
-  width: 460px;
-  background: #f7f7f7;
+.evidence-card,
+.live-panel,
+.result-panel {
+  background: #fff;
+  border: 1px solid #e3e6ea;
   border-radius: 12px;
   padding: 16px;
-  text-align: left;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
-.evidence-title {
-  font-size: 16px;
-  font-weight: bold;
+.evidence-title,
+.live-title {
+  font-weight: 700;
   margin-bottom: 12px;
 }
 
 .evidence-image {
   width: 100%;
+  max-height: 360px;
+  object-fit: contain;
   border-radius: 10px;
-  border: 1px solid #ddd;
+  background: #0f172a;
 }
 
-.evidence-empty {
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #777;
-  background: white;
-  border-radius: 10px;
-  border: 1px dashed #ccc;
+.evidence-empty,
+.candidate-empty {
+  color: #6b7280;
 }
 
 .live-panel {
   margin-top: 20px;
-  text-align: left;
-  width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-  background: #f7f7f7;
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.live-title {
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 10px;
 }
 
 .candidate-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  gap: 10px;
 }
 
 .candidate-item {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   align-items: center;
-  background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 10px 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
 }
 
 .candidate-text {
-  font-size: 18px;
   font-weight: 700;
-  color: #0d6efd;
 }
 
 .candidate-meta {
-  font-size: 13px;
-  color: #666;
-}
-
-.candidate-empty {
-  color: #777;
-  font-style: italic;
+  color: #64748b;
+  font-size: 0.92rem;
 }
 
 .result-panel {
   margin-top: 20px;
-  font-size: 15px;
-  line-height: 1.8;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  text-align: left;
+}
+
+@media (max-width: 960px) {
+  .evidence-panel,
+  .result-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .ip-input {
+    width: 100%;
+  }
+
+  .source-field {
+    width: 100%;
+  }
+
+  .video-off {
+    min-height: 280px;
+  }
 }
 </style>

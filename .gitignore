@@ -33,6 +33,8 @@ API/API/API/appsettings.Production.json
 # ===== VSCode =====
 .vscode/
 
-!cam/
-!cam/go2rtc_win64/
-!cam/go2rtc_win64/*.exe
+.vs/
+*.suo
+
+# ===== Local camera bridge =====
+AI_Project/cam/go2rtc_win64/

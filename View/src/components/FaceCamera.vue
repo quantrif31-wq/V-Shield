@@ -39,7 +39,7 @@
       <span><b>Preview Health:</b> {{ previewHealthy ? "OK" : "Waiting..." }}</span>
     </div>
 
-    <div class="video-wrapper">
+    <div class="video-wrapper" ref="videoWrapperRef" @dblclick="handleDoubleClick" @contextmenu="handleRightClick">
       <img
         v-if="previewRunning && directCameraUrl"
         :key="directCameraKey"
@@ -545,6 +545,49 @@ export default {
 
     handleDirectPreviewError() {
       this.previewHealthy = false
+    },
+
+    async handleDoubleClick() {
+      try {
+        if (!document.fullscreenElement) {
+          const el = this.$refs.videoWrapperRef
+          if (!el) return
+          if (el.requestFullscreen) {
+            await el.requestFullscreen()
+          } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen()
+          } else if (el.msRequestFullscreen) {
+            await el.msRequestFullscreen()
+          }
+        } else {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen()
+          } else if (document.webkitExitFullscreen) {
+            await document.webkitExitFullscreen()
+          } else if (document.msExitFullscreen) {
+            await document.msExitFullscreen()
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi khi chuyển đổi toàn màn hình:', error)
+      }
+    },
+
+    async handleRightClick(event) {
+      if (document.fullscreenElement) {
+        event.preventDefault()
+        try {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen()
+          } else if (document.webkitExitFullscreen) {
+            await document.webkitExitFullscreen()
+          } else if (document.msExitFullscreen) {
+            await document.msExitFullscreen()
+          }
+        } catch (error) {
+          console.error('Lỗi khi thoát toàn màn hình:', error)
+        }
+      }
     }
   }
 }
@@ -784,5 +827,28 @@ export default {
   margin-top: 20px;
   font-size: 15px;
   line-height: 1.8;
+}
+
+/* Fullscreen mode */
+.video-wrapper:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  max-width: none !important;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-wrapper:fullscreen .video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-wrapper:fullscreen .video-off {
+  font-size: 3vw;
 }
 </style>
