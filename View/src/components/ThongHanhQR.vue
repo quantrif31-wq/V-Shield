@@ -145,7 +145,13 @@
             <div class="cam-head">
               <span>QR Camera</span>
               <span class="mini-status" :class="lane.qr.previewHealthy ? 'ok' : 'wait'">
-                {{ lane.qr.previewRunning ? (lane.qr.previewHealthy ? "Preview OK" : "Preview...") : "Preview OFF" }}
+                {{
+                  !lane.qr.previewRunning
+                    ? "Preview OFF"
+                    : lane.qr.lockedSnapshot
+                      ? "Ảnh đã chụp"
+                      : (lane.qr.previewHealthy ? "Preview OK" : "Preview...")
+                }}
               </span>
             </div>
 
@@ -213,8 +219,8 @@
           <div class="cam-block">
             <div class="cam-head">
               <span>Plate Camera</span>
-              <span class="mini-status" :class="lane.plate.previewHealthy ? 'ok' : 'wait'">
-                {{ lane.plate.previewRunning ? (lane.plate.previewHealthy ? "Preview OK" : "Preview...") : "Preview OFF" }}
+              <span class="mini-status" :class="platePreviewStatusClass(lane.plate)">
+                {{ platePreviewStatusText(lane.plate) }}
               </span>
             </div>
 
@@ -332,7 +338,8 @@ function createQrModule(defaultScannerDevice) {
     frameHeight: 0,
 
     alert: false,
-    sessionLocked: false
+    sessionLocked: false,
+    lockedSnapshot: ""
   }
 }
 
@@ -423,7 +430,7 @@ export default {
       this.stopQrLoops(lane)
       this.stopPlateLoop(lane)
 
-      this.resetPreview(lane.qr)
+      this.resetQrPreview(lane.id, lane.qr)
       this.resetPreview(lane.plate)
     }
   },
@@ -548,6 +555,153 @@ export default {
   return String(inputUrl || "").trim()
 },
 
+    async attachQrVideoPreview(laneId, qr) {
+      await this.$nextTick()
+      const video = this.qrVideoRefs[laneId]
+      if (!video) return
+
+      this.destroyQrHls(qr)
+
+      try {
+        video.pause()
+      } catch {
+        // ignore
+      }
+
+      video.removeAttribute("src")
+      video.load()
+
+      qr.previewHealthy = false
+      video.src = qr.videoPreviewUrl
+
+      try {
+        await video.play()
+      } catch {
+        // ignore autoplay rejection
+      }
+    },
+
+    async attachQrHlsPreview(laneId, qr) {
+      await this.$nextTick()
+      const video = this.qrVideoRefs[laneId]
+      if (!video) return
+
+      this.destroyQrHls(qr)
+
+      try {
+        video.pause()
+      } catch {
+        // ignore
+      }
+
+      video.removeAttribute("src")
+      video.load()
+
+      qr.previewHealthy = false
+
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = qr.videoPreviewUrl
+        try {
+          await video.play()
+        } catch {
+          // ignore autoplay rejection
+        }
+        return
+      }
+
+      try {
+        const Hls = await this.ensureHlsLibrary()
+        if (!Hls?.isSupported?.()) {
+          throw new Error("Trình duyệt này không hỗ trợ HLS.")
+        }
+
+        qr.hlsInstance = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        })
+
+        qr.hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+          if (data?.fatal) {
+            this.onQrVideoPreviewError({ qr })
+          }
+        })
+
+        qr.hlsInstance.loadSource(qr.videoPreviewUrl)
+        qr.hlsInstance.attachMedia(video)
+        qr.hlsInstance.on(Hls.Events.MANIFEST_PARSED, async () => {
+          try {
+            await video.play()
+          } catch {
+            // ignore autoplay rejection
+          }
+        })
+      } catch (error) {
+        console.error("attachQrHlsPreview error:", error)
+        this.onQrVideoPreviewError({ qr })
+      }
+    },
+
+    destroyQrHls(qr) {
+      if (qr?.hlsInstance) {
+        qr.hlsInstance.destroy()
+        qr.hlsInstance = null
+      }
+    },
+
+    destroyQrPreviewMedia(laneId, qr) {
+      this.destroyQrHls(qr)
+      const video = this.qrVideoRefs[laneId]
+      if (video) {
+        try {
+          video.pause()
+        } catch {
+          // ignore
+        }
+
+        video.removeAttribute("src")
+        video.load()
+      }
+    },
+
+    async enableQrPreview(qr, url, laneId) {
+      const cleanUrl = String(url || "").trim()
+      if (!cleanUrl) return
+
+      qr.previewMode = resolveQrPreviewMode(cleanUrl)
+      qr.previewHealthy = false
+      qr.previewRunning = true
+      qr.directCameraKey += 1
+
+      if (qr.previewMode === "image") {
+        this.destroyQrPreviewMedia(laneId, qr)
+        qr.videoPreviewUrl = ""
+        qr.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
+        return
+      }
+
+      qr.directCameraUrl = ""
+      qr.videoPreviewUrl = cleanUrl
+
+      if (qr.previewMode === "video") {
+        await this.attachQrVideoPreview(laneId, qr)
+        return
+      }
+
+      if (qr.previewMode === "hls") {
+        await this.attachQrHlsPreview(laneId, qr)
+      }
+    },
+
+    isImagePreviewableUrl(inputUrl) {
+      const raw = String(inputUrl || "").trim()
+      if (!raw) return false
+      if (raw.startsWith("data:image/")) return true
+      if (/^rtsp:\/\//i.test(raw)) return false
+      if (/\.mp4(\?|$)/i.test(raw)) return false
+      if (/\.m3u8(\?|$)/i.test(raw)) return false
+      return /^https?:\/\//i.test(raw) || raw.startsWith("/")
+    },
+
     mountPreview(module, url) {
       const cleanUrl = String(url || "").trim()
       if (!cleanUrl) return
@@ -555,6 +709,44 @@ export default {
       module.directCameraKey += 1
       module.previewHealthy = false
       module.previewRunning = true
+    },
+
+    enablePlatePreview(module, url) {
+      module.previewRunning = true
+
+      if (this.isImagePreviewableUrl(url)) {
+        this.mountPreview(module, url)
+        return
+      }
+
+      module.directCameraUrl = ""
+      module.directCameraKey += 1
+      module.previewHealthy = !!(module.lockedSnapshot || module.lockedPlateCrop)
+    },
+
+    platePreviewDisplayUrl(plate) {
+      if (!plate.previewRunning) return ""
+      return plate.lockedSnapshot || plate.lockedPlateCrop || plate.directCameraUrl || ""
+    },
+
+    platePreviewKey(plate) {
+      if (plate.lockedSnapshot || plate.lockedPlateCrop) {
+        return `plate-capture-${plate.sessionId}-${plate.lastLockedImageSessionId}`
+      }
+
+      return plate.directCameraKey
+    },
+
+    platePreviewStatusText(plate) {
+      if (!plate.previewRunning) return "Preview OFF"
+      if (plate.lockedSnapshot || plate.lockedPlateCrop) return "Ảnh đã chụp"
+      return plate.previewHealthy ? "Preview OK" : "Chờ ảnh"
+    },
+
+    platePreviewStatusClass(plate) {
+      if (!plate.previewRunning) return "wait"
+      if (plate.lockedSnapshot || plate.lockedPlateCrop) return "ok"
+      return plate.previewHealthy ? "ok" : "wait"
     },
 
     refreshDirectPreview(module) {
@@ -573,6 +765,20 @@ export default {
       module.decodeBusy = false
       module.frameWidth = 0
       module.frameHeight = 0
+    },
+
+    resetQrPreview(laneId, qr) {
+      this.destroyQrPreviewMedia(laneId, qr)
+      qr.directCameraUrl = ""
+      qr.videoPreviewUrl = ""
+      qr.previewMode = "empty"
+      qr.directCameraKey += 1
+      qr.previewHealthy = false
+      qr.previewRunning = false
+      qr.imgBusy = false
+      qr.decodeBusy = false
+      qr.frameWidth = 0
+      qr.frameHeight = 0
     },
 
     onPreviewLoaded(module) {
@@ -596,6 +802,16 @@ export default {
       await this.captureAndDecodeQr(lane)
     },
 
+    async onQrVideoPreviewLoaded(lane) {
+      lane.qr.previewHealthy = true
+      if (lane.qr.decodeBusy || lane.qr.verifying) return
+      await this.captureAndDecodeQr(lane)
+    },
+
+    onQrVideoPreviewError(lane) {
+      lane.qr.previewHealthy = false
+    },
+
     clearQrState(qr) {
       qr.qrPayload = ""
       qr.manualPayload = ""
@@ -616,6 +832,7 @@ export default {
       qr.message = ""
       qr.alert = false
       qr.sessionLocked = false
+      qr.lockedSnapshot = ""
     },
 
     clearPlateState(plate) {
@@ -652,7 +869,14 @@ export default {
       lane.qr.previewTimer = setInterval(() => {
         if (lane.qr.destroyed) return
         if (!lane.qr.cameraRunning) return
-        this.refreshDirectPreview(lane.qr)
+        if (lane.qr.previewMode === "image") {
+          this.refreshDirectPreview(lane.qr)
+          return
+        }
+
+        if (lane.qr.previewMode === "video" || lane.qr.previewMode === "hls") {
+          this.captureAndDecodeQr(lane)
+        }
       }, lane.qr.previewIntervalMs)
     },
 
@@ -686,6 +910,7 @@ export default {
 
     checkQrSessionExpiry(lane) {
       const qr = lane.qr
+      if (qr.sessionLocked) return
       if (!qr.activeSessionPayload || !qr.lastSeenAt) return
 
       const now = Date.now()
@@ -700,18 +925,35 @@ export default {
 
     async captureAndDecodeQr(lane) {
       const qr = lane.qr
-      const img = this.$el.querySelector(`[alt="QR Preview"]`)
       const canvas = this.qrCanvasRefs[lane.id]
+      const mode = qr.previewMode
 
-      if (!img || !canvas) return
-      if (!img.complete) return
+      if (!canvas) return
       if (qr.decodeBusy) return
+
+      let source = null
+      let sourceWidth = 0
+      let sourceHeight = 0
+
+      if (mode === "image") {
+        const img = this.qrImageRefs[lane.id]
+        if (!img || !img.complete) return
+        source = img
+        sourceWidth = img.naturalWidth || img.width
+        sourceHeight = img.naturalHeight || img.height
+      } else if (mode === "video" || mode === "hls") {
+        const video = this.qrVideoRefs[lane.id]
+        if (!video || video.readyState < 2) return
+        source = video
+        sourceWidth = video.videoWidth || video.clientWidth
+        sourceHeight = video.videoHeight || video.clientHeight
+      } else {
+        return
+      }
 
       qr.decodeBusy = true
 
       try {
-        const sourceWidth = img.naturalWidth || img.width
-        const sourceHeight = img.naturalHeight || img.height
         if (!sourceWidth || !sourceHeight) return
 
         qr.frameWidth = sourceWidth
@@ -731,7 +973,7 @@ export default {
 
         const ctx = canvas.getContext("2d", { willReadFrequently: true })
         ctx.clearRect(0, 0, targetWidth, targetHeight)
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+        ctx.drawImage(source, 0, 0, targetWidth, targetHeight)
 
         const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight)
         const code = jsQR(imageData.data, targetWidth, targetHeight, {
@@ -770,6 +1012,7 @@ export default {
           qr.activeSessionVerifyState = "success"
           qr.activeSessionVerifyMessage = result.message || "Xác thực QR thành công."
           qr.sessionLocked = true
+          qr.lockedSnapshot = canvas.toDataURL("image/jpeg", 0.92)
           qr.alert = false
           qr.employeeId = result?.data?.employeeId ? String(result.data.employeeId) : ""
           qr.employeeName = result?.data?.employeeName || ""
@@ -919,6 +1162,9 @@ export default {
           plate.lockedSnapshot = res.locked_snapshot || ""
           plate.lockedPlateCrop = res.locked_plate_crop || ""
           plate.lastLockedImageSessionId = responseSessionId
+          if (plate.previewRunning && (plate.lockedSnapshot || plate.lockedPlateCrop)) {
+            plate.previewHealthy = true
+          }
         } else {
           plate.lockedSnapshot = ""
           plate.lockedPlateCrop = ""

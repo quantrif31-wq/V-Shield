@@ -16,7 +16,6 @@ import DepartmentPosition from '../pages/DepartmentPosition.vue'
 import PreRegistration from '../pages/PreRegistration.vue'
 import GuestRegister from '../pages/GuestRegister.vue'
 
-
 import FaceID from '../components/FaceCamera.vue'
 import bienso from '../components/BienSoSecurity.vue'
 import FaceVideo from '../components/FaceVideo.vue'
@@ -70,6 +69,7 @@ const routes = [
             { path: 'tao_qr_d', name: 'tao_qr_d', component: Tao_QR_D, meta: { allowedRoles: ['Admin', 'Staff', 'BaoVe'], keepAlive: true } },
             { path: 'scan_qr_d', name: 'scan_qr_d', component: Scan_QR_D, meta: { allowedRoles: ['Admin', 'BaoVe'], keepAlive: true } },
             { path: 'setcam', name: 'setcam', component: SetCam, meta: { allowedRoles: ['Admin', 'BaoVe'], keepAlive: true } },
+            { path: 'biometrics', name: 'Biometrics', component: Biometrics, meta: { allowedRoles: ['Admin'] } },
             { path: 'employees', name: 'Employees', component: Employees, meta: { allowedRoles: ['Admin'] } },
             { path: 'vehicles', name: 'Vehicles', component: Vehicles, meta: { allowedRoles: ['Admin'] } },
             { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement, meta: { allowedRoles: ['Admin'], keepAlive: true } },
@@ -83,6 +83,12 @@ const routes = [
                 path: 'departments-positions',
                 name: 'DepartmentPosition',
                 component: DepartmentPosition,
+                meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
+            },
+            {
+                path: 'users',
+                name: 'UserManagement',
+                component: UserManagement,
                 meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
             },
         ],

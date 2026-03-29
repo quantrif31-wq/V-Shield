@@ -177,21 +177,22 @@
           <div class="cam-block">
             <div class="cam-head">
               <span>Plate Camera</span>
-              <span class="mini-status" :class="lane.plate.previewHealthy ? 'ok' : 'wait'">
-                {{ lane.plate.previewRunning ? (lane.plate.previewHealthy ? "Preview OK" : "Preview...") : "Preview OFF" }}
+              <span class="mini-status" :class="platePreviewStatusClass(lane.plate)">
+                {{ platePreviewStatusText(lane.plate) }}
               </span>
             </div>
 
             <div class="cam-preview">
               <img
-                v-if="lane.plate.previewRunning && lane.plate.directCameraUrl"
-                :key="lane.plate.directCameraKey"
-                :src="lane.plate.directCameraUrl"
+                v-if="platePreviewDisplayUrl(lane.plate)"
+                :key="platePreviewKey(lane.plate)"
+                :src="platePreviewDisplayUrl(lane.plate)"
                 class="preview-image"
                 alt="Plate Preview"
                 @load="onPreviewLoaded(lane.plate)"
                 @error="onPreviewError(lane.plate)"
               />
+              <div v-else-if="lane.plate.previewRunning" class="cam-off">Chờ ảnh chụp biển...</div>
               <div v-else class="cam-off">Plate Offline</div>
             </div>
 
@@ -429,6 +430,16 @@ export default {
       return `${raw}${sep}t=${Date.now()}`
     },
 
+    isImagePreviewableUrl(inputUrl) {
+      const raw = String(inputUrl || "").trim()
+      if (!raw) return false
+      if (raw.startsWith("data:image/")) return true
+      if (/^rtsp:\/\//i.test(raw)) return false
+      if (/\.mp4(\?|$)/i.test(raw)) return false
+      if (/\.m3u8(\?|$)/i.test(raw)) return false
+      return /^https?:\/\//i.test(raw) || raw.startsWith("/")
+    },
+
     mountPreview(module, url) {
       const cleanUrl = String(url || "").trim()
       if (!cleanUrl) return
@@ -436,6 +447,44 @@ export default {
       module.directCameraKey += 1
       module.previewHealthy = false
       module.previewRunning = true
+    },
+
+    enablePlatePreview(module, url) {
+      module.previewRunning = true
+
+      if (this.isImagePreviewableUrl(url)) {
+        this.mountPreview(module, url)
+        return
+      }
+
+      module.directCameraUrl = ""
+      module.directCameraKey += 1
+      module.previewHealthy = !!(module.lockedSnapshot || module.lockedPlateCrop)
+    },
+
+    platePreviewDisplayUrl(plate) {
+      if (!plate.previewRunning) return ""
+      return plate.lockedSnapshot || plate.lockedPlateCrop || plate.directCameraUrl || ""
+    },
+
+    platePreviewKey(plate) {
+      if (plate.lockedSnapshot || plate.lockedPlateCrop) {
+        return `plate-capture-${plate.sessionId}-${plate.lastLockedImageSessionId}`
+      }
+
+      return plate.directCameraKey
+    },
+
+    platePreviewStatusText(plate) {
+      if (!plate.previewRunning) return "Preview OFF"
+      if (plate.lockedSnapshot || plate.lockedPlateCrop) return "Ảnh đã chụp"
+      return plate.previewHealthy ? "Preview OK" : "Chờ ảnh"
+    },
+
+    platePreviewStatusClass(plate) {
+      if (!plate.previewRunning) return "wait"
+      if (plate.lockedSnapshot || plate.lockedPlateCrop) return "ok"
+      return plate.previewHealthy ? "ok" : "wait"
     },
 
     resetPreview(module) {
@@ -574,7 +623,7 @@ export default {
 
         if (lane.plate.currentIp) {
           lane.plate.cameraIp = lane.plate.currentIp
-          this.mountPreview(lane.plate, lane.plate.currentIp)
+          this.enablePlatePreview(lane.plate, lane.plate.currentIp)
         }
       } catch (e) {
         console.error("loadStatusPlate error:", e)
@@ -653,6 +702,9 @@ export default {
           plate.lockedSnapshot = res.locked_snapshot || ""
           plate.lockedPlateCrop = res.locked_plate_crop || ""
           plate.lastLockedImageSessionId = responseSessionId
+          if (plate.previewRunning && (plate.lockedSnapshot || plate.lockedPlateCrop)) {
+            plate.previewHealthy = true
+          }
         } else {
           plate.lockedSnapshot = ""
           plate.lockedPlateCrop = ""
@@ -775,8 +827,10 @@ export default {
 
         if (lane.plate.cameraIp.trim()) {
           lane.plate.currentIp = lane.plate.cameraIp.trim()
-          this.mountPreview(lane.plate, lane.plate.currentIp)
-          lane.plate.message = "Đã mở preview Plate"
+          this.enablePlatePreview(lane.plate, lane.plate.currentIp)
+          lane.plate.message = this.isImagePreviewableUrl(lane.plate.currentIp)
+            ? "Đã mở preview Plate"
+            : "Sẽ hiển thị ảnh chụp sau khi đọc được biển"
         }
       } catch (e) {
         console.error("previewLane error:", e)
@@ -799,7 +853,7 @@ export default {
         lane.plate.currentIp = lane.plate.cameraIp.trim()
 
         if (!lane.face.previewRunning) this.mountPreview(lane.face, lane.face.currentIp)
-        if (!lane.plate.previewRunning) this.mountPreview(lane.plate, lane.plate.currentIp)
+        if (!lane.plate.previewRunning) this.enablePlatePreview(lane.plate, lane.plate.currentIp)
 
         this.clearFaceState(lane.face)
         this.clearPlateState(lane.plate)
@@ -904,7 +958,7 @@ export default {
 
         lane.plate.currentIp = lane.plate.cameraIp.trim()
         if (!lane.plate.previewRunning) {
-          this.mountPreview(lane.plate, lane.plate.currentIp)
+          this.enablePlatePreview(lane.plate, lane.plate.currentIp)
         }
 
         this.clearPlateState(lane.plate)

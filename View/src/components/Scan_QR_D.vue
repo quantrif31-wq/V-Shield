@@ -1,21 +1,54 @@
 <template>
   <div class="scanner-page">
     <div class="scanner-card">
-      <h2>Dynamic QR IP Scanner</h2>
+      <h2>Quét QR để điểm danh</h2>
+
+      <div class="source-panel">
+        <div class="source-field">
+          <label>Camera đã cấu hình</label>
+          <select
+            v-model="selectedConfiguredCameraId"
+            class="ip-input"
+            :disabled="loading || configuredCameras.length === 0"
+            @change="handleConfiguredCameraChange"
+          >
+            <option value="">Chọn camera đã cấu hình</option>
+            <option
+              v-for="camera in configuredCameras"
+              :key="camera.id"
+              :value="String(camera.id)"
+            >
+              {{ camera.name }} - {{ camera.label }}
+            </option>
+          </select>
+        </div>
+
+        <button
+          class="btn btn-config"
+          @click="applyConfiguredCameraSelection()"
+          :disabled="loading || !selectedConfiguredCameraId"
+        >
+          Dùng camera này
+        </button>
+      </div>
+
+      <div class="source-hint">
+        {{ configuredCameraSummary }}
+      </div>
 
       <div class="form-group">
-        <label>IP Camera URL</label>
+        <label>Preview URL để quét QR</label>
         <input
           v-model="cameraIp"
           type="text"
           class="ip-input"
-          placeholder="Ví dụ: http://192.168.1.100:8080/shot.jpg"
+          placeholder="Ví dụ: https://.../stream.mp4 hoặc .../stream.m3u8"
         />
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>Chu kỳ làm mới ảnh (ms)</label>
+          <label>Chu kỳ đọc frame (ms)</label>
           <input v-model.number="previewIntervalMs" type="number" min="150" step="50" class="ip-input" />
         </div>
 
@@ -46,28 +79,50 @@
 
       <div class="preview-wrap">
         <img
-          v-if="previewRunning && directCameraUrl"
+          v-if="previewRunning && previewMode === 'image' && directCameraUrl"
           ref="cameraImage"
           :src="directCameraUrl"
           class="video"
           alt="Camera Preview"
           crossorigin="anonymous"
-          @load="handleDirectPreviewLoaded"
-          @error="handleDirectPreviewError"
+          @load="handleImagePreviewLoaded"
+          @error="handleImagePreviewError"
         />
+
+        <video
+          v-else-if="previewRunning && (previewMode === 'video' || previewMode === 'hls')"
+          ref="cameraVideo"
+          class="video"
+          autoplay
+          muted
+          playsinline
+          crossorigin="anonymous"
+          @loadeddata="handleVideoPreviewLoaded"
+          @canplay="handleVideoPreviewLoaded"
+          @ended="handleVideoPreviewEnded"
+          @error="handleVideoPreviewError"
+        ></video>
+
+        <div v-else-if="previewRunning && previewMode === 'rtsp'" class="preview-placeholder preview-note">
+          RTSP không quét trực tiếp được trên trình duyệt. Hãy dùng Preview URL dạng MP4, HLS hoặc MJPEG.
+        </div>
+
+        <div v-else-if="previewRunning && previewMode === 'unsupported'" class="preview-placeholder preview-note">
+          URL này chưa được hỗ trợ cho quét QR trên trình duyệt.
+        </div>
 
         <div v-else class="preview-placeholder">
           Camera chưa chạy
         </div>
 
-        <canvas ref="captureCanvas" style="display:none;"></canvas>
+        <canvas ref="captureCanvas" class="hidden-canvas"></canvas>
       </div>
 
       <div class="status-grid">
-        <div><b>Camera URL:</b> {{ currentIp || "-----" }}</div>
+        <div><b>Preview URL:</b> {{ currentIp || "-----" }}</div>
         <div><b>Camera running:</b> {{ cameraRunning ? "Yes" : "No" }}</div>
         <div><b>Preview healthy:</b> {{ previewHealthy ? "Yes" : "No" }}</div>
-        <div><b>Image loading:</b> {{ imgBusy ? "Yes" : "No" }}</div>
+        <div><b>Mode:</b> {{ previewMode }}</div>
 
         <div><b>Thiết bị quét:</b> {{ scannerDevice || "-----" }}</div>
         <div><b>Payload hiện tại:</b> {{ shortPayload }}</div>
@@ -79,10 +134,10 @@
         <div><b>Lần cuối thấy mã:</b> {{ formatDateTime(lastSeenAt) || "-----" }}</div>
         <div><b>Last update:</b> {{ lastUpdate || "-----" }}</div>
 
-        <div><b>Refresh ảnh:</b> {{ previewIntervalMs }} ms</div>
+        <div><b>Chu kỳ đọc frame:</b> {{ previewIntervalMs }} ms</div>
         <div><b>Đóng phiên khi mất mã:</b> {{ absenceThresholdMs }} ms</div>
         <div><b>Decode max width:</b> {{ decodeMaxWidth }} px</div>
-        <div><b>Độ phân giải ảnh hiện tại:</b> {{ currentFrameInfo }}</div>
+        <div><b>Độ phân giải frame:</b> {{ currentFrameInfo }}</div>
       </div>
 
       <div class="verify-box" v-if="verifyMessage">
@@ -130,12 +185,39 @@
 <script>
 import jsQR from "jsqr"
 import { verifyDynamicQr } from "../services/dynamicQrVerifyApi"
+import {
+  getConfiguredCameraSettings,
+  isBrowserVideoCameraUrl,
+  isHlsCameraUrl,
+  isHttpCameraUrl,
+  isRtspCameraUrl,
+  resolveCameraPreviewUrl,
+  resolveCameraSourceUrl
+} from "../utils/cameraNetwork"
+
+const QR_CAMERA_SELECTION_STORAGE_KEY = "vshield-qr-selected-camera"
+const HLS_SCRIPT_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"
+
+let hlsScriptPromise
+
+const resolvePreviewMode = (url) => {
+  const value = String(url || "").trim()
+  if (!value) return "empty"
+  if (isHlsCameraUrl(value)) return "hls"
+  if (isBrowserVideoCameraUrl(value)) return "video"
+  if (isRtspCameraUrl(value)) return "rtsp"
+  if (isHttpCameraUrl(value)) return "image"
+  return "unsupported"
+}
 
 export default {
   name: "DynamicQrIpScanner",
 
   data() {
     return {
+      configuredCameras: [],
+      selectedConfiguredCameraId: "",
+
       cameraIp: "",
       currentIp: "",
       cameraRunning: false,
@@ -143,9 +225,11 @@ export default {
       loading: false,
 
       directCameraUrl: "",
+      videoPreviewUrl: "",
       previewHealthy: false,
       imgBusy: false,
       decodeBusy: false,
+      hlsInstance: null,
 
       scannerDevice: "WEB_SCANNER_GATE_01",
       qrPayload: "",
@@ -180,25 +264,25 @@ export default {
   computed: {
     shortPayload() {
       if (!this.qrPayload) return "-----"
-      return this.qrPayload.length <= 60 ? this.qrPayload : this.qrPayload.slice(0, 60) + "..."
+      return this.qrPayload.length <= 60 ? this.qrPayload : `${this.qrPayload.slice(0, 60)}...`
     },
 
     shortTrackedPayload() {
       if (!this.activeSessionPayload) return "-----"
       return this.activeSessionPayload.length <= 60
         ? this.activeSessionPayload
-        : this.activeSessionPayload.slice(0, 60) + "..."
+        : `${this.activeSessionPayload.slice(0, 60)}...`
     },
 
     sessionStateText() {
       if (!this.cameraRunning) return "Chưa quét"
-      if (!this.activeSessionPayload) return "Đang tự động chờ mã mới"
+      if (!this.activeSessionPayload) return "Đang chờ mã mới"
 
-      if (this.activeSessionVerifyState === "waiting") return "Đang xử lý phiên hiện tại"
+      if (this.activeSessionVerifyState === "waiting") return "Đang xác thực phiên hiện tại"
       if (this.activeSessionVerifyState === "success") return "Đã xác thực, đang giữ phiên"
       if (this.activeSessionVerifyState === "expired") return "Phiên hiện tại hết hiệu lực"
-      if (this.activeSessionVerifyState === "invalid") return "Mã không hợp lệ, đang giữ phiên"
-      if (this.activeSessionVerifyState === "failed") return "Xác thực thất bại, đang giữ phiên"
+      if (this.activeSessionVerifyState === "invalid") return "Mã không hợp lệ"
+      if (this.activeSessionVerifyState === "failed") return "Xác thực thất bại"
       if (this.activeSessionVerifyState === "system_error") return "Lỗi hệ thống khi verify"
 
       return "Đang giữ phiên hiện tại"
@@ -212,22 +296,51 @@ export default {
     currentFrameInfo() {
       if (!this.frameWidth || !this.frameHeight) return "-----"
       return `${this.frameWidth} x ${this.frameHeight}`
+    },
+
+    selectedConfiguredCamera() {
+      return this.configuredCameras.find(
+        (camera) => String(camera.id) === String(this.selectedConfiguredCameraId || "")
+      ) || null
+    },
+
+    configuredCameraSummary() {
+      if (this.configuredCameras.length === 0) {
+        return "Chưa có camera nào được bật trong Quản lý camera."
+      }
+
+      if (!this.selectedConfiguredCamera) {
+        return "Chọn camera đã cấu hình để nạp Preview URL vào màn quét QR."
+      }
+
+      return `Đang chọn ${this.selectedConfiguredCamera.name}: preview = ${
+        this.selectedConfiguredCamera.browserPreviewUrl || this.selectedConfiguredCamera.sourceUrl || "-----"
+      }`
+    },
+
+    previewMode() {
+      return resolvePreviewMode(this.currentIp || this.cameraIp)
     }
+  },
+
+  mounted() {
+    this.destroyed = false
+    this.loadConfiguredCameras()
   },
 
   beforeUnmount() {
     this.destroyed = true
     this.stopPreviewLoop()
     this.stopSessionLoop()
-    this.resetDirectPreview()
+    this.resetPreviewState()
   },
 
   activated() {
     this.destroyed = false
-    if (this.cameraRunning) {
-      if (this.currentIp && !this.previewRunning) {
-        this.mountDirectPreview(this.currentIp)
-      }
+    this.loadConfiguredCameras()
+
+    if (this.cameraRunning && this.currentIp) {
+      this.restorePreview()
       this.startPreviewLoop()
       this.startSessionLoop()
     }
@@ -236,9 +349,112 @@ export default {
   deactivated() {
     this.stopPreviewLoop()
     this.stopSessionLoop()
+
+    const video = this.$refs.cameraVideo
+    if (video) {
+      try {
+        video.pause()
+      } catch {
+        // ignore
+      }
+    }
   },
 
   methods: {
+    async ensureHlsLibrary() {
+      if (window.Hls) return window.Hls
+
+      if (!hlsScriptPromise) {
+        hlsScriptPromise = new Promise((resolve, reject) => {
+          const existing = document.querySelector(`script[src="${HLS_SCRIPT_SRC}"]`)
+          if (existing) {
+            existing.addEventListener("load", () => resolve(window.Hls), { once: true })
+            existing.addEventListener("error", () => reject(new Error("Không tải được HLS player.")), { once: true })
+            return
+          }
+
+          const script = document.createElement("script")
+          script.src = HLS_SCRIPT_SRC
+          script.async = true
+          script.onload = () => resolve(window.Hls)
+          script.onerror = () => reject(new Error("Không tải được HLS player."))
+          document.head.appendChild(script)
+        })
+      }
+
+      return hlsScriptPromise
+    },
+
+    loadConfiguredCameras() {
+      const cameras = getConfiguredCameraSettings().map((camera) => ({
+        ...camera,
+        sourceUrl: resolveCameraSourceUrl(camera),
+        browserPreviewUrl: resolveCameraPreviewUrl(camera),
+      }))
+
+      this.configuredCameras = cameras
+
+      const savedCameraId = localStorage.getItem(QR_CAMERA_SELECTION_STORAGE_KEY) || ""
+      const currentSelectionValid = cameras.some(
+        (camera) => String(camera.id) === String(this.selectedConfiguredCameraId || "")
+      )
+
+      if (!currentSelectionValid) {
+        if (savedCameraId && cameras.some((camera) => String(camera.id) === savedCameraId)) {
+          this.selectedConfiguredCameraId = savedCameraId
+        } else if (cameras.length === 1) {
+          this.selectedConfiguredCameraId = String(cameras[0].id)
+        } else if (!cameras.length) {
+          this.selectedConfiguredCameraId = ""
+        }
+      }
+
+      if (!this.cameraIp && this.selectedConfiguredCameraId) {
+        this.applyConfiguredCameraSelection({ silent: true })
+      }
+    },
+
+    rememberConfiguredCameraSelection() {
+      if (this.selectedConfiguredCameraId) {
+        localStorage.setItem(
+          QR_CAMERA_SELECTION_STORAGE_KEY,
+          String(this.selectedConfiguredCameraId)
+        )
+      } else {
+        localStorage.removeItem(QR_CAMERA_SELECTION_STORAGE_KEY)
+      }
+    },
+
+    handleConfiguredCameraChange() {
+      this.rememberConfiguredCameraSelection()
+      this.applyConfiguredCameraSelection({ silent: true })
+    },
+
+    applyConfiguredCameraSelection(options = {}) {
+      const { silent = false } = options
+      const selectedCamera = this.selectedConfiguredCamera
+
+      if (!selectedCamera) {
+        if (!silent) {
+          alert("Vui lòng chọn một camera đã cấu hình.")
+        }
+        return
+      }
+
+      const previewCandidate = selectedCamera.browserPreviewUrl || selectedCamera.sourceUrl || ""
+      if (!previewCandidate) {
+        if (!silent) {
+          alert("Camera này chưa có Preview URL dùng cho trình duyệt.")
+        }
+        return
+      }
+
+      this.cameraIp = previewCandidate
+      this.rememberConfiguredCameraSelection()
+      this.verifyMessage = `Đã nạp ${selectedCamera.name} vào màn quét QR.`
+      this.lastUpdate = this.nowText()
+    },
+
     nowText() {
       return new Date().toLocaleString()
     },
@@ -250,25 +466,134 @@ export default {
       return `${raw}${sep}_ts=${Date.now()}`
     },
 
-    mountDirectPreview(url) {
-      const cleanUrl = String(url || "").trim()
-      if (!cleanUrl) return
+    async attachVideoPreview() {
+      await this.$nextTick()
+      const video = this.$refs.cameraVideo
+      if (!video) return
 
-      this.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
+      this.destroyHls()
+
+      video.pause()
+      video.removeAttribute("src")
+      video.load()
+
       this.previewHealthy = false
+      video.src = this.videoPreviewUrl
+
+      try {
+        await video.play()
+      } catch {
+        // ignore autoplay rejection
+      }
+    },
+
+    async attachHlsPreview() {
+      await this.$nextTick()
+      const video = this.$refs.cameraVideo
+      if (!video) return
+
+      this.destroyHls()
+
+      video.pause()
+      video.removeAttribute("src")
+      video.load()
+
+      this.previewHealthy = false
+
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = this.videoPreviewUrl
+        try {
+          await video.play()
+        } catch {
+          // ignore autoplay rejection
+        }
+        return
+      }
+
+      try {
+        const Hls = await this.ensureHlsLibrary()
+        if (!Hls?.isSupported?.()) {
+          throw new Error("Trình duyệt này không hỗ trợ HLS.")
+        }
+
+        this.hlsInstance = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        })
+
+        this.hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+          if (data?.fatal) {
+            this.handleVideoPreviewError()
+          }
+        })
+
+        this.hlsInstance.loadSource(this.videoPreviewUrl)
+        this.hlsInstance.attachMedia(video)
+        this.hlsInstance.on(Hls.Events.MANIFEST_PARSED, async () => {
+          try {
+            await video.play()
+          } catch {
+            // ignore autoplay rejection
+          }
+        })
+      } catch (error) {
+        console.error("HLS preview error:", error)
+        this.handleVideoPreviewError()
+      }
+    },
+
+    destroyHls() {
+      if (this.hlsInstance) {
+        this.hlsInstance.destroy()
+        this.hlsInstance = null
+      }
+    },
+
+    async restorePreview() {
+      if (!this.currentIp) return
+
+      const mode = resolvePreviewMode(this.currentIp)
       this.previewRunning = true
-    },
+      this.previewHealthy = false
 
-    refreshDirectPreview() {
-      if (!this.previewRunning || !this.currentIp) return
-      if (this.imgBusy) return
+      if (mode === "image") {
+        this.directCameraUrl = this.buildDirectCameraUrl(this.currentIp)
+        this.videoPreviewUrl = ""
+        return
+      }
 
-      this.imgBusy = true
-      this.directCameraUrl = this.buildDirectCameraUrl(this.currentIp)
-    },
+      if (mode === "video" || mode === "hls") {
+        this.directCameraUrl = ""
+        this.videoPreviewUrl = this.currentIp
 
-    resetDirectPreview() {
+        if (mode === "video") {
+          await this.attachVideoPreview()
+        } else {
+          await this.attachHlsPreview()
+        }
+        return
+      }
+
       this.directCameraUrl = ""
+      this.videoPreviewUrl = ""
+    },
+
+    resetPreviewState() {
+      this.destroyHls()
+
+      const video = this.$refs.cameraVideo
+      if (video) {
+        try {
+          video.pause()
+        } catch {
+          // ignore
+        }
+        video.removeAttribute("src")
+        video.load()
+      }
+
+      this.directCameraUrl = ""
+      this.videoPreviewUrl = ""
       this.previewHealthy = false
       this.previewRunning = false
       this.imgBusy = false
@@ -305,7 +630,18 @@ export default {
     async startCamera() {
       const ip = String(this.cameraIp || "").trim()
       if (!ip) {
-        alert("Vui lòng nhập IP camera URL.")
+        alert("Vui lòng nhập Preview URL của camera.")
+        return
+      }
+
+      const mode = resolvePreviewMode(ip)
+      if (mode === "rtsp") {
+        alert("RTSP không thể quét QR trực tiếp trên trình duyệt. Hãy dùng Preview URL dạng MP4, HLS hoặc MJPEG.")
+        return
+      }
+
+      if (mode === "unsupported") {
+        alert("URL này chưa được hỗ trợ để quét QR trên trình duyệt.")
         return
       }
 
@@ -314,13 +650,13 @@ export default {
         this.currentIp = ip
         this.cameraRunning = true
         this.resetSessionState()
-        this.mountDirectPreview(ip)
+        await this.restorePreview()
         this.startPreviewLoop()
         this.startSessionLoop()
         this.lastUpdate = this.nowText()
-      } catch (e) {
-        console.error("Start camera error:", e)
-        alert(e?.message || "Lỗi bật camera")
+      } catch (error) {
+        console.error("Start camera error:", error)
+        alert(error?.message || "Lỗi bật camera")
       } finally {
         this.loading = false
       }
@@ -334,10 +670,10 @@ export default {
         this.cameraRunning = false
         this.currentIp = ""
         this.resetSessionState()
-        this.resetDirectPreview()
-      } catch (e) {
-        console.error("Turn off error:", e)
-        alert(e?.message || "Lỗi tắt camera")
+        this.resetPreviewState()
+      } catch (error) {
+        console.error("Turn off error:", error)
+        alert(error?.message || "Lỗi tắt camera")
       } finally {
         this.loading = false
       }
@@ -346,10 +682,18 @@ export default {
     startPreviewLoop() {
       this.stopPreviewLoop()
 
-      this.previewTimer = setInterval(() => {
+      this.previewTimer = setInterval(async () => {
         if (this.destroyed) return
         if (!this.cameraRunning) return
-        this.refreshDirectPreview()
+
+        if (this.previewMode === "image") {
+          this.refreshDirectPreview()
+          return
+        }
+
+        if (this.previewMode === "video" || this.previewMode === "hls") {
+          await this.captureAndDecode()
+        }
       }, this.previewIntervalMs)
     },
 
@@ -377,6 +721,14 @@ export default {
       }
     },
 
+    refreshDirectPreview() {
+      if (!this.previewRunning || !this.currentIp) return
+      if (this.imgBusy) return
+
+      this.imgBusy = true
+      this.directCameraUrl = this.buildDirectCameraUrl(this.currentIp)
+    },
+
     checkSessionExpiry() {
       if (!this.activeSessionPayload || !this.lastSeenAt) return
 
@@ -391,33 +743,56 @@ export default {
       }
     },
 
-    async handleDirectPreviewLoaded() {
+    async handleImagePreviewLoaded() {
       this.previewHealthy = true
       this.imgBusy = false
 
       if (this.decodeBusy || this.verifying) return
-
       await this.captureAndDecode()
     },
 
-    handleDirectPreviewError() {
+    handleImagePreviewError() {
       this.previewHealthy = false
       this.imgBusy = false
     },
 
-    async captureAndDecode() {
-      const img = this.$refs.cameraImage
-      const canvas = this.$refs.captureCanvas
+    handleVideoPreviewLoaded() {
+      this.previewHealthy = true
+    },
 
-      if (!img || !canvas) return
-      if (!img.complete) return
-      if (this.decodeBusy) return
+    handleVideoPreviewError() {
+      this.previewHealthy = false
+    },
+
+    async handleVideoPreviewEnded() {
+      if (!this.previewRunning || !this.currentIp) return
+      if (this.previewMode !== "video" && this.previewMode !== "hls") return
+      await this.restorePreview()
+    },
+
+    async captureAndDecode() {
+      const canvas = this.$refs.captureCanvas
+      if (!canvas || this.decodeBusy) return
+
+      const mode = this.previewMode
+      const source = mode === "image" ? this.$refs.cameraImage : this.$refs.cameraVideo
+      if (!source) return
+
+      if (mode === "image" && !source.complete) return
+      if ((mode === "video" || mode === "hls") && source.readyState < 2) return
 
       this.decodeBusy = true
 
       try {
-        const sourceWidth = img.naturalWidth || img.width
-        const sourceHeight = img.naturalHeight || img.height
+        const sourceWidth =
+          mode === "image"
+            ? (source.naturalWidth || source.width)
+            : (source.videoWidth || source.clientWidth)
+        const sourceHeight =
+          mode === "image"
+            ? (source.naturalHeight || source.height)
+            : (source.videoHeight || source.clientHeight)
+
         if (!sourceWidth || !sourceHeight) return
 
         this.frameWidth = sourceWidth
@@ -437,7 +812,7 @@ export default {
 
         const ctx = canvas.getContext("2d", { willReadFrequently: true })
         ctx.clearRect(0, 0, targetWidth, targetHeight)
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+        ctx.drawImage(source, 0, 0, targetWidth, targetHeight)
 
         const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight)
         const code = jsQR(imageData.data, targetWidth, targetHeight, {
@@ -484,10 +859,10 @@ export default {
         } else {
           this.markSessionVerifyState("failed", message || "Xác thực thất bại.")
         }
-      } catch (e) {
-        console.warn("Decode frame error:", e)
+      } catch (error) {
+        console.warn("Decode frame error:", error)
         this.verifyMessage =
-          "Không đọc được frame từ IP camera. Kiểm tra CORS, mixed content hoặc URL stream."
+          "Không đọc được frame từ camera. Kiểm tra Preview URL, CORS hoặc cấu hình go2rtc."
         this.markSessionVerifyState("system_error", this.verifyMessage)
       } finally {
         this.decodeBusy = false
@@ -562,7 +937,7 @@ export default {
 
 <style scoped>
 .scanner-page {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 24px auto;
   padding: 16px;
   display: grid;
@@ -578,6 +953,31 @@ export default {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
+.source-panel {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.source-field {
+  flex: 1 1 320px;
+}
+
+.source-field label,
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.source-hint {
+  margin-bottom: 14px;
+  color: #5c6f82;
+  font-size: 0.92rem;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -586,12 +986,6 @@ export default {
 
 .form-group {
   margin-bottom: 14px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
 }
 
 .ip-input,
@@ -618,21 +1012,23 @@ export default {
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
+  color: #fff;
 }
 
 .btn-primary {
   background: #2563eb;
-  color: #fff;
 }
 
 .btn-danger {
   background: #dc2626;
-  color: #fff;
 }
 
 .btn-reset {
   background: #111827;
-  color: #fff;
+}
+
+.btn-config {
+  background: #0f7c82;
 }
 
 .preview-wrap {
@@ -650,11 +1046,24 @@ export default {
 .video {
   width: 100%;
   display: block;
+  background: #0f172a;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
 }
 
 .preview-placeholder {
   color: #6b7280;
   font-weight: 600;
+  padding: 24px;
+  text-align: center;
+}
+
+.preview-note {
+  color: #92400e;
+}
+
+.hidden-canvas {
+  display: none;
 }
 
 .status-grid {
@@ -678,16 +1087,18 @@ export default {
 }
 
 .verify-data > div {
-  margin-bottom: 4px;
+  margin-top: 6px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .scanner-page {
     grid-template-columns: 1fr;
   }
+}
 
-  .status-grid,
-  .form-row {
+@media (max-width: 720px) {
+  .form-row,
+  .status-grid {
     grid-template-columns: 1fr;
   }
 }

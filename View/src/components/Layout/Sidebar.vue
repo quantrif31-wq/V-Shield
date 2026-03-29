@@ -372,13 +372,6 @@ const navGroups = ref([
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v10H4z"/><path d="M9 7V4h6v3"/><path d="M8 17h8"/><path d="M7 21h10"/></svg>',
                 roles: ['Admin'],
             },
-            {
-                path: '/biometrics',
-                label: 'Dữ liệu nhận diện',
-                hint: 'Model và video khuôn mặt',
-                icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H6a3 3 0 00-3 3v2"/><path d="M16 3h2a3 3 0 013 3v2"/><path d="M8 21H6a3 3 0 01-3-3v-2"/><path d="M16 21h2a3 3 0 003-3v-2"/><path d="M9 10a3 3 0 016 0v4a3 3 0 01-6 0z"/></svg>',
-                roles: ['Admin'],
-            },
         ],
     },
     {
@@ -520,7 +513,16 @@ const allPassageItems = [
     },
 ]
 
-const passageItems = computed(() => allPassageItems.filter((item) => canSeeItem(item)))
+const passageItems = computed(() =>
+    allPassageItems
+        .filter((item) => item.path !== '/scan_qr_d')
+        .map((item) =>
+            item.path === '/thonghanh'
+                ? { ...item, hint: 'QR + biển số theo từng làn' }
+                : item
+        )
+        .filter((item) => canSeeItem(item))
+)
 
 const navigationGroupCount = computed(() => visibleGroups.value.length + (passageItems.value.length ? 1 : 0))
 
