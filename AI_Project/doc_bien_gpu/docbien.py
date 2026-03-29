@@ -16,8 +16,12 @@ from paddleocr import PaddleOCR
 from collections import Counter
 from queue import Queue, Full, Empty
 from flask import Flask, request, jsonify, Response, stream_with_context
-from flasgger import Swagger
 from flask_cors import CORS
+
+try:
+    from flasgger import Swagger
+except ImportError:
+    Swagger = None
 
 # =========================================================
 # FIX SITE FOR PYINSTALLER
@@ -115,7 +119,10 @@ swagger_template = {
     ]
 }
 
-Swagger(app, template=swagger_template)
+if Swagger is not None:
+    Swagger(app, template=swagger_template)
+else:
+    app.logger.warning("flasgger is not installed; /docs is disabled for this run.")
 
 CORS(
     app,

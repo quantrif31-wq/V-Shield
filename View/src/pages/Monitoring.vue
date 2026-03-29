@@ -39,10 +39,6 @@
                 <div>
                     <span class="panel-kicker">Local camera previews</span>
                     <h2 class="panel-title">Preview từ cấu hình local</h2>
-                    <p class="panel-copy">
-                        Mục này đọc dữ liệu đã nhập ở trang Quản lý camera. RTSP chỉ dùng cho AI; để xem trên web, hãy
-                        thêm <code>Preview URL</code> dạng HLS, MJPEG, MP4 hoặc WebRTC gateway.
-                    </p>
                 </div>
                 <div class="panel-actions">
                     <button class="btn btn-secondary btn-sm" @click="loadLocalCameraSettings">Tải lại preview</button>
