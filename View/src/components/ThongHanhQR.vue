@@ -127,7 +127,8 @@
 
             <div class="cam-preview">
               <img
-                v-if="lane.qr.previewRunning && lane.qr.directCameraUrl"
+                v-if="lane.qr.previewRunning && lane.qr.previewMode === 'image' && lane.qr.directCameraUrl"
+                :ref="el => setQrImageRef(lane.id, el)"
                 :key="lane.qr.directCameraKey"
                 :src="lane.qr.directCameraUrl"
                 class="preview-image"
@@ -136,6 +137,26 @@
                 @load="onQrPreviewLoaded(lane)"
                 @error="onQrPreviewError(lane)"
               />
+              <video
+                v-else-if="lane.qr.previewRunning && (lane.qr.previewMode === 'video' || lane.qr.previewMode === 'hls')"
+                :ref="el => setQrVideoRef(lane.id, el)"
+                :key="lane.qr.directCameraKey"
+                class="preview-image"
+                autoplay
+                muted
+                playsinline
+                crossorigin="anonymous"
+                @loadeddata="onQrVideoPreviewLoaded(lane)"
+                @canplay="onQrVideoPreviewLoaded(lane)"
+                @ended="onQrVideoPreviewError(lane)"
+                @error="onQrVideoPreviewError(lane)"
+              ></video>
+              <div
+                v-else-if="lane.qr.previewRunning && (lane.qr.previewMode === 'rtsp' || lane.qr.previewMode === 'unsupported')"
+                class="cam-off"
+              >
+                QR cần URL ảnh, MP4 hoặc HLS để quét trên web
+              </div>
               <div v-else class="cam-off">QR Offline</div>
               <canvas :ref="el => setQrCanvasRef(lane.id, el)" style="display:none;"></canvas>
             </div>
@@ -262,6 +283,26 @@ import * as plateLane1Api from "../services/biensoApi"
 import * as plateLane2Api from "../services/biensoApi"
 import { scanGate } from "../services/thonghanhAPI"
 import { verifyDynamicQr } from "../services/dynamicQrVerifyApi"
+import {
+  isBrowserVideoCameraUrl,
+  isHlsCameraUrl,
+  isHttpCameraUrl,
+  isRtspCameraUrl
+} from "../utils/cameraNetwork"
+
+const HLS_SCRIPT_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"
+
+let hlsScriptPromise
+
+function resolveQrPreviewMode(url) {
+  const value = String(url || "").trim()
+  if (!value) return "empty"
+  if (isHlsCameraUrl(value)) return "hls"
+  if (isBrowserVideoCameraUrl(value)) return "video"
+  if (isRtspCameraUrl(value)) return "rtsp"
+  if (isHttpCameraUrl(value)) return "image"
+  return "unsupported"
+}
 
 function createQrModule(defaultScannerDevice) {
   return {
@@ -277,6 +318,9 @@ function createQrModule(defaultScannerDevice) {
 
     directCameraUrl: "",
     directCameraKey: 0,
+    videoPreviewUrl: "",
+    previewMode: "empty",
+    hlsInstance: null,
 
     scannerDevice: defaultScannerDevice,
 
@@ -357,6 +401,8 @@ export default {
   data() {
     return {
       qrCanvasRefs: {},
+      qrImageRefs: {},
+      qrVideoRefs: {},
       lanes: [
         {
           id: "lane1",
@@ -397,7 +443,7 @@ export default {
       this.stopQrLoops(lane)
       this.stopPlateLoop(lane)
 
-      this.resetPreview(lane.qr)
+      this.resetQrPreview(lane.id, lane.qr)
       this.resetPreview(lane.plate)
     }
   },
@@ -409,7 +455,7 @@ export default {
 
       if (lane.qr.cameraRunning) {
         if (lane.qr.currentIp && !lane.qr.previewRunning) {
-          this.mountPreview(lane.qr, lane.qr.currentIp)
+          this.enableQrPreview(lane.qr, lane.qr.currentIp, lane.id)
         }
         this.startQrPreviewLoop(lane)
         this.startQrSessionLoop(lane)
@@ -434,6 +480,46 @@ export default {
   methods: {
     setQrCanvasRef(laneId, el) {
       if (el) this.qrCanvasRefs[laneId] = el
+    },
+
+    setQrImageRef(laneId, el) {
+      if (el) {
+        this.qrImageRefs[laneId] = el
+      } else {
+        delete this.qrImageRefs[laneId]
+      }
+    },
+
+    setQrVideoRef(laneId, el) {
+      if (el) {
+        this.qrVideoRefs[laneId] = el
+      } else {
+        delete this.qrVideoRefs[laneId]
+      }
+    },
+
+    async ensureHlsLibrary() {
+      if (window.Hls) return window.Hls
+
+      if (!hlsScriptPromise) {
+        hlsScriptPromise = new Promise((resolve, reject) => {
+          const existing = document.querySelector(`script[src="${HLS_SCRIPT_SRC}"]`)
+          if (existing) {
+            existing.addEventListener("load", () => resolve(window.Hls), { once: true })
+            existing.addEventListener("error", () => reject(new Error("Không tải được HLS player.")), { once: true })
+            return
+          }
+
+          const script = document.createElement("script")
+          script.src = HLS_SCRIPT_SRC
+          script.async = true
+          script.onload = () => resolve(window.Hls)
+          script.onerror = () => reject(new Error("Không tải được HLS player."))
+          document.head.appendChild(script)
+        })
+      }
+
+      return hlsScriptPromise
     },
 
     isLaneReady(lane) {
@@ -488,6 +574,143 @@ export default {
       if (!raw) return ""
       const sep = raw.includes("?") ? "&" : "?"
       return `${raw}${sep}t=${Date.now()}`
+    },
+
+    async attachQrVideoPreview(laneId, qr) {
+      await this.$nextTick()
+      const video = this.qrVideoRefs[laneId]
+      if (!video) return
+
+      this.destroyQrHls(qr)
+
+      try {
+        video.pause()
+      } catch {
+        // ignore
+      }
+
+      video.removeAttribute("src")
+      video.load()
+
+      qr.previewHealthy = false
+      video.src = qr.videoPreviewUrl
+
+      try {
+        await video.play()
+      } catch {
+        // ignore autoplay rejection
+      }
+    },
+
+    async attachQrHlsPreview(laneId, qr) {
+      await this.$nextTick()
+      const video = this.qrVideoRefs[laneId]
+      if (!video) return
+
+      this.destroyQrHls(qr)
+
+      try {
+        video.pause()
+      } catch {
+        // ignore
+      }
+
+      video.removeAttribute("src")
+      video.load()
+
+      qr.previewHealthy = false
+
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = qr.videoPreviewUrl
+        try {
+          await video.play()
+        } catch {
+          // ignore autoplay rejection
+        }
+        return
+      }
+
+      try {
+        const Hls = await this.ensureHlsLibrary()
+        if (!Hls?.isSupported?.()) {
+          throw new Error("Trình duyệt này không hỗ trợ HLS.")
+        }
+
+        qr.hlsInstance = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true
+        })
+
+        qr.hlsInstance.on(Hls.Events.ERROR, (_, data) => {
+          if (data?.fatal) {
+            this.onQrVideoPreviewError({ qr })
+          }
+        })
+
+        qr.hlsInstance.loadSource(qr.videoPreviewUrl)
+        qr.hlsInstance.attachMedia(video)
+        qr.hlsInstance.on(Hls.Events.MANIFEST_PARSED, async () => {
+          try {
+            await video.play()
+          } catch {
+            // ignore autoplay rejection
+          }
+        })
+      } catch (error) {
+        console.error("attachQrHlsPreview error:", error)
+        this.onQrVideoPreviewError({ qr })
+      }
+    },
+
+    destroyQrHls(qr) {
+      if (qr?.hlsInstance) {
+        qr.hlsInstance.destroy()
+        qr.hlsInstance = null
+      }
+    },
+
+    destroyQrPreviewMedia(laneId, qr) {
+      this.destroyQrHls(qr)
+      const video = this.qrVideoRefs[laneId]
+      if (video) {
+        try {
+          video.pause()
+        } catch {
+          // ignore
+        }
+
+        video.removeAttribute("src")
+        video.load()
+      }
+    },
+
+    async enableQrPreview(qr, url, laneId) {
+      const cleanUrl = String(url || "").trim()
+      if (!cleanUrl) return
+
+      qr.previewMode = resolveQrPreviewMode(cleanUrl)
+      qr.previewHealthy = false
+      qr.previewRunning = true
+      qr.directCameraKey += 1
+
+      if (qr.previewMode === "image") {
+        this.destroyQrPreviewMedia(laneId, qr)
+        qr.videoPreviewUrl = ""
+        qr.directCameraUrl = this.buildDirectCameraUrl(cleanUrl)
+        return
+      }
+
+      qr.directCameraUrl = ""
+      qr.videoPreviewUrl = cleanUrl
+
+      if (qr.previewMode === "video") {
+        await this.attachQrVideoPreview(laneId, qr)
+        return
+      }
+
+      if (qr.previewMode === "hls") {
+        await this.attachQrHlsPreview(laneId, qr)
+      }
     },
 
     isImagePreviewableUrl(inputUrl) {
@@ -565,6 +788,20 @@ export default {
       module.frameHeight = 0
     },
 
+    resetQrPreview(laneId, qr) {
+      this.destroyQrPreviewMedia(laneId, qr)
+      qr.directCameraUrl = ""
+      qr.videoPreviewUrl = ""
+      qr.previewMode = "empty"
+      qr.directCameraKey += 1
+      qr.previewHealthy = false
+      qr.previewRunning = false
+      qr.imgBusy = false
+      qr.decodeBusy = false
+      qr.frameWidth = 0
+      qr.frameHeight = 0
+    },
+
     onPreviewLoaded(module) {
       module.previewHealthy = true
     },
@@ -584,6 +821,16 @@ export default {
 
       if (lane.qr.decodeBusy || lane.qr.verifying) return
       await this.captureAndDecodeQr(lane)
+    },
+
+    async onQrVideoPreviewLoaded(lane) {
+      lane.qr.previewHealthy = true
+      if (lane.qr.decodeBusy || lane.qr.verifying) return
+      await this.captureAndDecodeQr(lane)
+    },
+
+    onQrVideoPreviewError(lane) {
+      lane.qr.previewHealthy = false
     },
 
     clearQrState(qr) {
@@ -642,7 +889,14 @@ export default {
       lane.qr.previewTimer = setInterval(() => {
         if (lane.qr.destroyed) return
         if (!lane.qr.cameraRunning) return
-        this.refreshDirectPreview(lane.qr)
+        if (lane.qr.previewMode === "image") {
+          this.refreshDirectPreview(lane.qr)
+          return
+        }
+
+        if (lane.qr.previewMode === "video" || lane.qr.previewMode === "hls") {
+          this.captureAndDecodeQr(lane)
+        }
       }, lane.qr.previewIntervalMs)
     },
 
@@ -690,18 +944,35 @@ export default {
 
     async captureAndDecodeQr(lane) {
       const qr = lane.qr
-      const img = this.$el.querySelector(`[alt="QR Preview"]`)
       const canvas = this.qrCanvasRefs[lane.id]
+      const mode = qr.previewMode
 
-      if (!img || !canvas) return
-      if (!img.complete) return
+      if (!canvas) return
       if (qr.decodeBusy) return
+
+      let source = null
+      let sourceWidth = 0
+      let sourceHeight = 0
+
+      if (mode === "image") {
+        const img = this.qrImageRefs[lane.id]
+        if (!img || !img.complete) return
+        source = img
+        sourceWidth = img.naturalWidth || img.width
+        sourceHeight = img.naturalHeight || img.height
+      } else if (mode === "video" || mode === "hls") {
+        const video = this.qrVideoRefs[lane.id]
+        if (!video || video.readyState < 2) return
+        source = video
+        sourceWidth = video.videoWidth || video.clientWidth
+        sourceHeight = video.videoHeight || video.clientHeight
+      } else {
+        return
+      }
 
       qr.decodeBusy = true
 
       try {
-        const sourceWidth = img.naturalWidth || img.width
-        const sourceHeight = img.naturalHeight || img.height
         if (!sourceWidth || !sourceHeight) return
 
         qr.frameWidth = sourceWidth
@@ -721,7 +992,7 @@ export default {
 
         const ctx = canvas.getContext("2d", { willReadFrequently: true })
         ctx.clearRect(0, 0, targetWidth, targetHeight)
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
+        ctx.drawImage(source, 0, 0, targetWidth, targetHeight)
 
         const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight)
         const code = jsQR(imageData.data, targetWidth, targetHeight, {
@@ -987,7 +1258,7 @@ export default {
 
         if (lane.qr.cameraIp.trim()) {
           lane.qr.currentIp = lane.qr.cameraIp.trim()
-          this.mountPreview(lane.qr, lane.qr.currentIp)
+          await this.enableQrPreview(lane.qr, lane.qr.currentIp, lane.id)
           lane.qr.message = "Đã mở preview QR"
         }
 
@@ -1018,7 +1289,7 @@ export default {
         lane.qr.currentIp = lane.qr.cameraIp.trim()
         lane.plate.currentIp = lane.plate.cameraIp.trim()
 
-        if (!lane.qr.previewRunning) this.mountPreview(lane.qr, lane.qr.currentIp)
+        if (!lane.qr.previewRunning) await this.enableQrPreview(lane.qr, lane.qr.currentIp, lane.id)
         if (!lane.plate.previewRunning) this.enablePlatePreview(lane.plate, lane.plate.currentIp)
 
         this.clearQrState(lane.qr)
@@ -1074,7 +1345,7 @@ export default {
 
         lane.qr.currentIp = lane.qr.cameraIp.trim()
         if (!lane.qr.previewRunning) {
-          this.mountPreview(lane.qr, lane.qr.currentIp)
+          await this.enableQrPreview(lane.qr, lane.qr.currentIp, lane.id)
         }
 
         this.clearQrState(lane.qr)
@@ -1146,7 +1417,7 @@ export default {
         // QR local stop
         this.stopQrLoops(lane)
         this.hardResetQr(lane.qr)
-        this.resetPreview(lane.qr)
+        this.resetQrPreview(lane.id, lane.qr)
 
         // Plate old stop
         this.stopPlateLoop(lane)
