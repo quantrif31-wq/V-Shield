@@ -16,7 +16,6 @@ import DepartmentPosition from '../pages/DepartmentPosition.vue'
 import PreRegistration from '../pages/PreRegistration.vue'
 import GuestRegister from '../pages/GuestRegister.vue'
 
-
 import FaceID from '../components/FaceCamera.vue'
 import bienso from '../components/BienSoSecurity.vue'
 import FaceVideo from '../components/FaceVideo.vue'
@@ -81,6 +80,12 @@ const routes = [
                 path: 'departments-positions',
                 name: 'DepartmentPosition',
                 component: DepartmentPosition,
+                meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
+            },
+            {
+                path: 'users',
+                name: 'UserManagement',
+                component: UserManagement,
                 meta: { requiresAdmin: true, allowedRoles: ['Admin'] },
             },
         ],
