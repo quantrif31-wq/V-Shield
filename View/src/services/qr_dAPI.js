@@ -1,5 +1,5 @@
 export async function startQr(rtsp) {
-  return fetch("http://127.0.0.1:8001/qr/start", {
+  return fetch("http://192.168.137.1:8555/qr/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rtsp })
@@ -7,24 +7,24 @@ export async function startQr(rtsp) {
 }
 
 export async function scanQr() {
-  return fetch("http://127.0.0.1:8001/qr/scan", {
+  return fetch("http://192.168.137.1:8555/qr/scan", {
     method: "POST"
   }).then(r => r.json())
 }
 
 export async function resetQr() {
-  return fetch("http://127.0.0.1:8001/qr/reset", {
+  return fetch("http://192.168.137.1:8555/qr/reset", {
     method: "POST"
   }).then(r => r.json())
 }
 
 export async function stopQr() {
-  return fetch("http://127.0.0.1:8001/qr/stop", {
+  return fetch("http://192.168.137.1:8555/qr/stop", {
     method: "POST"
   }).then(r => r.json())
 }
 
 export async function getQrResult() {
-  return fetch("http://127.0.0.1:8001/qr/result")
+  return fetch("http://192.168.137.1:8555/qr/result")
     .then(r => r.json())
 }

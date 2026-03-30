@@ -1439,7 +1439,11 @@ this.startQrPolling(lane)
     lane.loading = true
 
     // 🔥 1. tắt Python scan
-    await stopQr()
+    try {
+      await stopQr()
+    } catch (e) {
+      console.warn("stopQr warning:", e)
+    }
 
     // 🔥 2. dừng polling QR
     if (lane.qr.resultTimer) {
