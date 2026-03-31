@@ -99,6 +99,9 @@ namespace API.Controllers
             _context.Cameras.Add(camera);
             await _context.SaveChangesAsync();
 
+            camera.UrlView = BuildCameraViewUrl(camera.StreamUrl, camera.CameraId);
+            await _context.SaveChangesAsync();
+
             return Ok(camera);
         }
 
@@ -131,6 +134,7 @@ namespace API.Controllers
             cam.CameraType = string.IsNullOrWhiteSpace(cameraType) ? null : cameraType;
             cam.GateId = request.GateId;
             cam.StreamUrl = string.IsNullOrWhiteSpace(streamUrl) ? null : streamUrl;
+            cam.UrlView = BuildCameraViewUrl(cam.StreamUrl, cam.CameraId);
 
             await _context.SaveChangesAsync();
 
@@ -175,14 +179,19 @@ namespace API.Controllers
 
                 foreach (var cam in cameras)
                 {
+                    var normalizedStreamUrl = NormalizeCameraUrl(cam.StreamUrl);
+                    cam.UrlView = BuildCameraViewUrl(normalizedStreamUrl, cam.CameraId);
+
+                    if (!ShouldProxyViaGo2Rtc(normalizedStreamUrl))
+                    {
+                        continue;
+                    }
+
                     // 👉 dùng CameraId để không bị lệch cam
                     var streamName = $"cam{cam.CameraId}";
 
                     yaml.AppendLine($"  {streamName}:");
-                    yaml.AppendLine($"    - {cam.StreamUrl}");
-
-                    // 👉 AUTO UPDATE UrlView
-                    cam.UrlView = $"http://localhost:1984/stream.html?src={streamName}";
+                    yaml.AppendLine($"    - {normalizedStreamUrl}");
                 }
 
                 yaml.AppendLine();
@@ -260,6 +269,47 @@ namespace API.Controllers
             {
                 return StatusCode(500, ex.Message);
             }
+        }
+
+        private static string? NormalizeCameraUrl(string? value)
+        {
+            var normalized = value?.Trim();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+        }
+
+        private static bool IsDirectWebStream(string? streamUrl)
+        {
+            if (string.IsNullOrWhiteSpace(streamUrl))
+            {
+                return false;
+            }
+
+            if (streamUrl.StartsWith("/", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return Uri.TryCreate(streamUrl, UriKind.Absolute, out var uri) &&
+                   (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        }
+
+        private static bool ShouldProxyViaGo2Rtc(string? streamUrl) =>
+            !string.IsNullOrWhiteSpace(streamUrl) && !IsDirectWebStream(streamUrl);
+
+        private static string? BuildCameraViewUrl(string? streamUrl, int cameraId)
+        {
+            var normalizedStreamUrl = NormalizeCameraUrl(streamUrl);
+            if (string.IsNullOrWhiteSpace(normalizedStreamUrl))
+            {
+                return null;
+            }
+
+            if (IsDirectWebStream(normalizedStreamUrl))
+            {
+                return normalizedStreamUrl;
+            }
+
+            return $"http://localhost:1984/stream.html?src=cam{cameraId}";
         }
     }
 }
