@@ -13,10 +13,12 @@ namespace API.Controllers
     public class SetCamController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public SetCamController(ApplicationDbContext context)
+        public SetCamController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // ================= GET ALL =================
@@ -174,9 +176,6 @@ namespace API.Controllers
                 var yaml = new StringBuilder();
                 yaml.AppendLine("streams:");
 
-                // lấy domain động
-                var host = $"{Request.Scheme}://{Request.Host}";
-
                 foreach (var cam in cameras)
                 {
                     var normalizedStreamUrl = NormalizeCameraUrl(cam.StreamUrl);
@@ -296,7 +295,7 @@ namespace API.Controllers
         private static bool ShouldProxyViaGo2Rtc(string? streamUrl) =>
             !string.IsNullOrWhiteSpace(streamUrl) && !IsDirectWebStream(streamUrl);
 
-        private static string? BuildCameraViewUrl(string? streamUrl, int cameraId)
+        private string? BuildCameraViewUrl(string? streamUrl, int cameraId)
         {
             var normalizedStreamUrl = NormalizeCameraUrl(streamUrl);
             if (string.IsNullOrWhiteSpace(normalizedStreamUrl))
@@ -306,10 +305,46 @@ namespace API.Controllers
 
             if (IsDirectWebStream(normalizedStreamUrl))
             {
-                return normalizedStreamUrl;
+                return BuildDirectWebStreamUrl(normalizedStreamUrl);
             }
 
-            return $"http://localhost:1984/stream.html?src=cam{cameraId}";
+            var go2RtcPublicBaseUrl = ResolveGo2RtcPublicBaseUrl();
+            return $"{go2RtcPublicBaseUrl}/stream.html?src=cam{cameraId}";
         }
+
+        private string BuildDirectWebStreamUrl(string streamUrl)
+        {
+            if (!streamUrl.StartsWith("/", StringComparison.Ordinal))
+            {
+                return streamUrl;
+            }
+
+            return $"{ResolvePublicAppBaseUrl()}{streamUrl}";
+        }
+
+        private string ResolveGo2RtcPublicBaseUrl()
+        {
+            var configuredGo2RtcBaseUrl = _configuration["AppSettings:Go2RtcPublicBaseUrl"];
+            if (!string.IsNullOrWhiteSpace(configuredGo2RtcBaseUrl))
+            {
+                return NormalizeBaseUrl(configuredGo2RtcBaseUrl);
+            }
+
+            return $"{ResolvePublicAppBaseUrl()}/go2rtc";
+        }
+
+        private string ResolvePublicAppBaseUrl()
+        {
+            var configuredFrontendUrl = _configuration["AppSettings:FrontendUrl"];
+            if (!string.IsNullOrWhiteSpace(configuredFrontendUrl))
+            {
+                return NormalizeBaseUrl(configuredFrontendUrl);
+            }
+
+            return NormalizeBaseUrl($"{Request.Scheme}://{Request.Host}");
+        }
+
+        private static string NormalizeBaseUrl(string value) =>
+            value.Trim().TrimEnd('/');
     }
 }
