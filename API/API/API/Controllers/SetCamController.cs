@@ -309,7 +309,7 @@ namespace API.Controllers
             }
 
             var go2RtcPublicBaseUrl = ResolveGo2RtcPublicBaseUrl();
-            return $"{go2RtcPublicBaseUrl}/stream.html?src=cam{cameraId}";
+            return $"{go2RtcPublicBaseUrl}/api/stream.mjpeg?src=cam{cameraId}";
         }
 
         private string BuildDirectWebStreamUrl(string streamUrl)
