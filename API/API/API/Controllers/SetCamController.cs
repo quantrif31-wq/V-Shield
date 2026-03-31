@@ -67,10 +67,34 @@ namespace API.Controllers
 
         // ================= CREATE =================
         [HttpPost]
-        public async Task<IActionResult> Create(Camera camera)
+        public async Task<IActionResult> Create([FromBody] SetCamRequest request)
         {
-            if (string.IsNullOrEmpty(camera.CameraName))
-                return BadRequest("Tên camera không được rỗng");
+            if (request == null)
+                return BadRequest(new { message = "Dữ liệu camera không hợp lệ" });
+
+            var cameraName = request.CameraName?.Trim();
+            var cameraType = request.CameraType?.Trim();
+            var streamUrl = request.StreamUrl?.Trim();
+
+            if (string.IsNullOrWhiteSpace(cameraName))
+                return BadRequest(new { message = "Tên camera không được rỗng" });
+
+            if (request.GateId.HasValue)
+            {
+                var gateExists = await _context.Gates.AnyAsync(g => g.GateId == request.GateId.Value);
+                if (!gateExists)
+                {
+                    return BadRequest(new { message = "Gate ID không tồn tại" });
+                }
+            }
+
+            var camera = new Camera
+            {
+                CameraName = cameraName,
+                GateId = request.GateId,
+                CameraType = string.IsNullOrWhiteSpace(cameraType) ? null : cameraType,
+                StreamUrl = string.IsNullOrWhiteSpace(streamUrl) ? null : streamUrl
+            };
 
             _context.Cameras.Add(camera);
             await _context.SaveChangesAsync();
@@ -80,17 +104,33 @@ namespace API.Controllers
 
         // ================= UPDATE =================
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, Camera updated)
+        public async Task<IActionResult> Update(int id, [FromBody] SetCamRequest request)
         {
             var cam = await _context.Cameras.FindAsync(id);
 
             if (cam == null)
                 return NotFound("Camera không tồn tại");
 
-            cam.CameraName = updated.CameraName;
-            cam.CameraType = updated.CameraType;
-            cam.GateId = updated.GateId;
-            cam.StreamUrl = updated.StreamUrl;
+            var cameraName = request.CameraName?.Trim();
+            var cameraType = request.CameraType?.Trim();
+            var streamUrl = request.StreamUrl?.Trim();
+
+            if (string.IsNullOrWhiteSpace(cameraName))
+                return BadRequest(new { message = "Tên camera không được rỗng" });
+
+            if (request.GateId.HasValue)
+            {
+                var gateExists = await _context.Gates.AnyAsync(g => g.GateId == request.GateId.Value);
+                if (!gateExists)
+                {
+                    return BadRequest(new { message = "Gate ID không tồn tại" });
+                }
+            }
+
+            cam.CameraName = cameraName;
+            cam.CameraType = string.IsNullOrWhiteSpace(cameraType) ? null : cameraType;
+            cam.GateId = request.GateId;
+            cam.StreamUrl = string.IsNullOrWhiteSpace(streamUrl) ? null : streamUrl;
 
             await _context.SaveChangesAsync();
 

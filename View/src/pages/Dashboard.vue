@@ -216,8 +216,8 @@ const trafficChart = computed(() => {
 
     return weeklyTraffic.value.map((day) => ({
         ...day,
-        inPercent: Math.max(12, Math.round(((day.checkIn || 0) / maxValue) * 100)),
-        outPercent: Math.max(12, Math.round(((day.checkOut || 0) / maxValue) * 100)),
+        inPercent: Math.max(12, Math.round((day.checkIn / maxValue) * 100)),
+        outPercent: Math.max(12, Math.round((day.checkOut / maxValue) * 100)),
     }))
 })
 
