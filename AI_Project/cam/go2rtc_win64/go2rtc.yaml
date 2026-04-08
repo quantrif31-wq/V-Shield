@@ -1,6 +1,8 @@
 streams:
-  cam14:
-    - rtsp://192.168.9.198:1945/
+  cam1:
+    - https://v-shield.site/go2rtc/api/stream.mp4?src=cam2-qr
+  cam2:
+    - rtsp://100.116.110.26:8554/qr_cam
 
 webrtc:
   listen: ":8555"

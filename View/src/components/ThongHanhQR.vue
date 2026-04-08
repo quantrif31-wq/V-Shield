@@ -156,15 +156,14 @@
             </div>
 
             <div class="cam-preview">
-              <iframe
-  v-if="lane.qr.previewRunning && lane.qr.directCameraUrl"
-  :key="lane.qr.directCameraKey"
-  :src="lane.qr.directCameraUrl"
-  class="preview-image"
-  style="border: none;"
-></iframe>
+              <img
+                v-if="lane.qr.previewRunning && lane.qr.lockedSnapshot"
+                :src="lane.qr.lockedSnapshot"
+                class="preview-image"
+                alt="QR Snapshot"
+              />
+              <div v-else-if="lane.qr.previewRunning" class="cam-off">Chờ ảnh chụp QR...</div>
               <div v-else class="cam-off">QR Offline</div>
-              <canvas :ref="el => setQrCanvasRef(lane.id, el)" style="display:none;"></canvas>
             </div>
 
             <div class="quick-result">
@@ -327,6 +326,7 @@ function createQrModule(defaultScannerDevice) {
     message: "",
 
     previewTimer: null,
+    resultTimer: null,
     sessionTimer: null,
     destroyed: false,
 
@@ -386,6 +386,8 @@ export default {
   data() {
     return {
       qrCanvasRefs: {},
+      qrImageRefs: {},
+      qrVideoRefs: {},
       cameras: [],
   cameraSearch: {},
       lanes: [
@@ -428,6 +430,7 @@ export default {
       lane.plate.destroyed = true
 
       this.stopQrLoops(lane)
+      this.stopQrPolling(lane)
       this.stopPlateLoop(lane)
 
       this.resetQrPreview(lane.id, lane.qr)
@@ -441,11 +444,8 @@ export default {
       lane.plate.destroyed = false
 
       if (lane.qr.cameraRunning) {
-        if (lane.qr.viewUrl && !lane.qr.previewRunning) {
-  this.mountPreview(lane.qr, lane.qr.viewUrl)
-}
-        this.startQrPreviewLoop(lane)
-        this.startQrSessionLoop(lane)
+        lane.qr.previewRunning = true
+        this.startQrPolling(lane)
       }
 
       if (lane.plate.cameraRunning) {
@@ -460,6 +460,7 @@ export default {
   deactivated() {
     for (const lane of this.lanes) {
       this.stopQrLoops(lane)
+      this.stopQrPolling(lane)
       this.stopPlateLoop(lane)
     }
   },
@@ -480,11 +481,19 @@ export default {
     if (!res) return
 
     // trạng thái
+    lane.qr.cameraRunning = !!res.running
+    lane.qr.message = res.message || lane.qr.message
     lane.qr.sessionLocked = res.locked
 
     if (res.locked && res.qr) {
+  if (lane.qr.qrPayload === res.qr && lane.qr.verifyMessage) {
+    return
+  }
+
   lane.qr.qrPayload = res.qr
   lane.qr.sessionLocked = true
+  lane.qr.previewRunning = true
+  lane.qr.lockedSnapshot = this.buildQrSnapshotUrl(lane.qr.viewUrl)
 
   const result = await this.doVerifyQr(lane, res.qr)
 
@@ -503,6 +512,13 @@ export default {
 
   }, 300)
 },
+
+    stopQrPolling(lane) {
+      if (lane.qr.resultTimer) {
+        clearInterval(lane.qr.resultTimer)
+        lane.qr.resultTimer = null
+      }
+    },
 
     isLaneReady(lane) {
       return (
@@ -554,6 +570,41 @@ export default {
     buildDirectCameraUrl(inputUrl) {
   return String(inputUrl || "").trim()
 },
+
+    buildQrSnapshotUrl(inputUrl) {
+      const raw = String(inputUrl || "").trim()
+      if (!raw) return ""
+
+      try {
+        const url = new URL(raw, window.location.origin)
+        const src = url.searchParams.get("src")
+
+        if (/\/stream\.html$/i.test(url.pathname) && src) {
+          url.pathname = url.pathname.replace(/\/stream\.html$/i, "/api/frame.jpeg")
+          url.search = ""
+          url.searchParams.set("src", src)
+          url.searchParams.set("_ts", String(Date.now()))
+          return url.toString()
+        }
+
+        if (/\/api\/stream\.(mp4|m3u8)$/i.test(url.pathname) && src) {
+          url.pathname = url.pathname.replace(/\/api\/stream\.(mp4|m3u8)$/i, "/api/frame.jpeg")
+          url.search = ""
+          url.searchParams.set("src", src)
+          url.searchParams.set("_ts", String(Date.now()))
+          return url.toString()
+        }
+
+        if (/\/api\/frame\.jpeg$/i.test(url.pathname)) {
+          url.searchParams.set("_ts", String(Date.now()))
+          return url.toString()
+        }
+      } catch {
+        // fallback below
+      }
+
+      return raw
+    },
 
     async attachQrVideoPreview(laneId, qr) {
       await this.$nextTick()
@@ -1308,6 +1359,7 @@ await scanQr()
 this.clearQrState(lane.qr)
 
 lane.qr.cameraRunning = true
+lane.qr.previewRunning = true
 lane.qr.sessionLocked = false
 lane.qr.message = "Đang scan QR từ Python"
 
@@ -1374,6 +1426,7 @@ this.startQrPolling(lane)
     this.clearQrState(lane.qr)
 
     lane.qr.cameraRunning = true
+    lane.qr.previewRunning = true
     lane.qr.sessionLocked = false
     lane.qr.message = "Đang scan lại QR..."
 
@@ -1543,7 +1596,7 @@ filterCameras(keyword) {
 },
 
 selectCamera(cam, lane, type) {
-  if (!cam.urlView) {
+  if (!cam.streamUrl) {
     alert("Camera chưa có UrlView. Hãy reload go2rtc trước")
     return
   }
@@ -1551,19 +1604,26 @@ selectCamera(cam, lane, type) {
   if (type === "qr") {
     lane.qr.cameraIp = cam.streamUrl
     lane.qr.viewUrl = cam.urlView   // 🔥 thêm
-    lane.qr.currentIp = cam.urlView
+    lane.qr.currentIp = cam.streamUrl
 
     this.cameraSearch[lane.id + '-qr'] = cam.cameraName
-    this.mountPreview(lane.qr, cam.urlView)
+    lane.qr.previewRunning = true
+    lane.qr.previewHealthy = false
+    lane.qr.lockedSnapshot = ""
   }
 
   if (type === "plate") {
     lane.plate.cameraIp = cam.streamUrl
-    lane.plate.viewUrl = cam.urlView
+    lane.plate.viewUrl = cam.urlView || ""
     lane.plate.currentIp = cam.streamUrl
 
     this.cameraSearch[lane.id + '-plate'] = cam.cameraName
-    this.mountPreview(lane.plate, cam.urlView)
+    if (lane.plate.viewUrl) {
+      this.mountPreview(lane.plate, lane.plate.viewUrl)
+    } else {
+      lane.plate.previewRunning = true
+      lane.plate.previewHealthy = false
+    }
   }
 }
     

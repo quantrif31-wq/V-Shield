@@ -7,29 +7,10 @@
 
     <div class="form-grid">
       <input v-model="form.cameraName" placeholder="Ten camera" />
-      <select v-model="form.gateId">
-        <option value="">Chua gan cong</option>
-        <option v-for="gate in gates" :key="gate.gateId" :value="String(gate.gateId)">
-          {{ gate.gateId }} - {{ gate.gateName }}
-        </option>
-      </select>
+      <input v-model="form.gateId" placeholder="Gate ID" />
       <input v-model="form.cameraType" placeholder="Loai camera" />
       <input v-model="form.streamUrl" placeholder="RTSP URL" />
     </div>
-
-    <p class="gate-helper" v-if="gates.length">
-      ID cong dang co:
-      <span
-        v-for="gate in gates"
-        :key="`gate-${gate.gateId}`"
-        class="gate-chip"
-      >
-        {{ gate.gateId }} - {{ gate.gateName }}
-      </span>
-    </p>
-    <p class="gate-helper muted" v-else>
-      Chua co cong nao trong he thong. Hay tao cong truoc o man Quan ly camera & cong.
-    </p>
 
     <div class="actions">
       <button @click="handleSubmit">
@@ -85,13 +66,11 @@ import {
   reloadGo2rtc,
   stopGo2rtc,
 } from "../services/setcamAPI";
-import { getGates } from "../services/deviceManagementApi";
 
 export default {
   data() {
     return {
       cameras: [],
-      gates: [],
       errorMessage: "",
       successMessage: "",
       form: {
@@ -108,12 +87,8 @@ export default {
     async loadData() {
       try {
         this.errorMessage = "";
-        const [cameras, gatesResponse] = await Promise.all([
-          getCameras(),
-          getGates(),
-        ]);
-        this.cameras = cameras;
-        this.gates = Array.isArray(gatesResponse?.data) ? gatesResponse.data : [];
+        const res = await getCameras();
+        this.cameras = res;
       } catch (error) {
         this.errorMessage =
           error?.response?.data?.message ||
@@ -263,31 +238,6 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.gate-helper {
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  color: #334155;
-  font-size: 14px;
-}
-
-.gate-helper.muted {
-  color: #64748b;
-}
-
-.gate-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #eef6ff;
-  color: #1d4ed8;
-  font-size: 13px;
-  font-weight: 600;
 }
 
 .message {
