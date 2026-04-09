@@ -1,5 +1,6 @@
 import cv2
 import time
+import base64
 import numpy as np
 from pyzbar import pyzbar
 from threading import Thread, Lock
@@ -19,8 +20,10 @@ state = {
 
 lock = Lock()
 frame_lock = Lock()
+locked_frame_lock = Lock()
 
 latest_frame = None
+locked_frame = None   # frame tại thời điểm quét được QR
 stop_flag = False
 
 # ================= FASTAPI =================
@@ -116,16 +119,16 @@ def decode_qr(frame):
 
 # ================= SCAN =================
 def scan_worker():
-    global latest_frame
+    global latest_frame, locked_frame
 
     print("🚀 Scan thread ready")
 
     while not stop_flag:
         with lock:
             scan = state["scan_enabled"]
-            locked = state["locked"]
+            locked_state = state["locked"]
 
-        if not scan or locked:
+        if not scan or locked_state:
             time.sleep(0.02)
             continue
 
@@ -138,6 +141,10 @@ def scan_worker():
         qr = decode_qr(frame)
 
         if qr:
+            # 📸 Lưu frame tại đúng thời điểm quét được QR
+            with locked_frame_lock:
+                locked_frame = frame.copy()
+
             with lock:
                 state["qr"] = qr
                 state["locked"] = True
@@ -164,20 +171,26 @@ def api_start(data: dict):
 
 @app.post("/qr/scan")
 def api_scan():
+    global locked_frame
     with lock:
         state["locked"] = False
         state["qr"] = ""
         state["scan_enabled"] = True
+    with locked_frame_lock:
+        locked_frame = None
 
     return {"success": True}
 
 
 @app.post("/qr/reset")
 def api_reset():
+    global locked_frame
     with lock:
         state["locked"] = False
         state["qr"] = ""
         state["scan_enabled"] = True
+    with locked_frame_lock:
+        locked_frame = None
 
     return {"success": True}
 
@@ -195,6 +208,20 @@ def api_stop():
 @app.get("/qr/result")
 def api_result():
     return state
+
+
+@app.get("/qr/locked-image")
+def api_locked_image():
+    """Trả về ảnh frame tại thời điểm quét được QR, encode base64 JPEG."""
+    with locked_frame_lock:
+        frame = None if locked_frame is None else locked_frame.copy()
+
+    if frame is None:
+        return {"success": False, "image": ""}
+
+    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    b64 = base64.b64encode(buf).decode("utf-8")
+    return {"success": True, "image": f"data:image/jpeg;base64,{b64}"}
 
 # ================= MAIN =================
 def main():

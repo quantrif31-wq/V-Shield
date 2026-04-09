@@ -191,6 +191,9 @@ namespace API.Controllers
 
                     yaml.AppendLine($"  {streamName}:");
                     yaml.AppendLine($"    - {normalizedStreamUrl}");
+                    // Keep the existing MJPEG preview contract for the frontend by
+                    // adding a transcoded JPEG-capable source alongside the RTSP stream.
+                    yaml.AppendLine($"    - ffmpeg:{streamName}#video=mjpeg");
                 }
 
                 yaml.AppendLine();

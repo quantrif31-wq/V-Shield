@@ -1,7 +1,9 @@
 ﻿using API.Data;
 using API.Models;
+using API.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace API.Controllers
 {
@@ -10,10 +12,12 @@ namespace API.Controllers
     public class GateController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly GateSyncOptions _gateSyncOptions;
 
-        public GateController(ApplicationDbContext context)
+        public GateController(ApplicationDbContext context, IOptions<GateSyncOptions> gateSyncOptions)
         {
             _context = context;
+            _gateSyncOptions = gateSyncOptions.Value;
         }
 
         /// <summary>
@@ -174,6 +178,99 @@ namespace API.Controllers
 
                 return StatusCode(500, GateApiResponse.CreateError(
                     "Có lỗi xảy ra khi xử lý dữ liệu.",
+                    ex.Message));
+            }
+        }
+
+        [HttpPost("local-confirm")]
+        public async Task<IActionResult> ConfirmVehicleLocally([FromBody] GateScanRequest request)
+        {
+            if (request == null)
+            {
+                return BadRequest(GateApiResponse.CreateError("Dữ liệu gửi lên không hợp lệ."));
+            }
+
+            var normalizedPlate = NormalizeLicensePlate(request.LicensePlate);
+
+            if (string.IsNullOrWhiteSpace(normalizedPlate))
+            {
+                return BadRequest(GateApiResponse.CreateError("Biển số không được để trống."));
+            }
+
+            if (request.EmployeeId <= 0)
+            {
+                return BadRequest(GateApiResponse.CreateError("EmployeeId không hợp lệ."));
+            }
+
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.EmployeeId == request.EmployeeId);
+
+            if (employee == null)
+            {
+                return NotFound(GateApiResponse.CreateError($"Không tìm thấy nhân viên có id = {request.EmployeeId}."));
+            }
+
+            var syncDelayMinutes = Math.Max(1, _gateSyncOptions.SyncDelayMinutes);
+            var nowUtc = DateTime.UtcNow;
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var accessLog = new AccessLog
+                {
+                    Timestamp = DateTime.Now,
+                    Direction = "PENDING",
+                    GateId = request.GateId,
+                    CameraId = request.CameraId,
+                    CapturedLicensePlate = normalizedPlate,
+                    EmployeeId = request.EmployeeId,
+                    ResultStatus = "PENDING_SYNC",
+                    IsBypass = false,
+                    Note = $"Xác nhận local thành công. Chờ đồng bộ VPS sau {syncDelayMinutes} phút."
+                };
+
+                _context.AccessLogs.Add(accessLog);
+                await _context.SaveChangesAsync();
+
+                var pendingGateSync = new PendingGateSync
+                {
+                    AccessLogId = accessLog.LogId,
+                    EmployeeId = request.EmployeeId,
+                    LicensePlate = normalizedPlate,
+                    VehicleTypeId = request.VehicleTypeId,
+                    Description = request.Description?.Trim(),
+                    GateId = request.GateId,
+                    CameraId = request.CameraId,
+                    Status = "PENDING",
+                    CreatedAt = nowUtc,
+                    SyncDueAt = nowUtc.AddMinutes(syncDelayMinutes),
+                    RetryCount = 0
+                };
+
+                _context.PendingGateSyncs.Add(pendingGateSync);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Ok(GateApiResponse.CreateSuccess(
+                    $"Đã xác nhận tại local. Hệ thống sẽ đồng bộ VPS sau {syncDelayMinutes} phút.",
+                    new
+                    {
+                        accessLog.LogId,
+                        pendingGateSync.PendingGateSyncId,
+                        pendingGateSync.SyncDueAt,
+                        EmployeeId = request.EmployeeId,
+                        LicensePlate = normalizedPlate,
+                        request.GateId,
+                        request.CameraId
+                    }));
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+
+                return StatusCode(500, GateApiResponse.CreateError(
+                    "Có lỗi xảy ra khi xác nhận local.",
                     ex.Message));
             }
         }

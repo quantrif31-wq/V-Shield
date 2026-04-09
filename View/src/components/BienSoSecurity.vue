@@ -183,10 +183,9 @@ import {
   getLockedImages
 } from "../services/biensoApi"
 import {
-  getConfiguredCameraSettings,
-  resolveCameraPreviewUrl,
-  resolveCameraSourceUrl
-} from "../utils/cameraNetwork"
+  fetchSetCamCatalog,
+  pickDefaultSetCamCamera,
+} from "../services/setcamCatalog"
 
 const PLATE_CAMERA_SELECTION_STORAGE_KEY = "vshield-plate-selected-camera"
 
@@ -276,7 +275,7 @@ export default {
 
   async mounted() {
     this.destroyed = false
-    this.loadConfiguredCameras()
+    await this.loadConfiguredCameras()
     await this.loadCurrentStatus()
 
     if (this.cameraRunning) {
@@ -290,9 +289,9 @@ export default {
     this.resetPreviewState()
   },
 
-  activated() {
+  async activated() {
     this.destroyed = false
-    this.loadConfiguredCameras()
+    await this.loadConfiguredCameras()
 
     if (this.cameraRunning) {
       if (!this.previewRunning && this.effectivePreviewUrl) {
@@ -307,13 +306,13 @@ export default {
   },
 
   methods: {
-    loadConfiguredCameras() {
-      const cameras = getConfiguredCameraSettings().map((camera) => ({
-        ...camera,
-        sourceUrl: resolveCameraSourceUrl(camera),
-        browserPreviewUrl: resolveCameraPreviewUrl(camera),
-      }))
-
+    async loadConfiguredCameras() {
+      let cameras = []
+      try {
+        cameras = await fetchSetCamCatalog()
+      } catch (error) {
+        console.error("loadConfiguredCameras error:", error)
+      }
       this.configuredCameras = cameras
 
       const savedCameraId = localStorage.getItem(PLATE_CAMERA_SELECTION_STORAGE_KEY) || ""
@@ -324,6 +323,10 @@ export default {
       if (!currentSelectionValid) {
         if (savedCameraId && cameras.some((camera) => String(camera.id) === savedCameraId)) {
           this.selectedConfiguredCameraId = savedCameraId
+        } else if (cameras.length > 0) {
+          this.selectedConfiguredCameraId = String(
+            pickDefaultSetCamCamera(cameras, { role: "plate" })?.id || cameras[0].id
+          )
         } else if (cameras.length === 1) {
           this.selectedConfiguredCameraId = String(cameras[0].id)
         } else if (!cameras.length) {
@@ -363,8 +366,8 @@ export default {
         return
       }
 
-      this.cameraIp = selectedCamera.sourceUrl || ""
-      this.previewUrl = selectedCamera.browserPreviewUrl || ""
+      this.cameraIp = selectedCamera.sourceUrl || selectedCamera.browserPreviewUrl || ""
+      this.previewUrl = selectedCamera.browserPreviewUrl || selectedCamera.sourceUrl || ""
       this.rememberConfiguredCameraSelection()
 
       if (autoPreview && this.previewUrl) {

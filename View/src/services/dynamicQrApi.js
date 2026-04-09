@@ -1,19 +1,13 @@
-import axios from 'axios'
-import { API_BASE_URL } from '../config/api'
-
-const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    timeout: 15000,
-})
+import { requestLocalApi } from "./localApiClient"
 
 export async function generateDynamicQr(employeeId) {
-    const response = await api.post('/QR_Dong/generate', {
-        employeeId: Number(employeeId),
-    })
-    return response.data
-}
+  const response = await requestLocalApi({
+    method: "post",
+    url: "/QR_Dong/generate",
+    data: {
+      employeeId: Number(employeeId),
+    },
+  })
 
-export default api
+  return response.data
+}

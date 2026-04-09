@@ -1,11 +1,14 @@
-﻿using System.Data;
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using API.Data;
 using API.Models;
 using API.Models.DTOs;
+using API.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace API.Controllers
 {
@@ -15,11 +18,25 @@ namespace API.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<QR_DongController> _logger;
+        private readonly string _dynamicQrMasterKey;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly string _remoteBaseUrl;
 
-        public QR_DongController(ApplicationDbContext context, ILogger<QR_DongController> logger)
+        public QR_DongController(
+            ApplicationDbContext context,
+            ILogger<QR_DongController> logger,
+            IConfiguration configuration,
+            IHttpClientFactory httpClientFactory,
+            IOptions<GateSyncOptions> gateSyncOptions)
         {
             _context = context;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+            _remoteBaseUrl = (gateSyncOptions.Value.RemoteBaseUrl ?? "").TrimEnd('/');
+            _dynamicQrMasterKey =
+                configuration["DynamicQr:MasterKey"]?.Trim() ??
+                configuration["JwtSettings:Secret"]?.Trim() ??
+                "VShieldDynamicQrFallbackMasterKey";
         }
 
         /// <summary>
@@ -55,21 +72,7 @@ namespace API.Controllers
             var dynamicQr = await _context.EmployeeDynamicQrs
                 .FirstOrDefaultAsync(x => x.EmployeeId == request.EmployeeId);
 
-            if (dynamicQr == null)
-            {
-                dynamicQr = new EmployeeDynamicQr
-                {
-                    EmployeeId = request.EmployeeId,
-                    SecretKey = GenerateBase32Secret(),
-                    TimeStepSeconds = 30,
-                    Digits = 6,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.EmployeeDynamicQrs.Add(dynamicQr);
-                await _context.SaveChangesAsync();
-            }
+            dynamicQr = await EnsureDynamicQrConfigurationAsync(employee, dynamicQr);
 
             if (!dynamicQr.IsActive)
             {
@@ -146,25 +149,10 @@ namespace API.Controllers
 
             try
             {
-                var dynamicQr = await _context.EmployeeDynamicQrs
-                    .Include(x => x.Employee)
-                    .FirstOrDefaultAsync(x => x.EmployeeId == employeeId && x.IsActive);
+                var employee = await _context.Employees
+                    .FirstOrDefaultAsync(x => x.EmployeeId == employeeId);
 
-                if (dynamicQr == null)
-                {
-                    await SaveScanLog(employeeId, request.QrPayload, false,
-                        "Không tìm thấy cấu hình QR động trong database.", request.ScannerDevice);
-
-                    await transaction.CommitAsync();
-
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Không tìm thấy QR động của nhân viên trong database."
-                    });
-                }
-
-                if (dynamicQr.Employee == null || dynamicQr.Employee.Status != true)
+                if (employee == null || employee.Status != true)
                 {
                     await SaveScanLog(employeeId, request.QrPayload, false,
                         "Nhân viên không hoạt động hoặc không tồn tại.", request.ScannerDevice);
@@ -175,6 +163,25 @@ namespace API.Controllers
                     {
                         success = false,
                         message = "Nhân viên không hoạt động hoặc không tồn tại."
+                    });
+                }
+
+                var dynamicQr = await _context.EmployeeDynamicQrs
+                    .FirstOrDefaultAsync(x => x.EmployeeId == employeeId);
+
+                dynamicQr = await EnsureDynamicQrConfigurationAsync(employee, dynamicQr);
+
+                if (!dynamicQr.IsActive)
+                {
+                    await SaveScanLog(employeeId, request.QrPayload, false,
+                        "QR động của nhân viên đang bị vô hiệu hóa.", request.ScannerDevice);
+
+                    await transaction.CommitAsync();
+
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "QR động của nhân viên đang bị vô hiệu hóa."
                     });
                 }
 
@@ -200,15 +207,46 @@ namespace API.Controllers
 
                 if (!FixedTimeEquals(payloadOtp, expectedOtp))
                 {
+                    // OTP local không khớp → thử forward verify lên VPS
+                    var remoteResult = await TryVerifyViaRemoteAsync(request.QrPayload, request.ScannerDevice);
+
+                    if (remoteResult != null && remoteResult.Success)
+                    {
+                        // VPS xác nhận OK → ghi scan log thành công vào local
+                        await SaveScanLog(employeeId, request.QrPayload, true,
+                            "Xác thực QR động thành công (qua VPS).", request.ScannerDevice);
+
+                        dynamicQr.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        return Ok(new
+                        {
+                            success = true,
+                            message = "Xác thực QR động thành công (qua VPS).",
+                            data = new
+                            {
+                                employeeId = remoteResult.EmployeeId ?? dynamicQr.EmployeeId,
+                                employeeName = remoteResult.EmployeeName ?? employee.FullName,
+                                verifiedAtUtc = DateTime.UtcNow,
+                                counter = currentCounter,
+                                expiresAtUtc = GetCounterExpiryUtc(DateTime.UtcNow, dynamicQr.TimeStepSeconds)
+                            }
+                        });
+                    }
+
+                    // VPS cũng thất bại → trả lỗi
+                    var failMessage = remoteResult?.Message ?? "QR động không hợp lệ.";
+
                     await SaveScanLog(employeeId, request.QrPayload, false,
-                        "QR động không hợp lệ.", request.ScannerDevice);
+                        failMessage, request.ScannerDevice);
 
                     await transaction.CommitAsync();
 
                     return BadRequest(new
                     {
                         success = false,
-                        message = "QR động không hợp lệ."
+                        message = failMessage
                     });
                 }
 
@@ -233,15 +271,15 @@ namespace API.Controllers
 
                 return Ok(new
                 {
-                    success = true,
-                    message = "Xác thực QR động thành công.",
-                    data = new
-                    {
-                        employeeId = dynamicQr.EmployeeId,
-                        employeeName = dynamicQr.Employee.FullName,
-                        verifiedAtUtc = utcNow,
-                        counter = currentCounter,
-                        expiresAtUtc = GetCounterExpiryUtc(utcNow, dynamicQr.TimeStepSeconds)
+                        success = true,
+                        message = "Xác thực QR động thành công.",
+                        data = new
+                        {
+                            employeeId = dynamicQr.EmployeeId,
+                            employeeName = employee.FullName,
+                            verifiedAtUtc = utcNow,
+                            counter = currentCounter,
+                            expiresAtUtc = GetCounterExpiryUtc(utcNow, dynamicQr.TimeStepSeconds)
                     }
                 });
             }
@@ -259,6 +297,80 @@ namespace API.Controllers
                     success = false,
                     message = "Lỗi hệ thống khi xác thực QR."
                 });
+            }
+        }
+
+        // =========================
+        // REMOTE VERIFY
+        // =========================
+
+        private sealed class RemoteVerifyResult
+        {
+            public bool Success { get; set; }
+            public string? Message { get; set; }
+            public int? EmployeeId { get; set; }
+            public string? EmployeeName { get; set; }
+        }
+
+        private async Task<RemoteVerifyResult?> TryVerifyViaRemoteAsync(string qrPayload, string? scannerDevice)
+        {
+            if (string.IsNullOrWhiteSpace(_remoteBaseUrl))
+                return null;
+
+            try
+            {
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+
+                var requestBody = new
+                {
+                    qrPayload,
+                    scannerDevice
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{_remoteBaseUrl}/api/QR_Dong/verify";
+                _logger.LogInformation("Forwarding QR verify to VPS: {Url}", url);
+
+                var response = await client.PostAsync(url, content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var parsed = JsonSerializer.Deserialize<JsonElement>(responseBody, options);
+
+                var success = parsed.TryGetProperty("success", out var successProp) && successProp.GetBoolean();
+                var message = parsed.TryGetProperty("message", out var msgProp) ? msgProp.GetString() : null;
+
+                int? employeeId = null;
+                string? employeeName = null;
+
+                if (success && parsed.TryGetProperty("data", out var dataProp))
+                {
+                    if (dataProp.TryGetProperty("employeeId", out var eidProp))
+                        employeeId = eidProp.GetInt32();
+
+                    if (dataProp.TryGetProperty("employeeName", out var enameProp))
+                        employeeName = enameProp.GetString();
+                }
+
+                _logger.LogInformation(
+                    "VPS verify result: success={Success}, message={Message}, employeeId={EmployeeId}",
+                    success, message, employeeId);
+
+                return new RemoteVerifyResult
+                {
+                    Success = success,
+                    Message = message,
+                    EmployeeId = employeeId,
+                    EmployeeName = employeeName
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to forward verify to VPS at {Url}", _remoteBaseUrl);
+                return null;
             }
         }
 
@@ -287,6 +399,57 @@ namespace API.Controllers
             {
                 _logger.LogError(ex, "Lỗi khi lưu DynamicQrScanLog");
             }
+        }
+
+        private async Task<EmployeeDynamicQr> EnsureDynamicQrConfigurationAsync(
+            Employee employee,
+            EmployeeDynamicQr? dynamicQr)
+        {
+            var shouldPersist = false;
+
+            if (dynamicQr == null)
+            {
+                dynamicQr = new EmployeeDynamicQr
+                {
+                    EmployeeId = employee.EmployeeId,
+                    SecretKey = BuildDeterministicSecret(employee.EmployeeId),
+                    TimeStepSeconds = 30,
+                    Digits = 6,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.EmployeeDynamicQrs.Add(dynamicQr);
+                shouldPersist = true;
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(dynamicQr.SecretKey))
+                {
+                    dynamicQr.SecretKey = BuildDeterministicSecret(employee.EmployeeId);
+                    shouldPersist = true;
+                }
+
+                if (dynamicQr.TimeStepSeconds <= 0)
+                {
+                    dynamicQr.TimeStepSeconds = 30;
+                    shouldPersist = true;
+                }
+
+                if (dynamicQr.Digits <= 0)
+                {
+                    dynamicQr.Digits = 6;
+                    shouldPersist = true;
+                }
+            }
+
+            if (shouldPersist)
+            {
+                dynamicQr.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+
+            return dynamicQr;
         }
 
         private static long GetCurrentCounter(DateTime utcNow, int timeStepSeconds)
@@ -330,6 +493,18 @@ namespace API.Controllers
             var bytes = new byte[length];
             RandomNumberGenerator.Fill(bytes);
             return Base32Encode(bytes);
+        }
+
+        private string BuildDeterministicSecret(int employeeId)
+        {
+            var masterKeyBytes = Encoding.UTF8.GetBytes(_dynamicQrMasterKey);
+            var payloadBytes = Encoding.UTF8.GetBytes($"VSHIELD:EMP:{employeeId}");
+
+            using var hmac = new HMACSHA256(masterKeyBytes);
+            var hash = hmac.ComputeHash(payloadBytes);
+            var secretBytes = hash.Take(20).ToArray();
+
+            return Base32Encode(secretBytes);
         }
 
         private static (bool Success, int? EmployeeId, long? Counter, string? Otp, string Message) ParseQrPayload(string payload)

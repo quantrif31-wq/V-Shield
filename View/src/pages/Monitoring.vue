@@ -12,6 +12,11 @@
         </div>
 
         <section class="metric-grid">
+            <article v-if="loadError" class="metric-tile error-card metric-error">
+                <span class="metric-label">Kết nối dữ liệu</span>
+                <strong class="metric-value">Cần kiểm tra</strong>
+                <span class="metric-note">{{ loadError }}</span>
+            </article>
             <article class="metric-tile">
                 <span class="metric-label">Camera đã cấu hình</span>
                 <strong class="metric-value">{{ summary.camerasConfigured }}</strong>
@@ -237,6 +242,7 @@ const maxPlates = 6
 const maxActivities = 8
 const maxGates = 6
 
+const loadError = ref('')
 const summary = ref({
     camerasConfigured: 0,
     gatesConfigured: 0,
@@ -292,6 +298,7 @@ const loadLocalCameraSettings = () => {
 }
 
 const loadMonitoring = async () => {
+    loadError.value = ''
     try {
         const [overviewRes, platesRes, activitiesRes] = await Promise.all([
             getDeviceOverview(),
@@ -305,7 +312,8 @@ const loadMonitoring = async () => {
         recentPlates.value = (platesRes.data || []).slice(0, 6)
         recentActivities.value = activitiesRes.data.items || []
     } catch (error) {
-        console.error("Monitoring load error:", error)
+        console.error('Monitoring load error:', error)
+        loadError.value = error.response?.data?.message || 'Không thể tải dữ liệu giám sát. Hãy kiểm tra API backend và cổng kết nối.'
     }
 }
 
@@ -381,56 +389,23 @@ onBeforeUnmount(() => {
     font-size: 0.8rem;
 }
 
-.source-list {
-    display: grid;
-    gap: 6px;
+.metric-error {
+    grid-column: 1 / -1;
 }
 
-.mono {
-    overflow-wrap: anywhere;
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.78rem;
+.error-card {
+    border: 1px solid rgba(195, 81, 70, 0.24);
+    background: rgba(255, 239, 236, 0.9);
 }
 
-.scrollable-panel {
-    max-height: 520px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(24, 49, 77, 0.15) transparent;
+.error-card .metric-label,
+.error-card .metric-value,
+.error-card .metric-note {
+    color: var(--accent-danger);
 }
 
-.scrollable-panel::-webkit-scrollbar {
-    width: 5px;
-}
-
-.scrollable-panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.scrollable-panel::-webkit-scrollbar-thumb {
-    background: rgba(24, 49, 77, 0.15);
-    border-radius: 10px;
-}
-
-.show-more-hint {
-    text-align: center;
-    padding: 12px;
-    color: var(--text-muted);
-    font-size: 0.84rem;
-}
-
-.show-more-hint a {
-    color: var(--accent-primary);
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.show-more-hint a:hover {
-    text-decoration: underline;
-}
-
-@media (max-width: 1024px) {
-    .local-preview-grid {
+@media (max-width: 1180px) {
+    .aside-metrics {
         grid-template-columns: 1fr;
     }
 }

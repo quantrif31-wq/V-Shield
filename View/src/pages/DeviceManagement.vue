@@ -13,6 +13,10 @@
 
         <CameraNetworkPanel />
 
+        <div v-if="loadError" class="empty-card error-card">
+            {{ loadError }}
+        </div>
+
         <section class="ops-grid two">
             <article class="ops-panel">
                 <div class="panel-head">
@@ -203,6 +207,7 @@ import {
 
 const isLoading = ref(true)
 const isSaving = ref(false)
+const loadError = ref('')
 const summary = ref({
     camerasConfigured: 0,
     gatesConfigured: 0,
@@ -252,6 +257,7 @@ const gateForm = reactive({
 
 const fetchOverview = async () => {
     isLoading.value = true
+    loadError.value = ''
     try {
         const { data } = await getDeviceOverview()
         summary.value = { ...summary.value, ...(data.summary || {}) }
@@ -263,6 +269,7 @@ const fetchOverview = async () => {
         console.error('Device overview error:', error)
         cameras.value = []
         gates.value = []
+        loadError.value = error.response?.data?.message || 'Không thể tải cấu hình camera/cổng. Hãy kiểm tra API backend.'
     } finally {
         isLoading.value = false
     }

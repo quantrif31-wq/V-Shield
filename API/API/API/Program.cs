@@ -50,7 +50,9 @@ namespace API
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IVehicleService, VehicleService>();
             builder.Services.AddScoped<ILanCameraDiscoveryService, LanCameraDiscoveryService>();
+            builder.Services.Configure<GateSyncOptions>(builder.Configuration.GetSection("GateSync"));
             builder.Services.AddHttpClient();
+            builder.Services.AddHostedService<GateSyncBackgroundService>();
             builder.Services.AddSignalR();
             builder.Services.AddControllers();
 

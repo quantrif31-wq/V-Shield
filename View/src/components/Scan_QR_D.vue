@@ -79,7 +79,7 @@
 
       <div class="preview-wrap">
         <img
-          v-if="previewRunning && previewMode === 'image' && directCameraUrl"
+          v-if="previewRunning && (previewMode === 'image' || previewMode === 'mjpeg') && directCameraUrl"
           ref="cameraImage"
           :src="directCameraUrl"
           class="video"
@@ -186,14 +186,16 @@
 import jsQR from "jsqr"
 import { verifyDynamicQr } from "../services/dynamicQrVerifyApi"
 import {
-  getConfiguredCameraSettings,
   isBrowserVideoCameraUrl,
   isHlsCameraUrl,
   isHttpCameraUrl,
   isRtspCameraUrl,
-  resolveCameraPreviewUrl,
-  resolveCameraSourceUrl
+  isMjpegCameraUrl
 } from "../utils/cameraNetwork"
+import {
+  fetchSetCamCatalog,
+  pickDefaultSetCamCamera,
+} from "../services/setcamCatalog"
 
 const QR_CAMERA_SELECTION_STORAGE_KEY = "vshield-qr-selected-camera"
 const HLS_SCRIPT_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"
@@ -205,6 +207,7 @@ const resolvePreviewMode = (url) => {
   if (!value) return "empty"
   if (isHlsCameraUrl(value)) return "hls"
   if (isBrowserVideoCameraUrl(value)) return "video"
+  if (isMjpegCameraUrl(value)) return "mjpeg"
   if (isRtspCameraUrl(value)) return "rtsp"
   if (isHttpCameraUrl(value)) return "image"
   return "unsupported"
@@ -323,9 +326,9 @@ export default {
     }
   },
 
-  mounted() {
+  async mounted() {
     this.destroyed = false
-    this.loadConfiguredCameras()
+    await this.loadConfiguredCameras()
   },
 
   beforeUnmount() {
@@ -335,9 +338,9 @@ export default {
     this.resetPreviewState()
   },
 
-  activated() {
+  async activated() {
     this.destroyed = false
-    this.loadConfiguredCameras()
+    await this.loadConfiguredCameras()
 
     if (this.cameraRunning && this.currentIp) {
       this.restorePreview()
@@ -385,13 +388,13 @@ export default {
       return hlsScriptPromise
     },
 
-    loadConfiguredCameras() {
-      const cameras = getConfiguredCameraSettings().map((camera) => ({
-        ...camera,
-        sourceUrl: resolveCameraSourceUrl(camera),
-        browserPreviewUrl: resolveCameraPreviewUrl(camera),
-      }))
-
+    async loadConfiguredCameras() {
+      let cameras = []
+      try {
+        cameras = await fetchSetCamCatalog()
+      } catch (error) {
+        console.error("loadConfiguredCameras error:", error)
+      }
       this.configuredCameras = cameras
 
       const savedCameraId = localStorage.getItem(QR_CAMERA_SELECTION_STORAGE_KEY) || ""
@@ -402,6 +405,10 @@ export default {
       if (!currentSelectionValid) {
         if (savedCameraId && cameras.some((camera) => String(camera.id) === savedCameraId)) {
           this.selectedConfiguredCameraId = savedCameraId
+        } else if (cameras.length > 0) {
+          this.selectedConfiguredCameraId = String(
+            pickDefaultSetCamCamera(cameras, { role: "qr" })?.id || cameras[0].id
+          )
         } else if (cameras.length === 1) {
           this.selectedConfiguredCameraId = String(cameras[0].id)
         } else if (!cameras.length) {
@@ -556,8 +563,8 @@ export default {
       this.previewRunning = true
       this.previewHealthy = false
 
-      if (mode === "image") {
-        this.directCameraUrl = this.buildDirectCameraUrl(this.currentIp)
+      if (mode === "image" || mode === "mjpeg") {
+        this.directCameraUrl = mode === "mjpeg" ? this.currentIp : this.buildDirectCameraUrl(this.currentIp)
         this.videoPreviewUrl = ""
         return
       }
@@ -691,7 +698,7 @@ export default {
           return
         }
 
-        if (this.previewMode === "video" || this.previewMode === "hls") {
+        if (this.previewMode === "video" || this.previewMode === "hls" || this.previewMode === "mjpeg") {
           await this.captureAndDecode()
         }
       }, this.previewIntervalMs)
@@ -843,22 +850,27 @@ export default {
         this.lastSeenAt = now
         this.lastUpdate = this.nowText()
 
-        const result = await this.doVerify(decodedText)
+        this.doVerify(decodedText).then((result) => {
+          if (this.activeSessionPayload !== decodedText) return
 
-        if (result?.success) {
-          this.activeSessionVerified = true
-          this.markSessionVerifyState("success", result.message || "Xác thực QR động thành công.")
-          return
-        }
+          if (result?.success) {
+            this.activeSessionVerified = true
+            this.markSessionVerifyState("success", result.message || "Xác thực QR động thành công.")
+            return
+          }
 
-        const message = String(result?.message || "")
-        if (message.includes("đã hết hạn") || message.includes("chưa đến hiệu lực")) {
-          this.markSessionVerifyState("expired", message)
-        } else if (message.includes("không hợp lệ")) {
-          this.markSessionVerifyState("invalid", message)
-        } else {
-          this.markSessionVerifyState("failed", message || "Xác thực thất bại.")
-        }
+          const message = String(result?.message || "")
+          if (message.includes("đã hết hạn") || message.includes("chưa đến hiệu lực")) {
+            this.markSessionVerifyState("expired", message)
+          } else if (message.includes("không hợp lệ")) {
+            this.markSessionVerifyState("invalid", message)
+          } else {
+            this.markSessionVerifyState("failed", message || "Xác thực thất bại.")
+          }
+        }).catch((error) => {
+          if (this.activeSessionPayload !== decodedText) return
+          this.markSessionVerifyState("system_error", error.message || "Xác thực thất bại.")
+        })
       } catch (error) {
         console.warn("Decode frame error:", error)
         this.verifyMessage =

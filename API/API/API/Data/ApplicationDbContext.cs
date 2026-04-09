@@ -47,6 +47,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<EmployeeFaceModel> EmployeeFaceModels { get; set; }
     public virtual DbSet<EmployeeDynamicQr> EmployeeDynamicQrs { get; set; }
     public virtual DbSet<DynamicQrScanLog> DynamicQrScanLogs { get; set; }
+    public virtual DbSet<PendingGateSync> PendingGateSyncs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -366,6 +367,36 @@ public partial class ApplicationDbContext : DbContext
 
             entity.Property(e => e.ScannedAt)
                   .HasDefaultValueSql("(getutcdate())");
+        });
+        modelBuilder.Entity<PendingGateSync>(entity =>
+        {
+            entity.HasKey(e => e.PendingGateSyncId);
+
+            entity.Property(e => e.LicensePlate)
+                  .HasMaxLength(20)
+                  .IsRequired();
+
+            entity.Property(e => e.Description)
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.Status)
+                  .HasMaxLength(20)
+                  .HasDefaultValue("PENDING");
+
+            entity.Property(e => e.CreatedAt)
+                  .HasDefaultValueSql("(getutcdate())");
+
+            entity.Property(e => e.SyncDueAt)
+                  .HasDefaultValueSql("(getutcdate())");
+
+            entity.Property(e => e.LastError)
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.RemoteMessage)
+                  .HasMaxLength(500);
+
+            entity.Property(e => e.RetryCount)
+                  .HasDefaultValue(0);
         });
         OnModelCreatingPartial(modelBuilder);
     }

@@ -63,4 +63,8 @@ export async function getQrResult() {
   return request("/qr/result")
 }
 
+export async function getQrLockedImage() {
+  return request("/qr/locked-image")
+}
+
 export { QR_API_BASE_URL }
