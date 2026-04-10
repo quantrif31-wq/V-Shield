@@ -1,9 +1,15 @@
 <template>
-  <div class="page">
+  <div class="page page-container animate-in">
     <div class="topbar">
-      <div>
-        <h1>V-Shield Gate Monitor</h1>
-        <p>2 làn - QR + Biển số - dùng employeeId từ QR để gọi API thông hành cũ</p>
+      <div class="topbar-left">
+        <div class="topbar-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <span class="panel-kicker">Gate Control</span>
+          <h1 class="page-title">Điều phối thông hành</h1>
+          <p class="topbar-desc">Quản lý 2 làn — QR Code + Nhận diện biển số xe</p>
+        </div>
       </div>
     </div>
 
@@ -15,18 +21,25 @@
         :class="{ ready: isLaneReady(lane) }"
       >
         <div class="lane-head">
-          <div>
-            <h2>{{ lane.name }}</h2>
-            <p>{{ lane.desc }}</p>
+          <div class="lane-head-info">
+            <div class="lane-icon" :class="{ active: laneAnyRunning(lane) }">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <h2>{{ lane.name }}</h2>
+              <p>{{ lane.desc }}</p>
+            </div>
           </div>
 
           <div class="lane-final-status" :class="isLaneReady(lane) ? 'ok' : 'wait'">
+            <span class="status-dot"></span>
             {{ isLaneReady(lane) ? "SẴN SÀNG XÁC NHẬN" : "ĐANG XỬ LÝ" }}
           </div>
         </div>
 
         <div class="lane-actions">
           <button class="btn btn-preview" :disabled="lane.loading" @click="previewLane(lane)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             {{ lane.loading ? "Đang xử lý..." : "Preview" }}
           </button>
 
@@ -35,6 +48,7 @@
             :disabled="lane.loading || !lane.qr.cameraIp.trim() || !lane.plate.cameraIp.trim()"
             @click="readAllLane(lane)"
           >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             {{ lane.loading ? "Đang xử lý..." : laneAnyRunning(lane) ? "Đọc lại cả 2" : "Đọc cả 2" }}
           </button>
 
@@ -55,6 +69,7 @@
           </button>
 
           <button class="btn btn-off" :disabled="lane.loading" @click="stopLane(lane)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
             {{ lane.loading ? "Đang xử lý..." : "Tắt" }}
           </button>
 
@@ -63,79 +78,92 @@
             :disabled="lane.loading || !lane.qr.employeeId || !lane.plate.confirmedPlate"
             @click="confirmLane(lane)"
           >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Xác nhận
           </button>
         </div>
 
         <div class="ip-row">
           <div class="ip-box">
-            <label>QR Camera URL</label>
+            <label>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+              QR Camera
+            </label>
             <div
               class="search-box"
               :ref="(el) => setCameraSearchRef(lane.id, 'qr', el)"
             >
-  <input
-    v-model="cameraSearch[lane.id + '-qr']"
-    placeholder="Tìm camera QR..."
-    :disabled="lane.loading"
-    @focus="openCameraDropdown(lane.id, 'qr')"
-    @input="handleCameraSearchInput(lane, 'qr')"
-    @keydown.esc="closeCameraDropdown(lane.id, 'qr')"
-  />
+              <input
+                v-model="cameraSearch[lane.id + '-qr']"
+                placeholder="Tìm camera QR..."
+                :disabled="lane.loading"
+                @focus="openCameraDropdown(lane.id, 'qr')"
+                @input="handleCameraSearchInput(lane, 'qr')"
+                @keydown.esc="closeCameraDropdown(lane.id, 'qr')"
+              />
 
-  <div class="dropdown" v-if="isCameraDropdownOpen(lane.id, 'qr')">
-    <div
-      v-if="!filterCameras(cameraSearch[lane.id + '-qr']).length"
-      class="dropdown-empty"
-    >
-      Không tìm thấy camera phù hợp
-    </div>
-    <div
-      v-for="cam in filterCameras(cameraSearch[lane.id + '-qr'])"
-      :key="cam.cameraId"
-      @click="selectCamera(cam, lane, 'qr')"
-      class="dropdown-item"
-      :class="{ selected: String(cam.id ?? cam.cameraId) === String(lane.qr.cameraId ?? '') }"
-    >
-      {{ cam.cameraName }} (ID: {{ cam.cameraId }})
-    </div>
-  </div>
-</div>
+              <div class="dropdown" v-if="isCameraDropdownOpen(lane.id, 'qr')">
+                <div
+                  v-if="!filterCameras(cameraSearch[lane.id + '-qr']).length"
+                  class="dropdown-empty"
+                >
+                  Không tìm thấy camera phù hợp
+                </div>
+                <div
+                  v-for="cam in filterCameras(cameraSearch[lane.id + '-qr'])"
+                  :key="cam.cameraId"
+                  @click="selectCamera(cam, lane, 'qr')"
+                  class="dropdown-item"
+                  :class="{ selected: String(cam.id ?? cam.cameraId) === String(lane.qr.cameraId ?? '') }"
+                >
+                  <span class="dropdown-item-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  </span>
+                  {{ cam.cameraName }} <span class="dropdown-item-id">#{{ cam.cameraId }}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="ip-box">
-            <label>Plate Camera URL</label>
+            <label>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"/><polygon points="16 8 20 4 20 16 16 12 16 8"/></svg>
+              Plate Camera
+            </label>
             <div
               class="search-box"
               :ref="(el) => setCameraSearchRef(lane.id, 'plate', el)"
             >
-  <input
-    v-model="cameraSearch[lane.id + '-plate']"
-    placeholder="Tìm camera Plate..."
-    :disabled="lane.loading"
-    @focus="openCameraDropdown(lane.id, 'plate')"
-    @input="handleCameraSearchInput(lane, 'plate')"
-    @keydown.esc="closeCameraDropdown(lane.id, 'plate')"
-  />
+              <input
+                v-model="cameraSearch[lane.id + '-plate']"
+                placeholder="Tìm camera Plate..."
+                :disabled="lane.loading"
+                @focus="openCameraDropdown(lane.id, 'plate')"
+                @input="handleCameraSearchInput(lane, 'plate')"
+                @keydown.esc="closeCameraDropdown(lane.id, 'plate')"
+              />
 
-  <div class="dropdown" v-if="isCameraDropdownOpen(lane.id, 'plate')">
-    <div
-      v-if="!filterCameras(cameraSearch[lane.id + '-plate']).length"
-      class="dropdown-empty"
-    >
-      Không tìm thấy camera phù hợp
-    </div>
-    <div
-      v-for="cam in filterCameras(cameraSearch[lane.id + '-plate'])"
-      :key="cam.cameraId"
-      @click="selectCamera(cam, lane, 'plate')"
-      class="dropdown-item"
-      :class="{ selected: String(cam.id ?? cam.cameraId) === String(lane.plate.cameraId ?? '') }"
-    >
-      {{ cam.cameraName }} (ID: {{ cam.cameraId }})
-    </div>
-  </div>
-</div>
+              <div class="dropdown" v-if="isCameraDropdownOpen(lane.id, 'plate')">
+                <div
+                  v-if="!filterCameras(cameraSearch[lane.id + '-plate']).length"
+                  class="dropdown-empty"
+                >
+                  Không tìm thấy camera phù hợp
+                </div>
+                <div
+                  v-for="cam in filterCameras(cameraSearch[lane.id + '-plate'])"
+                  :key="cam.cameraId"
+                  @click="selectCamera(cam, lane, 'plate')"
+                  class="dropdown-item"
+                  :class="{ selected: String(cam.id ?? cam.cameraId) === String(lane.plate.cameraId ?? '') }"
+                >
+                  <span class="dropdown-item-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  </span>
+                  {{ cam.cameraName }} <span class="dropdown-item-id">#{{ cam.cameraId }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -163,13 +191,29 @@
             <span class="label">Biển số</span>
             <span class="value strong plate">{{ lane.plate.confirmedPlate || "-----" }}</span>
           </div>
+          <div class="summary-item direction-item">
+            <span class="label">Chiều xe</span>
+            <select
+              v-model="lane.movementDirection"
+              class="direction-select"
+              :disabled="lane.loading"
+              @change="handleLaneDirectionChange(lane)"
+            >
+              <option value="IN">Xe vào</option>
+              <option value="OUT">Xe ra</option>
+            </select>
+            <span class="direction-hint">{{ laneDirectionText(lane) }}</span>
+          </div>
         </div>
 
         <div class="camera-stack">
           <!-- QR -->
           <div class="cam-block">
             <div class="cam-head">
-              <span>QR Camera</span>
+              <span class="cam-head-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h.01"/><path d="M17 7h.01"/><path d="M7 17h.01"/><path d="M17 17h.01"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                QR Camera
+              </span>
               <span class="mini-status" :class="lane.qr.previewHealthy ? 'ok' : 'wait'">
                 {{
                   !lane.qr.previewRunning
@@ -210,19 +254,32 @@
                 @loadeddata="onQrVideoPreviewLoaded(lane)"
                 @error="onQrVideoPreviewError(lane)"
               ></video>
-              <div v-else-if="lane.qr.previewRunning" class="cam-off">Chờ ảnh chụp QR...</div>
-              <div v-else class="cam-off">QR Offline</div>
+              <div v-else-if="lane.qr.previewRunning" class="cam-off">
+                <div class="cam-off-icon pulse-anim">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                </div>
+                <span>Chờ ảnh chụp QR...</span>
+              </div>
+              <div v-else class="cam-off">
+                <div class="cam-off-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"/></svg>
+                </div>
+                <span>QR Offline</span>
+              </div>
             </div>
             <canvas :ref="(el) => setQrCanvasRef(lane.id, el)" class="hidden-canvas"></canvas>
 
             <div class="quick-result">
               <div class="result-pill" :class="lane.qr.cameraRunning ? 'ok' : 'off'">
+                <span class="pill-dot"></span>
                 {{ lane.qr.cameraRunning ? "RUNNING" : "STOPPED" }}
               </div>
               <div class="result-pill" :class="lane.qr.sessionLocked ? 'ok' : 'wait'">
+                <span class="pill-dot"></span>
                 {{ lane.qr.sessionLocked ? "LOCKED" : "SCANNING" }}
               </div>
               <div class="result-pill" :class="lane.qr.alert ? 'danger' : 'neutral'">
+                <span class="pill-dot"></span>
                 {{ lane.qr.alert ? "INVALID" : "NORMAL" }}
               </div>
             </div>
@@ -232,17 +289,14 @@
                 <span class="small-label">Payload hiện tại</span>
                 <span class="small-value">{{ shortText(lane.qr.qrPayload) }}</span>
               </div>
-
               <div class="qr-data-box">
                 <span class="small-label">Payload đang giữ phiên</span>
                 <span class="small-value">{{ shortText(lane.qr.activeSessionPayload) }}</span>
               </div>
-
               <div class="qr-data-box">
                 <span class="small-label">Thông điệp verify</span>
                 <span class="small-value">{{ lane.qr.verifyMessage || "-----" }}</span>
               </div>
-
               <div class="qr-data-box">
                 <span class="small-label">Thiết bị quét</span>
                 <span class="small-value">{{ lane.qr.scannerDevice || "-----" }}</span>
@@ -266,7 +320,10 @@
           <!-- PLATE -->
           <div class="cam-block">
             <div class="cam-head">
-              <span>Plate Camera</span>
+              <span class="cam-head-label">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"/><polygon points="16 8 20 4 20 16 16 12 16 8"/></svg>
+                Plate Camera
+              </span>
               <span class="mini-status" :class="platePreviewStatusClass(lane.plate)">
                 {{ platePreviewStatusText(lane.plate) }}
               </span>
@@ -274,25 +331,33 @@
 
             <div class="cam-preview">
               <img
-  v-if="lane.plate.previewRunning && lane.plate.directCameraUrl"
-  :key="lane.plate.directCameraKey"
-  :src="lane.plate.directCameraUrl"
-  class="preview-image"
-  alt="Plate Preview"
-  @load="onPreviewLoaded(lane.plate)"
-  @error="onPreviewError(lane.plate)"
-/>
-              <div v-else class="cam-off">Plate Offline</div>
+                v-if="lane.plate.previewRunning && lane.plate.directCameraUrl"
+                :key="lane.plate.directCameraKey"
+                :src="lane.plate.directCameraUrl"
+                class="preview-image"
+                alt="Plate Preview"
+                @load="onPreviewLoaded(lane.plate)"
+                @error="onPreviewError(lane.plate)"
+              />
+              <div v-else class="cam-off">
+                <div class="cam-off-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2" ry="2"/><polygon points="16 8 20 4 20 16 16 12 16 8"/></svg>
+                </div>
+                <span>Plate Offline</span>
+              </div>
             </div>
 
             <div class="quick-result">
               <div class="result-pill" :class="lane.plate.cameraRunning ? 'ok' : 'off'">
+                <span class="pill-dot"></span>
                 {{ lane.plate.cameraRunning ? "RUNNING" : "STOPPED" }}
               </div>
               <div class="result-pill" :class="lane.plate.scanLocked ? 'ok' : 'wait'">
+                <span class="pill-dot"></span>
                 {{ lane.plate.scanLocked ? "LOCKED" : "SCANNING" }}
               </div>
               <div class="result-pill neutral">
+                <span class="pill-dot"></span>
                 {{ lane.plate.confirmedPlate || "NO PLATE" }}
               </div>
             </div>
@@ -305,7 +370,10 @@
                   class="evidence-image"
                   alt="Plate Crop"
                 />
-                <div v-else class="evidence-empty">Plate Crop</div>
+                <div v-else class="evidence-empty">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <span>Plate Crop</span>
+                </div>
               </div>
 
               <div class="evidence-box">
@@ -315,7 +383,10 @@
                   class="evidence-image"
                   alt="Plate Snapshot"
                 />
-                <div v-else class="evidence-empty">Plate Snapshot</div>
+                <div v-else class="evidence-empty">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <span>Plate Snapshot</span>
+                </div>
               </div>
             </div>
           </div>
@@ -337,12 +408,38 @@ import * as plateLane2Api from "../services/biensoApi"
 import { confirmGateLocally } from "../services/thonghanhAPI"
 import { verifyDynamicQr } from "../services/dynamicQrVerifyApi"
 import { startQr, resetQr, stopQr, getQrResult, scanQr, getQrLockedImage } from "../services/qr_dAPI"
+import { formatLicensePlateDisplay } from "../utils/licensePlateValidator"
 import {
   fetchSetCamCatalog,
+  inferMovementDirection,
   pickDefaultSetCamCamera,
 } from "../services/setcamCatalog"
 
 const LANE_CAMERA_STORAGE_PREFIX = "vshield-thonghanh-camera"
+const LANE_DIRECTION_STORAGE_PREFIX = "vshield-thonghanh-direction"
+
+function getDefaultLaneDirection(laneId) {
+  return laneId === "lane2" ? "OUT" : "IN"
+}
+
+function normalizeLaneDirection(value, fallback = "IN") {
+  const normalizedValue = String(value || "").trim().toUpperCase()
+  if (normalizedValue === "IN" || normalizedValue === "OUT") {
+    return normalizedValue
+  }
+
+  const normalizedFallback = String(fallback || "").trim().toUpperCase()
+  if (normalizedFallback === "IN" || normalizedFallback === "OUT") {
+    return normalizedFallback
+  }
+
+  return ""
+}
+
+function getLaneDirectionLabel(direction) {
+  return normalizeLaneDirection(direction, "IN") === "OUT" ? "Xe ra" : "Xe vào"
+}
+
 function createQrModule(defaultScannerDevice) {
   return {
     cameraId: null,
@@ -497,6 +594,7 @@ export default {
       lanes: [
         {
           id: "lane1",
+          movementDirection: getDefaultLaneDirection("lane1"),
           name: "Làn 1",
           desc: "QR trên / Biển dưới",
           loading: false,
@@ -506,6 +604,7 @@ export default {
         },
         {
           id: "lane2",
+          movementDirection: getDefaultLaneDirection("lane2"),
           name: "Làn 2",
           desc: "QR trên / Biển dưới",
           loading: false,
@@ -519,6 +618,7 @@ export default {
 
   async mounted() {
     document.addEventListener("pointerdown", this.handleDocumentPointerDown)
+    this.restoreLaneDirections()
   await this.loadCameraList() // 🔥 THÊM
 
   for (const lane of this.lanes) {
@@ -546,6 +646,8 @@ export default {
   },
 
   activated() {
+    this.loadCameraList()
+    this.restoreLaneDirections()
     for (const lane of this.lanes) {
       lane.qr.destroyed = false
       lane.plate.destroyed = false
@@ -1404,7 +1506,7 @@ export default {
 
       plate.cameraRunning = incomingCameraEnabled
       plate.currentIp = res.ip || plate.currentIp
-      plate.confirmedPlate = res.confirmed_plate || ""
+      plate.confirmedPlate = formatLicensePlateDisplay(res.confirmed_plate || "")
       plate.lastRawPlate = res.last_raw_plate || ""
       plate.scanLocked = !!res.scan_locked
       plate.fps = Number(res.fps || 0)
@@ -1687,6 +1789,10 @@ this.startQrPolling(lane)
       const licensePlate = String(lane.plate.confirmedPlate || "").trim()
       const gateId = lane.plate.gateId ?? lane.qr.gateId ?? null
       const cameraId = lane.plate.cameraId ?? lane.qr.cameraId ?? null
+      const direction = normalizeLaneDirection(
+        lane.movementDirection,
+        getDefaultLaneDirection(lane.id)
+      ) || "IN"
 
       if (!employeeId) {
         alert(`${lane.name}: chưa có Employee ID`)
@@ -1702,9 +1808,13 @@ this.startQrPolling(lane)
         lane.loading = true
 
         // Vẫn dùng API thông hành cũ, chỉ lấy employeeId từ QR verify
+        lane.movementDirection = direction
+        this.persistLaneDirection(lane)
+
         const payload = {
           employeeId,
           licensePlate,
+          direction,
           gateId,
           cameraId
         }
@@ -1730,6 +1840,63 @@ this.startQrPolling(lane)
     },
 
     // ================= CAMERA SEARCH =================
+
+getLaneDirectionStorageKey(laneId) {
+  return `${LANE_DIRECTION_STORAGE_PREFIX}-${laneId}`
+},
+
+restoreLaneDirections() {
+  for (const lane of this.lanes) {
+    const storageKey = this.getLaneDirectionStorageKey(lane.id)
+    const savedDirection = localStorage.getItem(storageKey)
+    lane.movementDirection = normalizeLaneDirection(
+      savedDirection,
+      getDefaultLaneDirection(lane.id)
+    )
+  }
+},
+
+persistLaneDirection(lane) {
+  const storageKey = this.getLaneDirectionStorageKey(lane.id)
+  const normalizedDirection = normalizeLaneDirection(
+    lane.movementDirection,
+    getDefaultLaneDirection(lane.id)
+  )
+
+  lane.movementDirection = normalizedDirection
+  localStorage.setItem(storageKey, normalizedDirection)
+},
+
+handleLaneDirectionChange(lane) {
+  this.persistLaneDirection(lane)
+},
+
+laneDirectionText(lane) {
+  return getLaneDirectionLabel(lane.movementDirection)
+},
+
+syncLaneDirectionFromCamera(lane, camera) {
+  const storageKey = this.getLaneDirectionStorageKey(lane.id)
+  if (localStorage.getItem(storageKey)) {
+    return
+  }
+
+  const inferredDirection = normalizeLaneDirection(
+    camera?.movementDirection || inferMovementDirection(
+      camera?.name || camera?.cameraName,
+      camera?.gateName,
+      camera?.cameraType
+    ),
+    ""
+  )
+
+  if (!inferredDirection) {
+    return
+  }
+
+  lane.movementDirection = inferredDirection
+  this.persistLaneDirection(lane)
+},
 
 getCameraSearchKey(laneId, type) {
   return `${laneId}-${type}`
@@ -1853,6 +2020,7 @@ selectCamera(cam, lane, type) {
       lane.qr.previewHealthy = false
     }
     this.persistLaneCameraSelection(lane, "qr")
+    this.syncLaneDirectionFromCamera(lane, cam)
   }
 
   if (type === "plate") {
@@ -1872,6 +2040,7 @@ selectCamera(cam, lane, type) {
       lane.plate.previewHealthy = false
     }
     this.persistLaneCameraSelection(lane, "plate")
+    this.syncLaneDirectionFromCamera(lane, cam)
   }
 
   this.closeCameraDropdown(lane.id, type)
@@ -1959,262 +2128,440 @@ applyInitialCameraSelections() {
 </script>
 
 <style scoped>
-* {
-  box-sizing: border-box;
-}
-
+/* ========== Page & Topbar ========== */
 .page {
-  min-height: 100vh;
-  background: #f3f6fb;
-  padding: 20px;
-  font-family: Inter, Arial, sans-serif;
-  color: #0f172a;
+  padding: 0;
 }
 
 .topbar {
-  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
 }
 
-.topbar h1 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 800;
+.topbar-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
 }
 
-.topbar p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 14px;
+.topbar-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(15, 124, 130, 0.22);
 }
 
+.topbar-desc {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+/* ========== Lane Grid ========== */
 .lane-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: 1fr;
+  gap: 20px;
 }
 
 .lane-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: var(--glass-blur);
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal),
+    transform var(--transition-normal);
+}
+
+.lane-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .lane-card.ready {
-  border-color: #93c5fd;
-  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.12);
+  border-color: rgba(15, 124, 130, 0.32);
+  box-shadow: var(--shadow-glow);
 }
 
+/* ========== Lane Head ========== */
 .lane-head {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+.lane-head-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lane-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(15, 124, 130, 0.1);
+  color: var(--accent-primary);
+  transition: all var(--transition-normal);
+}
+
+.lane-icon.active {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(15, 124, 130, 0.2);
 }
 
 .lane-head h2 {
   margin: 0;
-  font-size: 22px;
-  font-weight: 800;
+  font-family: var(--font-heading);
+  font-size: 1.28rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .lane-head p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 13px;
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 .lane-final-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-width: 180px;
-  text-align: center;
-  padding: 10px 14px;
+  justify-content: center;
+  padding: 10px 18px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .lane-final-status.ok {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(20, 134, 109, 0.12);
+  color: var(--accent-success);
+}
+
+.lane-final-status.ok .status-dot {
+  box-shadow: 0 0 0 4px rgba(20, 134, 109, 0.15);
+  animation: pulseGlow 2s ease-in-out infinite;
 }
 
 .lane-final-status.wait {
-  background: #fff7ed;
-  color: #c2410c;
+  background: rgba(184, 111, 33, 0.1);
+  color: var(--accent-warning);
 }
 
+/* ========== Lane Actions ========== */
 .lane-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   height: 40px;
   border: none;
-  border-radius: 10px;
-  padding: 0 14px;
+  border-radius: 999px;
+  padding: 0 16px;
   color: white;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn-preview {
-  background: #0f766e;
+  background: var(--accent-gradient);
+  box-shadow: 0 8px 20px rgba(15, 124, 130, 0.18);
+}
+
+.btn-preview:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(15, 124, 130, 0.26);
 }
 
 .btn-main {
-  background: #2563eb;
+  background: linear-gradient(135deg, var(--steel-500), var(--steel-600));
+  box-shadow: 0 8px 20px rgba(43, 109, 138, 0.18);
+}
+
+.btn-main:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(43, 109, 138, 0.26);
 }
 
 .btn-sub {
-  background: #475569;
+  background: rgba(61, 93, 118, 0.12);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-sub:hover:not(:disabled) {
+  background: rgba(61, 93, 118, 0.18);
+  border-color: var(--border-color-hover);
+  color: var(--text-primary);
 }
 
 .btn-off {
-  background: #dc2626;
+  background: rgba(195, 81, 70, 0.1);
+  color: var(--accent-danger);
+  border: 1px solid rgba(195, 81, 70, 0.2);
+}
+
+.btn-off:hover:not(:disabled) {
+  background: rgba(195, 81, 70, 0.16);
 }
 
 .btn-confirm {
-  background: #111827;
+  background: linear-gradient(135deg, var(--ink-900), var(--ink-950));
+  box-shadow: 0 8px 20px rgba(16, 32, 51, 0.18);
 }
 
+.btn-confirm:hover:not(:disabled) {
+  box-shadow: 0 12px 28px rgba(16, 32, 51, 0.26);
+}
+
+/* ========== IP Row / Camera Search ========== */
 .ip-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .ip-box label {
-  display: block;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
   font-weight: 700;
-  margin-bottom: 6px;
-  color: #334155;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
 }
 
 .ip-box input {
   width: 100%;
-  height: 42px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 0 12px;
-  font-size: 14px;
-  outline: none;
+  min-height: 44px;
+  border: 1px solid rgba(24, 49, 77, 0.1);
+  border-radius: 14px;
+  padding: 0 14px;
+  font-size: 0.92rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 
 .ip-box input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  border-color: rgba(15, 124, 130, 0.36);
+  box-shadow: 0 0 0 4px rgba(84, 196, 211, 0.18);
+  background: rgba(255, 255, 255, 0.96);
 }
 
+.ip-box input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ========== Summary Bar ========== */
 .summary-bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .summary-item {
-  background: #f8fafc;
-  border: 1px solid #e9eef5;
-  border-radius: 12px;
-  padding: 10px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 12px 14px;
+  transition: border-color var(--transition-fast);
+}
+
+.summary-item:hover {
+  border-color: var(--border-color-hover);
 }
 
 .summary-item .label {
   display: block;
-  font-size: 11px;
-  color: #64748b;
+  font-size: 0.72rem;
+  color: var(--text-muted);
   margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .summary-item .value {
   display: block;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 0.94rem;
+  font-weight: 700;
   word-break: break-word;
+  color: var(--text-primary);
+}
+
+.direction-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.direction-select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(24, 49, 77, 0.1);
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.9);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.direction-select:focus {
+  border-color: rgba(15, 124, 130, 0.36);
+  box-shadow: 0 0 0 4px rgba(84, 196, 211, 0.18);
+  outline: none;
+}
+
+.direction-hint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--accent-primary);
+  font-weight: 700;
 }
 
 .strong {
-  font-size: 20px !important;
-  font-weight: 900 !important;
+  font-size: 1.24rem !important;
+  font-weight: 800 !important;
 }
 
 .plate {
-  color: #15803d;
-  letter-spacing: 1px;
+  color: var(--accent-success);
+  letter-spacing: 1.5px;
+  font-family: var(--font-heading);
 }
 
 .ok-text {
-  color: #15803d;
+  color: var(--accent-success);
 }
 
 .warn-text {
-  color: #c2410c;
+  color: var(--accent-warning);
 }
 
 .danger-text {
-  color: #b91c1c;
+  color: var(--accent-danger);
 }
 
+/* ========== Camera Stack ========== */
 .camera-stack {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
 .cam-block {
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 12px;
-  background: #fcfdff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 14px;
+  background: var(--bg-card-strong);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.cam-block:hover {
+  border-color: var(--border-color-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .cam-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  font-size: 14px;
-  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.cam-head-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .mini-status {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 900;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .mini-status.ok {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(20, 134, 109, 0.12);
+  color: var(--accent-success);
 }
 
 .mini-status.wait {
-  background: #fff7ed;
-  color: #c2410c;
+  background: rgba(184, 111, 33, 0.1);
+  color: var(--accent-warning);
 }
 
+/* ========== Camera Preview ========== */
 .cam-preview {
   width: 100%;
-  height: clamp(320px, 28vw, 520px);
-  min-height: 320px;
-  background: #0f172a;
-  border-radius: 12px;
+  height: clamp(280px, 26vw, 460px);
+  min-height: 280px;
+  background: var(--ink-950);
+  border-radius: var(--border-radius-sm);
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   position: relative;
 }
 
@@ -2234,52 +2581,79 @@ applyInitialCameraSelections() {
   width: 100%;
   height: 100%;
   display: flex;
-  color: #cbd5e1;
+  flex-direction: column;
+  gap: 12px;
+  color: rgba(188, 209, 218, 0.6);
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 600;
 }
 
+.cam-off-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(188, 209, 218, 0.08);
+  border: 1px solid rgba(188, 209, 218, 0.12);
+}
+
+/* ========== Result Pills ========== */
 .quick-result {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .result-pill {
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
 .result-pill.ok {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(20, 134, 109, 0.12);
+  color: var(--accent-success);
 }
 
 .result-pill.wait {
-  background: #fff7ed;
-  color: #c2410c;
+  background: rgba(184, 111, 33, 0.1);
+  color: var(--accent-warning);
 }
 
 .result-pill.danger {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: rgba(195, 81, 70, 0.1);
+  color: var(--accent-danger);
 }
 
 .result-pill.neutral {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: rgba(61, 93, 118, 0.08);
+  color: var(--text-secondary);
 }
 
 .result-pill.off {
-  background: #f1f5f9;
-  color: #64748b;
+  background: rgba(24, 49, 77, 0.05);
+  color: var(--text-muted);
 }
 
+/* ========== QR Data Grid ========== */
 .qr-data-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2288,46 +2662,61 @@ applyInitialCameraSelections() {
 }
 
 .qr-data-box {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  transition: border-color var(--transition-fast);
+}
+
+.qr-data-box:hover {
+  border-color: var(--border-color-hover);
 }
 
 .small-label {
-  font-size: 11px;
-  color: #64748b;
+  font-size: 0.7rem;
+  color: var(--text-muted);
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .small-value {
-  font-size: 13px;
-  color: #0f172a;
+  font-size: 0.82rem;
+  color: var(--text-primary);
   font-weight: 700;
   word-break: break-word;
 }
 
+/* ========== Verify Box ========== */
 .verify-box {
   margin-top: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  padding: 14px;
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
 }
 
 .verify-message {
   margin-bottom: 8px;
   font-weight: 700;
+  font-size: 0.92rem;
 }
 
 .verify-data > div {
-  margin-bottom: 4px;
-  font-size: 13px;
+  margin-bottom: 5px;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
 }
 
+.verify-data b {
+  color: var(--text-primary);
+}
+
+/* ========== Evidence Row ========== */
 .evidence-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2337,10 +2726,15 @@ applyInitialCameraSelections() {
 .evidence-box {
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
+  background: var(--bg-input);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius-sm);
   overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.evidence-box:hover {
+  border-color: var(--border-color-hover);
 }
 
 .evidence-image {
@@ -2354,46 +2748,34 @@ applyInitialCameraSelections() {
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
+/* ========== Bottom Note ========== */
 .bottom-note {
-  margin-top: 12px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
-  color: #475569;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 10px 14px;
+  border-radius: var(--border-radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
 }
 
-@media (max-width: 1200px) {
-  .lane-grid {
-    grid-template-columns: 1fr;
-  }
+.bottom-note b {
+  color: var(--text-secondary);
 }
 
-@media (max-width: 900px) {
-  .summary-bar,
-  .ip-row,
-  .evidence-row,
-  .qr-data-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .lane-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .lane-final-status {
-    min-width: unset;
-    width: 100%;
-  }
-}
+/* ========== Dropdown ========== */
 .search-box {
   position: relative;
 }
@@ -2402,14 +2784,16 @@ applyInitialCameraSelections() {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  background: #fff;
-  border: 1px solid #dbe4f0;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
   width: 100%;
   max-height: 240px;
   overflow-y: auto;
   z-index: 9999;
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--glass-blur);
+  animation: dropdownIn 0.18s ease;
 }
 
 .dropdown-item {
@@ -2433,6 +2817,10 @@ applyInitialCameraSelections() {
 }
 
 @media (max-width: 900px) {
+  .camera-stack {
+    grid-template-columns: 1fr;
+  }
+
   .cam-preview {
     height: clamp(260px, 62vw, 380px);
     min-height: 260px;

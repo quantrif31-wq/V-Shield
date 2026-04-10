@@ -12,6 +12,8 @@ export const DEFAULT_CAMERA_SETTINGS = [
     id: 1,
     name: "CAM-01",
     label: "Cổng A - Trước",
+    linkedCameraId: "",
+    linkedCameraName: "",
     url: "",
     previewUrl: "",
     location: "Cổng A - Trước",
@@ -22,6 +24,8 @@ export const DEFAULT_CAMERA_SETTINGS = [
     id: 2,
     name: "CAM-02",
     label: "Cổng A - Sau",
+    linkedCameraId: "",
+    linkedCameraName: "",
     url: "",
     previewUrl: "",
     location: "Cổng A - Sau",
@@ -32,6 +36,8 @@ export const DEFAULT_CAMERA_SETTINGS = [
     id: 3,
     name: "CAM-03",
     label: "Cổng B - Trước",
+    linkedCameraId: "",
+    linkedCameraName: "",
     url: "",
     previewUrl: "",
     location: "Cổng B - Trước",
@@ -42,6 +48,8 @@ export const DEFAULT_CAMERA_SETTINGS = [
     id: 4,
     name: "CAM-04",
     label: "Cổng B - Sau",
+    linkedCameraId: "",
+    linkedCameraName: "",
     url: "",
     previewUrl: "",
     location: "Cổng B - Sau",
@@ -229,6 +237,10 @@ export const normalizeCameraSettings = (settings) =>
       label: savedCameraData.label?.trim()
         ? savedCameraData.label.trim()
         : legacyParts.label,
+      linkedCameraId: savedCameraData.linkedCameraId
+        ? String(savedCameraData.linkedCameraId).trim()
+        : "",
+      linkedCameraName: savedCameraData.linkedCameraName?.trim() || "",
       url: normalizedUrl,
       previewUrl: normalizedPreviewUrl,
       location: savedCameraData.location?.trim() || fallbackCamera.location,

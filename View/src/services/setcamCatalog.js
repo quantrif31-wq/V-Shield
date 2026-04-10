@@ -1,18 +1,50 @@
 import { getCameras } from "./setcamAPI"
 
+const normalizeKeywordText = (value = "") =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+
 const normalizeText = (...parts) =>
   parts
     .map((part) => String(part || "").trim().toLowerCase())
     .filter(Boolean)
     .join(" ")
 
+const normalizeSearchableText = (...parts) =>
+  ` ${normalizeKeywordText(parts.join(" ")).replace(/[^a-z0-9]+/g, " ")} `
+
 const CAMERA_ROLE_PATTERNS = {
   qr: [" qr", "qr ", "qr_", "qr-", "qrcode", "dynamic", "dong", "scan qr"],
   plate: ["plate", "lpr", "license", "bien", "bienso", "number"],
 }
 
+const CAMERA_DIRECTION_PATTERNS = {
+  IN: [" vao ", " lan vao ", " gate in ", " entry ", " entrance ", " inbound ", " check in ", " in "],
+  OUT: [" ra ", " lan ra ", " gate out ", " exit ", " outbound ", " check out ", " out "],
+}
+
 const hasRolePattern = (searchText, role) =>
   CAMERA_ROLE_PATTERNS[role]?.some((pattern) => searchText.includes(pattern)) || false
+
+export function inferMovementDirection(...parts) {
+  const searchableText = normalizeSearchableText(...parts)
+
+  for (const pattern of CAMERA_DIRECTION_PATTERNS.IN) {
+    if (searchableText.includes(pattern)) {
+      return "IN"
+    }
+  }
+
+  for (const pattern of CAMERA_DIRECTION_PATTERNS.OUT) {
+    if (searchableText.includes(pattern)) {
+      return "OUT"
+    }
+  }
+
+  return ""
+}
 
 export function normalizeSetCamCamera(camera) {
   const normalizedCamera = {
@@ -33,11 +65,17 @@ export function normalizeSetCamCamera(camera) {
     normalizedCamera.cameraType,
     normalizedCamera.sourceUrl
   )
+  const movementDirection = inferMovementDirection(
+    normalizedCamera.name,
+    normalizedCamera.gateName,
+    normalizedCamera.cameraType
+  )
 
   return {
     ...normalizedCamera,
     label: labelParts.join(" | ") || "Chua gan gate",
     searchText,
+    movementDirection,
   }
 }
 

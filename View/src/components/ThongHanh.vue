@@ -260,6 +260,7 @@ import * as plateLane1Api from "../services/biensoApi"
 import * as faceLane2Api from "../services/faceApi"
 import * as plateLane2Api from "../services/biensoApi"
 import { scanGate } from "../services/thonghanhAPI"
+import { formatLicensePlateDisplay } from "../utils/licensePlateValidator"
 
 function createFaceModule() {
   return {
@@ -783,7 +784,7 @@ export default {
 
       plate.cameraRunning = incomingCameraEnabled
       plate.currentIp = res.ip || plate.currentIp
-      plate.confirmedPlate = res.confirmed_plate || ""
+      plate.confirmedPlate = formatLicensePlateDisplay(res.confirmed_plate || "")
       plate.lastRawPlate = res.last_raw_plate || ""
       plate.scanLocked = !!res.scan_locked
       plate.fps = Number(res.fps || 0)

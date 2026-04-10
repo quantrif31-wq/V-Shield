@@ -143,7 +143,7 @@
                                 <div class="table-sub">{{ actorTypeLabel(item.actorType) }}</div>
                             </td>
                             <td>
-                                <span class="badge" :class="item.direction === 'IN' ? 'active' : 'pending'">
+                                <span class="badge" :class="directionBadgeClass(item.direction)">
                                     {{ item.direction === 'IN' ? 'VÀO' : 'RA' }}
                                 </span>
                             </td>
@@ -316,6 +316,12 @@ function actorTypeLabel(value) {
         Unknown: 'Chưa xác định',
     }
     return map[value] || 'Chưa phân loại'
+}
+
+function directionBadgeClass(value) {
+    if (value === 'IN') return 'active'
+    if (value === 'OUT') return 'pending'
+    return 'info'
 }
 
 function methodLabel(value) {

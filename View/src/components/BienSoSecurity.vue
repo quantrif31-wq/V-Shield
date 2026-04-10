@@ -186,6 +186,7 @@ import {
   fetchSetCamCatalog,
   pickDefaultSetCamCamera,
 } from "../services/setcamCatalog"
+import { formatLicensePlateDisplay } from "../utils/licensePlateValidator"
 
 const PLATE_CAMERA_SELECTION_STORAGE_KEY = "vshield-plate-selected-camera"
 
@@ -651,7 +652,7 @@ export default {
 
       this.cameraRunning = incomingCameraEnabled
       this.currentIp = res.ip || this.currentIp
-      this.confirmedPlate = res.confirmed_plate || ""
+      this.confirmedPlate = formatLicensePlateDisplay(res.confirmed_plate || "")
       this.lastRawPlate = res.last_raw_plate || ""
       this.liveCandidates = Array.isArray(res.live_candidates)
         ? res.live_candidates.slice(0, 5)

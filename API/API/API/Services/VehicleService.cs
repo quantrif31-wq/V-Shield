@@ -1,11 +1,13 @@
-using API.DTOs;
-using API.Models;
+using System.Globalization;
+using System.Text;
 using API.Data;
+using API.DTOs;
+using API.Helpers;
+using API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace API.Services;
 
-// ==================== INTERFACE ====================
 public interface IVehicleService
 {
     Task<IEnumerable<VehicleTypeDto>> GetVehicleTypesAsync();
@@ -18,7 +20,6 @@ public interface IVehicleService
     Task<bool> DeleteAsync(int vehicleId);
 }
 
-// ==================== IMPLEMENTATION ====================
 public class VehicleService : IVehicleService
 {
     private readonly ApplicationDbContext _context;
@@ -42,18 +43,16 @@ public class VehicleService : IVehicleService
             .ToListAsync();
     }
 
-
-    // Lấy tất cả phương tiện
     public async Task<IEnumerable<VehicleDto>> GetAllAsync()
     {
-        return await _context.Vehicles
+        var vehicles = await _context.Vehicles
             .Include(v => v.Employee)
             .Include(v => v.VehicleType)
-            .Select(v => MapToDto(v))
             .ToListAsync();
+
+        return vehicles.Select(MapToDto).ToList();
     }
 
-    // Lấy phương tiện theo ID
     public async Task<VehicleDto?> GetByIdAsync(int vehicleId)
     {
         var vehicle = await _context.Vehicles
@@ -64,58 +63,80 @@ public class VehicleService : IVehicleService
         return vehicle == null ? null : MapToDto(vehicle);
     }
 
-    // Lấy phương tiện theo mã nhân viên
     public async Task<IEnumerable<VehicleDto>> GetByEmployeeIdAsync(int employeeId)
     {
-        return await _context.Vehicles
+        var vehicles = await _context.Vehicles
             .Include(v => v.Employee)
             .Include(v => v.VehicleType)
             .Where(v => v.EmployeeId == employeeId)
-            .Select(v => MapToDto(v))
             .ToListAsync();
+
+        return vehicles.Select(MapToDto).ToList();
     }
 
-    // Lấy phương tiện theo biển số
     public async Task<VehicleDto?> GetByLicensePlateAsync(string licensePlate)
     {
-        var vehicle = await _context.Vehicles
+        var lookupKey = LicensePlateHelper.NormalizeLookupKey(licensePlate);
+        if (string.IsNullOrWhiteSpace(lookupKey))
+        {
+            return null;
+        }
+
+        var vehicles = await _context.Vehicles
             .Include(v => v.Employee)
             .Include(v => v.VehicleType)
-            .FirstOrDefaultAsync(v => v.LicensePlate == licensePlate);
+            .Where(v => v.LicensePlate != null)
+            .ToListAsync();
+
+        var vehicle = vehicles.FirstOrDefault(v =>
+            LicensePlateHelper.NormalizeLookupKey(v.LicensePlate) == lookupKey);
 
         return vehicle == null ? null : MapToDto(vehicle);
     }
 
-    // Tạo mới phương tiện
     public async Task<VehicleDto> CreateAsync(CreateVehicleDto dto)
     {
         await EnsureDefaultVehicleTypesAsync();
 
-        // Kiểm tra biển số đã tồn tại chưa
-        var existing = await _context.Vehicles
-            .AnyAsync(v => v.LicensePlate == dto.LicensePlate);
-        if (existing)
-            throw new InvalidOperationException($"Biển số '{dto.LicensePlate}' đã được đăng ký.");
+        var plateInfo = LicensePlateHelper.Analyze(dto.LicensePlate);
+        if (!plateInfo.IsValid)
+        {
+            throw new InvalidOperationException("Biển số không đúng định dạng Việt Nam.");
+        }
 
-        // Kiểm tra nhân viên tồn tại
+        var existingVehicles = await _context.Vehicles
+            .Where(v => v.LicensePlate != null)
+            .ToListAsync();
+
+        var duplicateExists = existingVehicles.Any(v =>
+            LicensePlateHelper.NormalizeLookupKey(v.LicensePlate) == plateInfo.LookupKey);
+        if (duplicateExists)
+        {
+            throw new InvalidOperationException($"Biển số '{plateInfo.DisplayPlate}' đã được đăng ký.");
+        }
+
         var employeeExists = await _context.Employees
             .AnyAsync(e => e.EmployeeId == dto.EmployeeId);
         if (!employeeExists)
+        {
             throw new KeyNotFoundException($"Không tìm thấy nhân viên với ID = {dto.EmployeeId}.");
+        }
 
-        // Kiểm tra loại xe tồn tại
-        if (dto.VehicleTypeId.HasValue)
+        var resolvedVehicleTypeId = dto.VehicleTypeId ?? await ResolveVehicleTypeIdByPlateAsync(plateInfo);
+        if (resolvedVehicleTypeId.HasValue)
         {
             var vehicleTypeExists = await _context.VehicleTypes
-                .AnyAsync(vt => vt.VehicleTypeId == dto.VehicleTypeId.Value);
+                .AnyAsync(vt => vt.VehicleTypeId == resolvedVehicleTypeId.Value);
             if (!vehicleTypeExists)
-                throw new KeyNotFoundException($"Không tìm thấy loại xe với ID = {dto.VehicleTypeId}. Vui lòng kiểm tra bảng VehicleType trong database.");
+            {
+                throw new KeyNotFoundException($"Không tìm thấy loại xe với ID = {resolvedVehicleTypeId}.");
+            }
         }
 
         var vehicle = new Vehicle
         {
-            LicensePlate = dto.LicensePlate.Trim().ToUpper(),
-            VehicleTypeId = dto.VehicleTypeId,
+            LicensePlate = plateInfo.DisplayPlate,
+            VehicleTypeId = resolvedVehicleTypeId,
             EmployeeId = dto.EmployeeId,
             Description = dto.Description
         };
@@ -123,14 +144,12 @@ public class VehicleService : IVehicleService
         _context.Vehicles.Add(vehicle);
         await _context.SaveChangesAsync();
 
-        // Reload với navigation properties
         await _context.Entry(vehicle).Reference(v => v.Employee).LoadAsync();
         await _context.Entry(vehicle).Reference(v => v.VehicleType).LoadAsync();
 
         return MapToDto(vehicle);
     }
 
-    // Cập nhật phương tiện
     public async Task<VehicleDto?> UpdateAsync(int vehicleId, UpdateVehicleDto dto)
     {
         await EnsureDefaultVehicleTypesAsync();
@@ -140,58 +159,83 @@ public class VehicleService : IVehicleService
             .Include(v => v.VehicleType)
             .FirstOrDefaultAsync(v => v.VehicleId == vehicleId);
 
-        if (vehicle == null) return null;
-
-        // Kiểm tra biển số mới không trùng với xe khác
-        if (!string.IsNullOrWhiteSpace(dto.LicensePlate))
+        if (vehicle == null)
         {
-            var duplicatePlate = await _context.Vehicles
-                .AnyAsync(v => v.LicensePlate == dto.LicensePlate && v.VehicleId != vehicleId);
-            if (duplicatePlate)
-                throw new InvalidOperationException($"Biển số '{dto.LicensePlate}' đã được đăng ký cho xe khác.");
-
-            vehicle.LicensePlate = dto.LicensePlate.Trim().ToUpper();
+            return null;
         }
 
-        // Kiểm tra nhân viên mới tồn tại
+        LicensePlateInfo? updatedPlateInfo = null;
+        if (!string.IsNullOrWhiteSpace(dto.LicensePlate))
+        {
+            updatedPlateInfo = LicensePlateHelper.Analyze(dto.LicensePlate);
+            if (!updatedPlateInfo.IsValid)
+            {
+                throw new InvalidOperationException("Biển số không đúng định dạng Việt Nam.");
+            }
+
+            var otherVehicles = await _context.Vehicles
+                .Where(v => v.LicensePlate != null && v.VehicleId != vehicleId)
+                .ToListAsync();
+
+            var duplicateExists = otherVehicles.Any(v =>
+                LicensePlateHelper.NormalizeLookupKey(v.LicensePlate) == updatedPlateInfo.LookupKey);
+            if (duplicateExists)
+            {
+                throw new InvalidOperationException($"Biển số '{updatedPlateInfo.DisplayPlate}' đã được đăng ký cho xe khác.");
+            }
+
+            vehicle.LicensePlate = updatedPlateInfo.DisplayPlate;
+        }
+
         if (dto.EmployeeId.HasValue)
         {
             var employeeExists = await _context.Employees
                 .AnyAsync(e => e.EmployeeId == dto.EmployeeId.Value);
             if (!employeeExists)
+            {
                 throw new KeyNotFoundException($"Không tìm thấy nhân viên với ID = {dto.EmployeeId}.");
+            }
 
             vehicle.EmployeeId = dto.EmployeeId;
         }
 
-        // Kiểm tra loại xe mới tồn tại
         if (dto.VehicleTypeId.HasValue)
         {
             var vehicleTypeExists = await _context.VehicleTypes
                 .AnyAsync(vt => vt.VehicleTypeId == dto.VehicleTypeId.Value);
             if (!vehicleTypeExists)
-                throw new KeyNotFoundException($"Không tìm thấy loại xe với ID = {dto.VehicleTypeId}. Vui lòng kiểm tra bảng VehicleType trong database.");
+            {
+                throw new KeyNotFoundException($"Không tìm thấy loại xe với ID = {dto.VehicleTypeId}.");
+            }
 
             vehicle.VehicleTypeId = dto.VehicleTypeId;
         }
+        else if (!vehicle.VehicleTypeId.HasValue)
+        {
+            var plateInfo = updatedPlateInfo ?? LicensePlateHelper.Analyze(vehicle.LicensePlate);
+            vehicle.VehicleTypeId = await ResolveVehicleTypeIdByPlateAsync(plateInfo);
+        }
 
         if (dto.Description != null)
+        {
             vehicle.Description = dto.Description;
+        }
 
         await _context.SaveChangesAsync();
 
-        // Reload navigation properties sau khi update
         await _context.Entry(vehicle).Reference(v => v.Employee).LoadAsync();
         await _context.Entry(vehicle).Reference(v => v.VehicleType).LoadAsync();
 
         return MapToDto(vehicle);
     }
 
-    // Xóa phương tiện
     public async Task<bool> DeleteAsync(int vehicleId)
     {
         var vehicle = await _context.Vehicles.FindAsync(vehicleId);
-        if (vehicle == null) return false;
+        if (vehicle == null)
+        {
+            return false;
+        }
 
         _context.Vehicles.Remove(vehicle);
         await _context.SaveChangesAsync();
@@ -219,15 +263,74 @@ public class VehicleService : IVehicleService
         await _context.SaveChangesAsync();
     }
 
-    // Helper: Map Entity -> DTO
-    private static VehicleDto MapToDto(Vehicle v) => new VehicleDto
+    private async Task<int?> ResolveVehicleTypeIdByPlateAsync(LicensePlateInfo plateInfo)
     {
-        VehicleId = v.VehicleId,
-        LicensePlate = v.LicensePlate,
-        VehicleTypeId = v.VehicleTypeId,
-        VehicleTypeName = v.VehicleType?.TypeName,
-        EmployeeId = v.EmployeeId,
-        EmployeeFullName = v.Employee?.FullName,
-        Description = v.Description
-    };
+        if (!plateInfo.IsValid)
+        {
+            return null;
+        }
+
+        var aliases = plateInfo.VehicleKind switch
+        {
+            LicensePlateVehicleKind.Car => new[] { "o to", "xe hoi", "car" },
+            LicensePlateVehicleKind.Motorcycle => new[] { "xe may", "motorcycle", "motorbike", "moto" },
+            _ => Array.Empty<string>()
+        };
+
+        if (aliases.Length == 0)
+        {
+            return null;
+        }
+
+        var vehicleTypes = await _context.VehicleTypes
+            .OrderBy(vt => vt.TypeName)
+            .ToListAsync();
+
+        var matchedType = vehicleTypes.FirstOrDefault(item =>
+        {
+            var normalizedName = NormalizeVehicleTypeName(item.TypeName);
+            return aliases.Any(alias => normalizedName.Contains(alias, StringComparison.Ordinal));
+        });
+
+        return matchedType?.VehicleTypeId;
+    }
+
+    private static string NormalizeVehicleTypeName(string? name)
+    {
+        var normalized = (name ?? string.Empty).Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(char.ToLowerInvariant(ch));
+            }
+        }
+
+        return builder
+            .ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Trim();
+    }
+
+    private static VehicleDto MapToDto(Vehicle vehicle)
+    {
+        var plateInfo = LicensePlateHelper.Analyze(vehicle.LicensePlate);
+        var displayPlate = plateInfo.IsValid ? plateInfo.DisplayPlate : vehicle.LicensePlate;
+        var fallbackVehicleTypeName = string.IsNullOrWhiteSpace(vehicle.VehicleType?.TypeName)
+            ? LicensePlateHelper.GetFallbackVehicleTypeName(vehicle.LicensePlate)
+            : vehicle.VehicleType!.TypeName;
+
+        return new VehicleDto
+        {
+            VehicleId = vehicle.VehicleId,
+            LicensePlate = displayPlate,
+            VehicleTypeId = vehicle.VehicleTypeId,
+            VehicleTypeName = string.IsNullOrWhiteSpace(fallbackVehicleTypeName) ? null : fallbackVehicleTypeName,
+            EmployeeId = vehicle.EmployeeId,
+            EmployeeFullName = vehicle.Employee?.FullName,
+            Description = vehicle.Description
+        };
+    }
 }

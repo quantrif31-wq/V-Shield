@@ -331,7 +331,7 @@ import { ref, reactive as useReactive, computed, onMounted } from 'vue'
 import * as vehicleApi from '../services/vehicleApi'
 import { getAll as getAllEmployees } from '../services/employeeApi'
 import { API_ORIGIN } from '../config/api'
-import { optimizeAndValidatePlate, getVehicleTypeLabel } from '../utils/licensePlateValidator'
+import { optimizeAndValidatePlate, getVehicleTypeLabel, formatLicensePlateDisplay, normalizeLicensePlateLookup } from '../utils/licensePlateValidator'
 
 // ─── State ──────────────────────────────────────────────────
 const API_BASE = API_ORIGIN
@@ -477,6 +477,7 @@ const filteredVehicles = computed(() => {
         const q = searchQuery.value.toLowerCase()
         const matchSearch = !q ||
             v.licensePlate?.toLowerCase().includes(q) ||
+            (normalizeLicensePlateLookup(searchQuery.value) && normalizeLicensePlateLookup(v.licensePlate).includes(normalizeLicensePlateLookup(searchQuery.value))) ||
             v.employeeFullName?.toLowerCase().includes(q) ||
             v.description?.toLowerCase().includes(q)
         const matchType = !filterType.value || v.vehicleTypeName === filterType.value
@@ -501,7 +502,12 @@ async function fetchVehicles() {
     loadError.value = ''
     try {
         const res = await vehicleApi.getAll()
-        vehicles.value = res.data
+        vehicles.value = Array.isArray(res.data)
+            ? res.data.map((item) => ({
+                ...item,
+                licensePlate: formatLicensePlateDisplay(item.licensePlate)
+            }))
+            : []
     } catch (err) {
         loadError.value = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra API.'
     } finally {

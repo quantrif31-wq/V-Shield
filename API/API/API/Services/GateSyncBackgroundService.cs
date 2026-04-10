@@ -114,6 +114,7 @@ public sealed class GateSyncBackgroundService : BackgroundService
             {
                 licensePlate = pendingItem.LicensePlate,
                 employeeId = pendingItem.EmployeeId,
+                direction = accessLog?.Direction,
                 vehicleTypeId = pendingItem.VehicleTypeId,
                 description = pendingItem.Description,
                 gateId = pendingItem.GateId,
