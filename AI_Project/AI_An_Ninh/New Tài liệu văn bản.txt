@@ -1,0 +1,12 @@
+py -3.10 -m venv venv
+venv\Scripts\activate
+
+python -m pip install --upgrade pip
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install ultralytics opencv-python pillow numpy
+
+
+trainning
+
+python build_dataset.py
+python train_lstm.py

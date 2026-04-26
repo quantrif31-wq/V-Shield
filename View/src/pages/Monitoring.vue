@@ -92,6 +92,112 @@
             </div>
         </section>
 
+        <section class="ops-panel ai-live-panel">
+            <div class="panel-head">
+                <div>
+                    <span class="panel-kicker">Security AI</span>
+                    <h2 class="panel-title">AI An Ninh trực tiếp</h2>
+                </div>
+                <div class="panel-actions">
+                    <span class="soft-chip" :class="securityAiRunning ? 'success' : 'warn'">
+                        {{ securityAiRunning ? 'Đang chạy' : 'Đã dừng' }}
+                    </span>
+                    <button v-if="securityAiRunning" class="btn btn-danger btn-sm" :disabled="securityBusy" @click="handleStopAi">
+                        Dừng AI
+                    </button>
+                    <router-link to="/device-management" class="btn btn-secondary btn-sm">Mở Camera & cổng</router-link>
+                </div>
+            </div>
+
+            <div v-if="securityError" class="empty-card error-card">
+                {{ securityError }}
+            </div>
+
+            <div class="ai-live-grid">
+                <article class="ai-live-stream-card">
+                    <div class="camera-card-head">
+                        <div>
+                            <strong>Luồng AI hiện tại</strong>
+                            <span>{{ securityStatus.source || securityStatus.ip || "Chưa chọn nguồn" }}</span>
+                        </div>
+                        <span class="soft-chip" :class="securityAiRunning ? 'success' : 'warn'">
+                            {{ securityAiRunning ? "Đang chạy" : "Đã dừng" }}
+                        </span>
+                    </div>
+
+                    <div v-if="securityAiRunning" class="ai-frame-wrap">
+                        <img :src="securityFrameUrl" alt="Security AI frame" class="ai-live-frame" />
+                    </div>
+                    <div v-else class="ai-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <p>AI An Ninh đang dừng</p>
+                        <span>Vào <router-link to="/device-management">Camera & cổng</router-link> để bật nguồn camera</span>
+                    </div>
+                </article>
+
+                <article class="ai-live-data-card">
+                    <div class="chip-row">
+                        <span class="soft-chip">Người: {{ securityResult.person_count || 0 }}</span>
+                        <span class="soft-chip" :class="(securityResult.abnormal_count || 0) > 0 ? 'warn' : 'success'">
+                            Bất thường: {{ securityResult.abnormal_count || 0 }}
+                        </span>
+                        <span class="soft-chip" :class="(securityResult.danger_count || 0) > 0 ? 'danger' : 'success'">
+                            Nguy cơ: {{ securityResult.danger_count || 0 }}
+                        </span>
+                        <span class="soft-chip">FPS: {{ securityResult.fps || 0 }}</span>
+                    </div>
+
+                    <p class="surface-item-sub">
+                        {{ securityStatus.status || securityStatus.message || "Đang chờ trạng thái AI..." }}
+                    </p>
+
+                    <div v-if="securityActionItems.length" class="chip-row">
+                        <span v-for="item in securityActionItems" :key="item.label" class="soft-chip">
+                            {{ item.label }}: {{ item.count }}
+                        </span>
+                    </div>
+
+                    <div v-if="securityPeople.length" class="surface-list scrollable-panel">
+                        <article
+                            v-for="person in securityPeople"
+                            :key="`${person.track_id}-${person.final_action}-${person.confidence}`"
+                            class="surface-item"
+                        >
+                            <div class="camera-card-head">
+                                <div>
+                                    <strong>ID {{ person.track_id }}</strong>
+                                    <span>{{ person.final_action || person.action }}</span>
+                                </div>
+                                <span class="soft-chip">{{ person.confidence }}</span>
+                            </div>
+                        </article>
+                    </div>
+                    <div v-else class="empty-card">Chưa có dữ liệu hành vi mới từ AI.</div>
+                </article>
+            </div>
+
+            <div class="panel-head">
+                <div>
+                    <span class="panel-kicker">Security alerts</span>
+                    <h3 class="panel-title">Ảnh cảnh báo gần nhất</h3>
+                </div>
+            </div>
+
+            <div v-if="securityAlerts.length" class="ai-alert-grid">
+                <article v-for="alert in securityAlerts" :key="alert.fileName" class="ai-alert-card">
+                    <img v-if="alert.imageUrl" :src="resolveSecurityAlertUrl(alert.imageUrl)" :alt="alert.label || 'Alert'" class="ai-alert-image" />
+                    <div class="ai-alert-meta">
+                        <strong>{{ alert.label || "ALERT" }}</strong>
+                        <span>{{ alert.trackId !== null && alert.trackId !== undefined ? `ID ${alert.trackId}` : "N/A" }}</span>
+                        <span>{{ formatDateTime(alert.capturedAt) }}</span>
+                    </div>
+                </article>
+            </div>
+            <div v-else class="empty-card">
+                Chưa có ảnh cảnh báo mới.
+            </div>
+        </section>
+
         <section class="ops-grid two">
             <article class="ops-panel">
                 <div class="panel-head">
@@ -225,11 +331,19 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue"
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref } from "vue"
 import StreamPreview from "../components/StreamPreview.vue"
 import { getAccessLogs } from "../services/accessLogApi"
 import { getDeviceOverview } from "../services/deviceManagementApi"
 import { getDetectedPlates } from "../services/plateRecognitionApi"
+import {
+    getSecurityAiAlerts,
+    getSecurityAiFrameUrl,
+    getSecurityAiResult,
+    getSecurityAiStatus,
+    stopSecurityAi,
+} from "../services/securityAiApi"
+import { getResolvedLocalApiBaseUrl } from "../services/localApiClient"
 import {
     CAMERA_NETWORK_STORAGE_KEY,
     isRtspCameraUrl,
@@ -254,6 +368,17 @@ const gates = ref([])
 const recentPlates = ref([])
 const recentActivities = ref([])
 const localCameraSettings = ref([])
+const securityStatus = ref({})
+const securityResult = ref({})
+const securityAlerts = ref([])
+const securityError = ref('')
+const securityFrameTick = ref(Date.now())
+const securityBusy = ref(false)
+let securityPollTimer = null
+let securityFrameTimer = null
+let securityPollInFlight = false
+let securityResultFailureCount = 0
+let securityResultBackoffUntil = 0
 
 const displayedCameras = computed(() => cameras.value.slice(0, maxCameras))
 const displayedPlates = computed(() => recentPlates.value.slice(0, maxPlates))
@@ -261,6 +386,16 @@ const displayedActivities = computed(() => recentActivities.value.slice(0, maxAc
 const displayedGates = computed(() => gates.value.slice(0, maxGates))
 const localPreviewCameras = computed(() =>
     localCameraSettings.value.filter((camera) => camera.enabled && (camera.url || camera.previewUrl))
+)
+const securityAiRunning = computed(() =>
+    Boolean(securityStatus.value?.running ?? securityStatus.value?.camera_enabled)
+)
+const securityFrameUrl = computed(() => getSecurityAiFrameUrl(securityFrameTick.value))
+const securityPeople = computed(() => (securityResult.value?.people || []).slice(0, 8))
+const securityActionItems = computed(() =>
+    Object.entries(securityResult.value?.actions || {})
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => Number(b.count) - Number(a.count))
 )
 
 const formatDateTime = (value) => {
@@ -279,6 +414,23 @@ const formatTime = (value) => {
         hour: "2-digit",
         minute: "2-digit",
     })
+}
+
+const resolveSecurityAlertUrl = (rawUrl) => {
+    const value = String(rawUrl || '').trim()
+    if (!value) return ''
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+        return value
+    }
+
+    const base = getResolvedLocalApiBaseUrl().replace(/\/+$/, '')
+    if (value.startsWith('/api/')) {
+        const originBase = base.endsWith('/api') ? base.slice(0, -4) : base
+        return `${originBase}${value}`
+    }
+
+    const normalizedPath = value.startsWith('/') ? value : `/${value}`
+    return `${base}${normalizedPath}`
 }
 
 const getLocalCameraChipText = (camera) => {
@@ -317,9 +469,116 @@ const loadMonitoring = async () => {
     }
 }
 
+const normalizeSecurityStatus = (payload) => payload?.status || payload || {}
+
+const markSecurityResultFetchSuccess = () => {
+    securityResultFailureCount = 0
+    securityResultBackoffUntil = 0
+}
+
+const markSecurityResultFetchFailure = () => {
+    securityResultFailureCount = Math.min(6, securityResultFailureCount + 1)
+    const delayMs = Math.min(30000, 2000 * (2 ** (securityResultFailureCount - 1)))
+    securityResultBackoffUntil = Date.now() + delayMs
+}
+
+const loadSecurityMonitoring = async ({ silent = false } = {}) => {
+    if (securityPollInFlight) return
+
+    securityPollInFlight = true
+    try {
+        const statusPayload = await getSecurityAiStatus()
+        const normalizedStatus = normalizeSecurityStatus(statusPayload)
+        const isRunning = Boolean(normalizedStatus?.running ?? normalizedStatus?.camera_enabled)
+        const serviceReachable = normalizedStatus?.serviceReachable !== false
+        const canRequestResult = isRunning &&
+            serviceReachable &&
+            Date.now() >= securityResultBackoffUntil
+
+        securityStatus.value = normalizedStatus
+
+        try {
+            const alertsPayload = await getSecurityAiAlerts({ take: 8 })
+            securityAlerts.value = alertsPayload?.items || []
+        } catch {
+            securityAlerts.value = []
+        }
+
+        if (canRequestResult) {
+            try {
+                const resultPayload = await getSecurityAiResult()
+                securityResult.value = resultPayload || {}
+                markSecurityResultFetchSuccess()
+            } catch {
+                // Keep UI stable and avoid repeated /result failures.
+                markSecurityResultFetchFailure()
+            }
+        } else {
+            if (!isRunning || !serviceReachable) {
+                securityResult.value = {}
+            }
+            if (!isRunning) {
+                markSecurityResultFetchSuccess()
+            }
+        }
+
+        securityError.value = ''
+    } catch (error) {
+        securityStatus.value = {}
+        securityResult.value = {}
+        securityAlerts.value = []
+        if (!silent) {
+            console.error('Security AI load error:', error)
+            securityError.value = error?.message || 'Khong tai duoc du lieu AI An Ninh.'
+        }
+    } finally {
+        securityPollInFlight = false
+    }
+}
+
+const handleStopAi = async () => {
+    securityBusy.value = true
+    try {
+        await stopSecurityAi()
+        await loadSecurityMonitoring()
+    } catch (error) {
+        console.error('Stop AI error:', error)
+        securityError.value = error?.message || 'Không dừng được AI An Ninh.'
+    } finally {
+        securityBusy.value = false
+    }
+}
+
 const handleStorageChange = (event) => {
     if (!event.key || event.key === CAMERA_NETWORK_STORAGE_KEY) {
         loadLocalCameraSettings()
+    }
+}
+
+const stopSecurityRealtime = () => {
+    if (securityPollTimer) {
+        window.clearInterval(securityPollTimer)
+        securityPollTimer = null
+    }
+    if (securityFrameTimer) {
+        window.clearInterval(securityFrameTimer)
+        securityFrameTimer = null
+    }
+}
+
+const startSecurityRealtime = async () => {
+    await loadSecurityMonitoring({ silent: true })
+    if (!securityPollTimer) {
+        securityPollTimer = window.setInterval(() => {
+            void loadSecurityMonitoring({ silent: true })
+        }, 2500)
+    }
+    if (!securityFrameTimer) {
+        securityFrameTimer = window.setInterval(() => {
+            if (securityAiRunning.value) {
+                securityFrameTick.value = Date.now()
+            }
+        }, 800)
     }
 }
 
@@ -327,10 +586,20 @@ onMounted(async () => {
     loadLocalCameraSettings()
     window.addEventListener("storage", handleStorageChange)
     await loadMonitoring()
+    await startSecurityRealtime()
+})
+
+onActivated(() => {
+    void startSecurityRealtime()
+})
+
+onDeactivated(() => {
+    stopSecurityRealtime()
 })
 
 onBeforeUnmount(() => {
     window.removeEventListener("storage", handleStorageChange)
+    stopSecurityRealtime()
 })
 </script>
 
@@ -404,9 +673,133 @@ onBeforeUnmount(() => {
     color: var(--accent-danger);
 }
 
+.ai-live-panel {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ai-live-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr);
+}
+
+.ai-live-stream-card,
+.ai-live-data-card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    background: rgba(236, 244, 246, 0.72);
+}
+
+.ai-frame-wrap {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(24, 49, 77, 0.1);
+    min-height: 280px;
+    background: rgba(17, 30, 45, 0.9);
+}
+
+.ai-live-frame {
+    width: 100%;
+    height: 100%;
+    min-height: 280px;
+    object-fit: cover;
+    display: block;
+}
+
+.ai-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 280px;
+    padding: 24px;
+    border-radius: 14px;
+    background: radial-gradient(circle at top left, rgba(31, 94, 143, 0.18), transparent 48%),
+                linear-gradient(140deg, #0f172a, #12263f 60%, #17324d);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: center;
+}
+
+.ai-empty-state svg {
+    color: rgba(191, 209, 229, 0.4);
+}
+
+.ai-empty-state p {
+    font-size: 0.94rem;
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.88);
+    margin: 0;
+}
+
+.ai-empty-state span {
+    font-size: 0.82rem;
+    color: rgba(191, 209, 229, 0.64);
+}
+
+.ai-empty-state a {
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.ai-empty-state a:hover {
+    text-decoration: underline;
+}
+
+.ai-alert-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ai-alert-card {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(24, 49, 77, 0.08);
+    background: rgba(236, 244, 246, 0.72);
+}
+
+.ai-alert-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: rgba(17, 30, 45, 0.9);
+}
+
+.ai-alert-meta {
+    display: grid;
+    gap: 4px;
+}
+
+.ai-alert-meta strong {
+    font-size: 0.84rem;
+}
+
+.ai-alert-meta span {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
 @media (max-width: 1180px) {
     .aside-metrics {
         grid-template-columns: 1fr;
     }
+
+    .ai-live-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-alert-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 </style>
+

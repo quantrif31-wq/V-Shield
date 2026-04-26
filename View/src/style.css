@@ -1065,6 +1065,11 @@ ol {
   margin-bottom: 18px;
 }
 
+.panel-head > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 .panel-title {
   margin-top: 10px;
   font-family: var(--font-heading);
@@ -1082,7 +1087,10 @@ ol {
 .panel-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .surface-list {

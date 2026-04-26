@@ -105,7 +105,9 @@ public class DeviceManagementController : ControllerBase
         {
             CameraName = request.CameraName.Trim(),
             CameraType = NormalizeOptional(request.CameraType),
-            GateId = request.GateId
+            GateId = request.GateId,
+            StreamUrl = NormalizeOptional(request.StreamUrl),
+            UrlView = NormalizeOptional(request.UrlView)
         };
 
         _context.Cameras.Add(camera);
@@ -116,7 +118,9 @@ public class DeviceManagementController : ControllerBase
             camera.CameraId,
             camera.CameraName,
             camera.CameraType,
-            camera.GateId
+            camera.GateId,
+            camera.StreamUrl,
+            camera.UrlView
         });
     }
 
@@ -143,6 +147,8 @@ public class DeviceManagementController : ControllerBase
         camera.CameraName = request.CameraName.Trim();
         camera.CameraType = NormalizeOptional(request.CameraType);
         camera.GateId = request.GateId;
+        camera.StreamUrl = NormalizeOptional(request.StreamUrl);
+        camera.UrlView = NormalizeOptional(request.UrlView);
 
         await _context.SaveChangesAsync();
 
@@ -151,7 +157,9 @@ public class DeviceManagementController : ControllerBase
             camera.CameraId,
             camera.CameraName,
             camera.CameraType,
-            camera.GateId
+            camera.GateId,
+            camera.StreamUrl,
+            camera.UrlView
         });
     }
 
@@ -305,6 +313,8 @@ public class DeviceManagementController : ControllerBase
                 CameraName = camera.CameraName,
                 CameraType = camera.CameraType,
                 GateId = camera.GateId,
+                StreamUrl = camera.StreamUrl,
+                UrlView = camera.UrlView,
                 GateName = camera.Gate != null ? camera.Gate.GateName : null,
                 GateLocation = camera.Gate != null ? camera.Gate.Location : null,
                 AccessLogCount = camera.AccessLogs.Count(),
@@ -335,6 +345,8 @@ public class DeviceManagementController : ControllerBase
         public string CameraName { get; set; } = string.Empty;
         public string? CameraType { get; set; }
         public int? GateId { get; set; }
+        public string? StreamUrl { get; set; }
+        public string? UrlView { get; set; }
     }
 
     public sealed class UpsertGateRequest
@@ -349,6 +361,8 @@ public class DeviceManagementController : ControllerBase
         public string CameraName { get; set; } = string.Empty;
         public string? CameraType { get; set; }
         public int? GateId { get; set; }
+        public string? StreamUrl { get; set; }
+        public string? UrlView { get; set; }
         public string? GateName { get; set; }
         public string? GateLocation { get; set; }
         public int AccessLogCount { get; set; }

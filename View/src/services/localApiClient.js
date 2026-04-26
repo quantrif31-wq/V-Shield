@@ -4,9 +4,12 @@ import { API_BASE_URL } from "../config/api"
 const DEFAULT_TIMEOUT_MS = 15000
 const LOOPBACK_PROBE_TIMEOUT_MS = 1200
 const trimTrailingSlash = (value = "") => String(value || "").replace(/\/+$/, "")
+const isBrowser = () => typeof window !== "undefined"
 
-const LOCAL_API_BASE_URLS = [
-  trimTrailingSlash(import.meta.env.VITE_LOCAL_API_BASE_URL || ""),
+const LOCAL_API_OVERRIDE_BASE_URL = trimTrailingSlash(
+  import.meta.env.VITE_LOCAL_API_BASE_URL || ""
+)
+const LOOPBACK_LOCAL_API_BASE_URLS = [
   "http://127.0.0.1:5107/api",
   "http://localhost:5107/api",
 ]
@@ -47,17 +50,33 @@ const buildCandidateBaseUrls = () => {
   }
 
   addBaseUrl(activeLocalApiBaseUrl)
-  LOCAL_API_BASE_URLS.forEach(addBaseUrl)
+  addBaseUrl(LOCAL_API_OVERRIDE_BASE_URL)
 
-  if (isLoopbackBaseUrl(API_BASE_URL)) {
+  // Prefer configured API first when it points outside loopback (typically VPS),
+  // or when frontend itself is not running on loopback.
+  const hasNonLoopbackConfiguredApi = !isLoopbackBaseUrl(API_BASE_URL)
+  const preferConfiguredApiFirst =
+    hasNonLoopbackConfiguredApi ||
+    (isBrowser() ? !isLoopbackHostname(window.location.hostname) : true)
+
+  if (preferConfiguredApiFirst) {
+    addBaseUrl(API_BASE_URL)
+    LOOPBACK_LOCAL_API_BASE_URLS.forEach(addBaseUrl)
+  } else {
+    LOOPBACK_LOCAL_API_BASE_URLS.forEach(addBaseUrl)
     addBaseUrl(API_BASE_URL)
   }
 
   return orderedBaseUrls
 }
 
-const getTimeoutForBaseUrl = (baseUrl) =>
-  isLoopbackBaseUrl(baseUrl) ? LOOPBACK_PROBE_TIMEOUT_MS : DEFAULT_TIMEOUT_MS
+const getTimeoutForBaseUrl = (baseUrl, explicitTimeout) => {
+  if (Number(explicitTimeout) > 0) {
+    return Number(explicitTimeout)
+  }
+
+  return isLoopbackBaseUrl(baseUrl) ? LOOPBACK_PROBE_TIMEOUT_MS : DEFAULT_TIMEOUT_MS
+}
 
 const normalizeError = (error, attemptedBaseUrls = []) => {
   if (error?.response?.data) {
@@ -87,7 +106,7 @@ export async function requestLocalApi(config) {
       const response = await axios({
         ...config,
         baseURL,
-        timeout: getTimeoutForBaseUrl(baseURL),
+        timeout: getTimeoutForBaseUrl(baseURL, config?.timeout),
       })
 
       activeLocalApiBaseUrl = baseURL
@@ -108,5 +127,9 @@ export async function requestLocalApi(config) {
 }
 
 export function getResolvedLocalApiBaseUrl() {
-  return activeLocalApiBaseUrl || buildCandidateBaseUrls()[0] || LOCAL_API_BASE_URLS[1]
+  return (
+    activeLocalApiBaseUrl ||
+    buildCandidateBaseUrls()[0] ||
+    LOOPBACK_LOCAL_API_BASE_URLS[0]
+  )
 }

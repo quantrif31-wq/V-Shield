@@ -680,6 +680,7 @@ onBeforeUnmount(() => {
 .camera-slot-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
     gap: 18px;
 }
 
