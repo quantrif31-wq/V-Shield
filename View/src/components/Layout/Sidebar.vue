@@ -370,7 +370,7 @@ const navGroups = ref([
                 label: 'Camera & cổng',
                 hint: 'Cấu hình thiết bị truy cập',
                 icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v10H4z"/><path d="M9 7V4h6v3"/><path d="M8 17h8"/><path d="M7 21h10"/></svg>',
-                roles: ['Admin'],
+                roles: ['Admin', 'BaoVe'],
             },
         ],
     },

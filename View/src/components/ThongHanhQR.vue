@@ -33,9 +33,28 @@
 
           <div class="lane-final-status" :class="isLaneReady(lane) ? 'ok' : 'wait'">
             <span class="status-dot"></span>
-            {{ isLaneReady(lane) ? "SẴN SÀNG XÁC NHẬN" : "ĐANG XỬ LÝ" }}
+            {{ isLaneReady(lane) ? "SẴN SÀNG TỰ ĐỘNG" : "ĐANG XỬ LÝ" }}
           </div>
         </div>
+
+        <transition name="lane-toast-fade">
+          <div
+            v-if="lane.toast.visible"
+            class="modal-overlay lane-toast-overlay"
+            @click.self="hideLaneToast(lane)"
+          >
+            <div class="modal lane-toast-modal">
+              <div class="modal-header lane-toast-header">
+                <h3 class="modal-title lane-toast-title">Thông báo hệ thống</h3>
+                <button class="modal-close lane-toast-close" @click="hideLaneToast(lane)">×</button>
+              </div>
+              <div class="lane-toast-state" :class="`lane-toast-state-${lane.toast.type || 'info'}`">
+                {{ lane.toast.type === "success" ? "THÀNH CÔNG" : lane.toast.type === "error" ? "LỖI" : "THÔNG TIN" }}
+              </div>
+              <p class="lane-toast-message">{{ lane.toast.message }}</p>
+            </div>
+          </div>
+        </transition>
 
         <div class="lane-actions">
           <button class="btn btn-preview" :disabled="lane.loading" @click="previewLane(lane)">
@@ -74,6 +93,7 @@
           </button>
 
           <button
+            v-if="showManualConfirmButton"
             class="btn btn-confirm"
             :disabled="lane.loading || !lane.qr.employeeId || !lane.plate.confirmedPlate"
             @click="confirmLane(lane)"
@@ -484,6 +504,11 @@ function createQrModule(defaultScannerDevice) {
     lastDecodedAt: 0,
     lastUpdate: "",
     message: "",
+    lastManualCommandAt: 0,
+    commandCooldownMs: 1400,
+    previewWarmupMs: 1800,
+    previewStartedAt: 0,
+    lastPreviewRestartAt: 0,
 
     previewTimer: null,
     resultTimer: null,
@@ -579,6 +604,10 @@ function resolveQrPreviewMode(inputUrl) {
   return "image"
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export default {
   name: "VShieldGateMinimalQr",
 
@@ -591,6 +620,7 @@ export default {
       cameras: [],
       cameraSearch: {},
       openCameraDropdownKey: "",
+      showManualConfirmButton: false,
       lanes: [
         {
           id: "lane1",
@@ -598,6 +628,19 @@ export default {
           name: "Làn 1",
           desc: "QR trên / Biển dưới",
           loading: false,
+          autoStartBusy: false,
+          autoRestartBusy: false,
+          autoConfirmBusy: false,
+          lastAutoConfirmToken: "",
+          autoLookupBusy: false,
+          lastAutoLookupAt: 0,
+          autoLookupCooldownMs: 2500,
+          toast: {
+            visible: false,
+            message: "",
+            type: "info",
+            timer: null
+          },
           plateApi: plateLane1Api,
           qr: createQrModule("WEB_SCANNER_GATE_01"),
           plate: createPlateModule()
@@ -608,6 +651,19 @@ export default {
           name: "Làn 2",
           desc: "QR trên / Biển dưới",
           loading: false,
+          autoStartBusy: false,
+          autoRestartBusy: false,
+          autoConfirmBusy: false,
+          lastAutoConfirmToken: "",
+          autoLookupBusy: false,
+          lastAutoLookupAt: 0,
+          autoLookupCooldownMs: 2500,
+          toast: {
+            visible: false,
+            message: "",
+            type: "info",
+            timer: null
+          },
           plateApi: plateLane2Api,
           qr: createQrModule("WEB_SCANNER_GATE_02"),
           plate: createPlateModule()
@@ -626,6 +682,7 @@ export default {
     lane.plate.destroyed = false
     await this.loadStatusPlate(lane)
     if (lane.plate.cameraRunning) this.startPlateLoop(lane)
+    this.tryAutoStartLane(lane)
   }
 },
 
@@ -639,6 +696,7 @@ export default {
       this.stopQrLoops(lane)
       this.stopQrPolling(lane)
       this.stopPlateLoop(lane)
+      this.hideLaneToast(lane)
 
       this.resetQrPreview(lane.id, lane.qr)
       this.resetPreview(lane.plate)
@@ -667,6 +725,8 @@ export default {
 }
         this.startPlateLoop(lane)
       }
+
+      this.tryAutoStartLane(lane)
     }
   },
 
@@ -755,6 +815,7 @@ export default {
     lane.qr.alert = true
   }
 
+  await this.tryAutoConfirmLane(lane)
   return // 🔥 STOP scan
 }
 
@@ -770,6 +831,49 @@ export default {
       }
     },
 
+    clearLaneToastTimer(lane) {
+      if (!lane?.toast?.timer) return
+      clearTimeout(lane.toast.timer)
+      lane.toast.timer = null
+    },
+
+    hideLaneToast(lane) {
+      if (!lane?.toast) return
+      this.clearLaneToastTimer(lane)
+      lane.toast.visible = false
+      lane.toast.message = ""
+      lane.toast.type = "info"
+    },
+
+    showLaneToast(lane, message, options = {}) {
+      if (!lane?.toast) return
+      const { type = "info", durationMs = 2200 } = options
+      const text = String(message || "").trim()
+      if (!text) {
+        this.hideLaneToast(lane)
+        return
+      }
+
+      for (const currentLane of this.lanes) {
+        if (currentLane?.id === lane.id) continue
+        this.hideLaneToast(currentLane)
+      }
+
+      this.clearLaneToastTimer(lane)
+      lane.toast.message = text
+      lane.toast.type = type
+      lane.toast.visible = true
+
+      if (durationMs > 0) {
+        lane.toast.timer = setTimeout(() => {
+          if (!lane?.toast) return
+          lane.toast.visible = false
+          lane.toast.message = ""
+          lane.toast.timer = null
+        }, durationMs)
+      }
+    },
+
     isLaneReady(lane) {
       return (
         lane.qr.sessionLocked &&
@@ -782,6 +886,150 @@ export default {
 
     laneAnyRunning(lane) {
       return lane.qr.cameraRunning || lane.plate.cameraRunning
+    },
+
+    resetLaneAutoState(lane, options = {}) {
+      const { resetToken = true } = options
+      if (!lane) return
+      lane.autoStartBusy = false
+      lane.autoConfirmBusy = false
+      lane.autoRestartBusy = false
+      lane.autoLookupBusy = false
+      if (resetToken) {
+        lane.lastAutoConfirmToken = ""
+      }
+    },
+
+    buildAutoConfirmToken(lane) {
+      const employeeId = String(lane?.qr?.employeeId || "").trim()
+      const licensePlate = String(lane?.plate?.confirmedPlate || "").trim()
+      const direction = normalizeLaneDirection(
+        lane?.movementDirection,
+        getDefaultLaneDirection(lane?.id)
+      ) || "IN"
+      const sessionHint = [
+        String(lane?.qr?.activeSessionPayload || ""),
+        String(lane?.qr?.lastDecodedText || ""),
+        String(lane?.plate?.sessionId || ""),
+      ].join("|")
+
+      if (!employeeId || !licensePlate) return ""
+      return `${lane.id}|${employeeId}|${licensePlate}|${direction}|${sessionHint}`
+    },
+
+    async goToAccessLogsOnFail(lane, reason = "") {
+      if (!lane) return false
+
+      const now = Date.now()
+      const cooldownMs = Number(lane.autoLookupCooldownMs || 0)
+
+      if (lane.autoLookupBusy) return false
+      if (
+        lane.lastAutoLookupAt > 0 &&
+        cooldownMs > 0 &&
+        now - lane.lastAutoLookupAt < cooldownMs
+      ) {
+        return false
+      }
+
+      lane.autoLookupBusy = true
+      lane.lastAutoLookupAt = now
+
+      try {
+        const failReason = String(reason || lane?.qr?.verifyMessage || lane?.plate?.message || "")
+          .replace(/\s+/g, " ")
+          .trim()
+
+        const noticeMessage = `${lane.name}: Xác nhận Ra/Vào thất bại.`
+        lane.qr.message = failReason ? `${noticeMessage} (${failReason})` : noticeMessage
+        lane.plate.message = lane.qr.message
+        this.showLaneToast(lane, noticeMessage, { type: "error", durationMs: 2200 })
+        return true
+      } finally {
+        lane.autoLookupBusy = false
+      }
+    },
+
+    async tryAutoStartLane(lane, options = {}) {
+      const { force = false } = options
+      if (!lane || lane.loading || lane.autoStartBusy) return
+      if (!lane.qr.cameraIp.trim() || !lane.plate.cameraIp.trim()) return
+
+      const bothRunning = lane.qr.cameraRunning && lane.plate.cameraRunning
+      const lockedSession = lane.qr.sessionLocked || lane.plate.scanLocked
+      if (!force && (bothRunning || lockedSession || lane.autoConfirmBusy)) return
+
+      lane.autoStartBusy = true
+      try {
+        await this.readAllLane(lane, { silent: true })
+      } finally {
+        lane.autoStartBusy = false
+      }
+    },
+
+    async tryAutoConfirmLane(lane) {
+      if (!lane || lane.loading || lane.autoConfirmBusy) return false
+      if (!this.isLaneReady(lane)) return false
+
+      const token = this.buildAutoConfirmToken(lane)
+      if (!token || lane.lastAutoConfirmToken === token) return false
+
+      lane.autoConfirmBusy = true
+      lane.lastAutoConfirmToken = token
+
+      try {
+        const confirmed = await this.confirmLane(lane, { silent: true })
+        if (!confirmed) {
+          const failMessage = String(
+            lane.qr.message || lane.plate.message || "Xác nhận Ra/Vào thất bại."
+          ).trim()
+          await this.goToAccessLogsOnFail(lane, failMessage)
+          return false
+        }
+
+        const employeeId = String(lane.qr.employeeId || "").trim()
+        const licensePlate = String(lane.plate.confirmedPlate || "").trim()
+        const doneMessage = `${lane.name}: Đã tự động xác nhận ${employeeId || "N/A"} - ${licensePlate || "N/A"}.`
+        lane.qr.message = doneMessage
+        lane.plate.message = doneMessage
+        this.showLaneToast(lane, doneMessage, { type: "success", durationMs: 2000 })
+
+        if (lane.autoRestartBusy) return true
+        lane.autoRestartBusy = true
+
+        try {
+          // Giữ thông báo hoàn tất đủ lâu để người vận hành nhìn thấy.
+          await wait(2000)
+          this.hideLaneToast(lane)
+          lane.qr.message = ""
+          lane.plate.message = ""
+
+          const reloadingMessage = `${lane.name}: Đang reload camera cho đợt quét tiếp theo...`
+          this.showLaneToast(lane, reloadingMessage, { type: "info", durationMs: 1200 })
+
+          lane.qr.lastManualCommandAt = 0
+          const restarted = await this.readAllLane(lane, { silent: true })
+          if (restarted) {
+            this.showLaneToast(
+              lane,
+              `${lane.name}: Đã sẵn sàng cho đợt quét tiếp theo.`,
+              { type: "success", durationMs: 1600 }
+            )
+          } else {
+            this.showLaneToast(
+              lane,
+              `${lane.name}: Reload camera thất bại. Vui lòng kiểm tra nguồn camera.`,
+              { type: "error", durationMs: 2500 }
+            )
+          }
+        } finally {
+          lane.autoRestartBusy = false
+        }
+
+        return true
+      } finally {
+        lane.autoConfirmBusy = false
+      }
     },
 
     qrStateText(qr) {
@@ -819,6 +1067,108 @@ export default {
 
     nowText() {
       return new Date().toLocaleString()
+    },
+
+    resolveModuleIp(module) {
+      const currentIp = String(module?.currentIp || "").trim()
+      if (currentIp) return currentIp
+
+      const cameraIp = String(module?.cameraIp || "").trim()
+      if (cameraIp) {
+        module.currentIp = cameraIp
+      }
+
+      return cameraIp
+    },
+
+    canDispatchQrCommand(lane, options = {}) {
+      const qr = lane?.qr
+      if (!qr) return false
+
+      const { silent = false } = options
+      const now = Date.now()
+      const minGapMs = Number(qr.commandCooldownMs || 1400)
+      const elapsed = now - Number(qr.lastManualCommandAt || 0)
+
+      if (elapsed < minGapMs) {
+        if (!silent) {
+          qr.message = "Dang khoi tao lai QR, vui long cho mot chut."
+        }
+        return false
+      }
+
+      qr.lastManualCommandAt = now
+      return true
+    },
+
+    async ensureQrPreview(lane, options = {}) {
+      const { forceRestart = false } = options
+      const viewUrl = String(lane?.qr?.viewUrl || "").trim()
+
+      if (!viewUrl) {
+        lane.qr.previewRunning = true
+        lane.qr.previewHealthy = false
+        return
+      }
+
+      const hasActiveSource =
+        lane.qr.previewMode === "image"
+          ? !!lane.qr.directCameraUrl
+          : (lane.qr.previewMode === "video" || lane.qr.previewMode === "hls")
+            ? !!lane.qr.videoPreviewUrl
+            : false
+
+      const now = Date.now()
+      const warmupMs = Number(lane.qr.previewWarmupMs || 1800)
+      const inWarmupWindow =
+        lane.qr.previewRunning &&
+        hasActiveSource &&
+        !lane.qr.previewHealthy &&
+        now - Number(lane.qr.previewStartedAt || 0) < warmupMs
+
+      const shouldRestart =
+        forceRestart ||
+        !lane.qr.previewRunning ||
+        !hasActiveSource ||
+        (lane.qr.previewMode === "empty") ||
+        (!lane.qr.previewHealthy && !inWarmupWindow)
+
+      if (shouldRestart && lane.qr.previewRunning) {
+        this.resetQrPreview(lane.id, lane.qr)
+        await wait(160)
+      }
+
+      if (shouldRestart || !hasActiveSource || lane.qr.previewMode === "empty") {
+        await this.enableQrPreview(lane.qr, viewUrl, lane.id)
+      }
+    },
+
+    async ensurePlatePreview(lane, options = {}) {
+      const { forceRestart = false } = options
+      const plate = lane?.plate
+      if (!plate) return
+
+      const viewUrl = String(plate.viewUrl || "").trim()
+      if (!viewUrl) {
+        plate.previewRunning = false
+        plate.previewHealthy = false
+        return
+      }
+
+      const shouldRestart =
+        forceRestart ||
+        !plate.previewRunning ||
+        !plate.directCameraUrl ||
+        !plate.previewHealthy
+
+      if (shouldRestart && plate.previewRunning) {
+        this.resetPreview(plate)
+        await wait(120)
+      }
+
+      if (shouldRestart || !plate.directCameraUrl) {
+        this.mountPreview(plate, viewUrl)
+      }
     },
 
     buildDirectCameraUrl(inputUrl) {
@@ -972,10 +1322,13 @@ export default {
       const cleanUrl = String(url || "").trim()
       if (!cleanUrl) return
 
+      const now = Date.now()
       qr.previewMode = resolveQrPreviewMode(cleanUrl)
       qr.previewHealthy = false
       qr.previewRunning = true
       qr.directCameraKey += 1
+      qr.previewStartedAt = now
+      qr.lastPreviewRestartAt = now
 
       if (qr.previewMode === "image") {
         this.destroyQrPreviewMedia(laneId, qr)
@@ -1077,6 +1430,8 @@ export default {
       qr.directCameraUrl = ""
       qr.videoPreviewUrl = ""
       qr.previewMode = "empty"
+      qr.previewStartedAt = 0
+      qr.lastPreviewRestartAt = 0
       qr.directCameraKey += 1
       qr.previewHealthy = false
       qr.previewRunning = false
@@ -1158,6 +1513,9 @@ export default {
     hardResetQr(qr) {
       qr.cameraRunning = false
       qr.currentIp = ""
+      qr.lastManualCommandAt = 0
+      qr.previewStartedAt = 0
+      qr.lastPreviewRestartAt = 0
       this.clearQrState(qr)
     },
 
@@ -1322,6 +1680,7 @@ export default {
           qr.employeeId = result?.data?.employeeId ? String(result.data.employeeId) : ""
           qr.employeeName = result?.data?.employeeName || ""
           qr.message = result.message || "QR hợp lệ"
+          await this.tryAutoConfirmLane(lane)
           return
         }
 
@@ -1531,6 +1890,8 @@ export default {
       if (plate.scanLocked) {
         await this.fetchPlateLockedImages(lane, false)
       }
+
+      await this.tryAutoConfirmLane(lane)
     },
 
     async previewLane(lane) {
@@ -1582,14 +1943,26 @@ export default {
   }
 },
 
-    async readAllLane(lane) {
+    async readAllLane(lane, options = {}) {
+      const { silent = false } = options
+      if (lane.loading) return false
+
       if (!lane.qr.cameraIp.trim() || !lane.plate.cameraIp.trim()) {
-        alert("Vui lòng nhập đủ URL QR và Plate")
-        return
+        const message = "Vui long nhap du URL QR va Plate"
+        if (!silent) {
+          alert(message)
+        }
+        lane.qr.message = message
+        lane.plate.message = message
+        return false
       }
+
+      
+      if (!this.canDispatchQrCommand(lane, { silent })) return false
 
       try {
         lane.loading = true
+        this.resetLaneAutoState(lane)
 
         
 
@@ -1611,7 +1984,7 @@ this.clearQrState(lane.qr)
 
 lane.qr.cameraRunning = true
 if (lane.qr.viewUrl) {
-  await this.enableQrPreview(lane.qr, lane.qr.viewUrl, lane.id)
+  await this.ensureQrPreview(lane)
 } else {
   lane.qr.previewRunning = true
 }
@@ -1623,10 +1996,16 @@ this.startQrPolling(lane)
         // Plate: giữ nguyên API cũ
         if (!lane.plate.cameraRunning) {
           this.stopPlateLoop(lane)
-          const resPlate = await lane.plateApi.turnOnCamera(lane.plate.currentIp)
+          const resPlate = await lane.plateApi.turnOnCamera(this.resolveModuleIp(lane.plate))
           if (!resPlate?.success) {
-            alert(resPlate?.message || "Không thể khởi tạo Plate")
-            return
+            const message = resPlate?.message || "Không thể khởi tạo Plate"
+            if (!silent) {
+              alert(message)
+            } else {
+              lane.plate.message = message
+              lane.qr.message = message
+            }
+            return false
           }
           lane.plate.cameraRunning = true
           lane.plate.sessionId = Number(resPlate.session_id || 0)
@@ -1643,24 +2022,40 @@ this.startQrPolling(lane)
           }
         }
 
+        await this.ensurePlatePreview(lane)
         await this.refreshPlate(lane)
         if (!lane.plate.resultTimer) this.startPlateLoop(lane)
+        return true
       } catch (e) {
+        const message = e?.message || "Loi doc ca 2"
         console.error("readAllLane error:", e)
-        alert(e?.message || "Lỗi đọc cả 2")
+        if (!silent) {
+          alert(message)
+        } else {
+          lane.qr.message = message
+          lane.plate.message = message
+        }
+        return false
       } finally {
         lane.loading = false
       }
     },
 
     async retryQr(lane) {
+  if (lane.loading) return
+
   if (!lane.qr.cameraIp.trim()) {
-    alert("Vui lòng nhập URL QR")
+    alert("Vui long nhap URL QR")
     return
   }
 
+  
+  if (!this.canDispatchQrCommand(lane)) return
+
   try {
     lane.loading = true
+    this.resetLaneAutoState(lane)
+
 
     // 🧠 Nếu chưa chạy → mở cam trước
     if (!lane.qr.cameraRunning) {
@@ -1677,7 +2072,7 @@ this.startQrPolling(lane)
 
     lane.qr.cameraRunning = true
     if (lane.qr.viewUrl) {
-      await this.enableQrPreview(lane.qr, lane.qr.viewUrl, lane.id)
+      await this.ensureQrPreview(lane)
     } else {
       lane.qr.previewRunning = true
     }
@@ -1696,6 +2091,8 @@ this.startQrPolling(lane)
 },
 
     async retryPlate(lane) {
+      if (lane.loading) return
+
       if (!lane.plate.cameraIp.trim()) {
         alert("Vui lòng nhập URL Plate")
         return
@@ -1703,6 +2100,8 @@ this.startQrPolling(lane)
 
       try {
         lane.loading = true
+        this.resetLaneAutoState(lane)
+
 
         
         
@@ -1711,7 +2110,7 @@ this.startQrPolling(lane)
 
         if (!lane.plate.cameraRunning) {
           this.stopPlateLoop(lane)
-          const res = await lane.plateApi.turnOnCamera(lane.plate.currentIp)
+          const res = await lane.plateApi.turnOnCamera(this.resolveModuleIp(lane.plate))
           if (!res?.success) {
             alert(res?.message || "Không thể khởi tạo Plate")
             return
@@ -1731,6 +2130,7 @@ this.startQrPolling(lane)
           }
         }
 
+        await this.ensurePlatePreview(lane)
         await this.refreshPlate(lane)
         if (!lane.plate.resultTimer) this.startPlateLoop(lane)
       } catch (e) {
@@ -1742,8 +2142,12 @@ this.startQrPolling(lane)
     },
 
     async stopLane(lane) {
+  if (lane.loading) return
+
   try {
     lane.loading = true
+    this.resetLaneAutoState(lane)
+
 
     // 🔥 1. tắt Python scan
     try {
@@ -1783,8 +2187,8 @@ this.startQrPolling(lane)
     lane.loading = false
   }
 },
-
-    async confirmLane(lane) {
+    async confirmLane(lane, options = {}) {
+      const { silent = false } = options
       const employeeId = Number(lane.qr.employeeId || 0)
       const licensePlate = String(lane.plate.confirmedPlate || "").trim()
       const gateId = lane.plate.gateId ?? lane.qr.gateId ?? null
@@ -1795,19 +2199,26 @@ this.startQrPolling(lane)
       ) || "IN"
 
       if (!employeeId) {
-        alert(`${lane.name}: chưa có Employee ID`)
-        return
+        const message = `${lane.name}: chua co Employee ID`
+        if (!silent) {
+          alert(message)
+        }
+        lane.qr.message = message
+        return false
       }
 
       if (!licensePlate) {
-        alert(`${lane.name}: chưa có biển số`)
-        return
+        const message = `${lane.name}: chua co bien so`
+        if (!silent) {
+          alert(message)
+        }
+        lane.plate.message = message
+        return false
       }
 
       try {
         lane.loading = true
 
-        // Vẫn dùng API thông hành cũ, chỉ lấy employeeId từ QR verify
         lane.movementDirection = direction
         this.persistLaneDirection(lane)
 
@@ -1821,19 +2232,29 @@ this.startQrPolling(lane)
 
         const res = await confirmGateLocally(payload)
         const data = res.data
+        const resultMessage = data?.message || "Xu ly that bai"
 
-        if (data?.success) {
-          alert(`${lane.name}: ${data.message}`)
-        } else {
-          alert(`${lane.name}: ${data?.message || "Xử lý thất bại"}`)
+        lane.qr.message = resultMessage
+        lane.plate.message = resultMessage
+
+        if (!silent) {
+          alert(`${lane.name}: ${resultMessage}`)
         }
+
+        return !!data?.success
       } catch (error) {
         const message =
           error?.response?.data?.message ||
           error?.message ||
-          "Không gọi được API Gate"
+          "Khong goi duoc API Gate"
 
-        alert(`${lane.name}: ${message}`)
+        if (!silent) {
+          alert(`${lane.name}: ${message}`)
+        }
+
+        lane.qr.message = message
+        lane.plate.message = message
+        return false
       } finally {
         lane.loading = false
       }
@@ -2043,6 +2464,8 @@ selectCamera(cam, lane, type) {
     this.syncLaneDirectionFromCamera(lane, cam)
   }
 
+  this.resetLaneAutoState(lane)
+  this.tryAutoStartLane(lane)
   this.closeCameraDropdown(lane.id, type)
 },
 
@@ -2175,6 +2598,7 @@ applyInitialCameraSelections() {
 }
 
 .lane-card {
+  position: relative;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
@@ -2194,6 +2618,77 @@ applyInitialCameraSelections() {
 .lane-card.ready {
   border-color: rgba(15, 124, 130, 0.32);
   box-shadow: var(--shadow-glow);
+}
+
+.lane-toast-overlay {
+  z-index: 1300;
+}
+
+.lane-toast-modal {
+  width: min(760px, 100%);
+  max-height: unset;
+  overflow: visible;
+  padding: 26px 30px;
+}
+
+.lane-toast-header {
+  margin-bottom: 14px;
+}
+
+.lane-toast-title {
+  margin: 0;
+}
+
+.lane-toast-close {
+  border: none;
+  cursor: pointer;
+}
+
+.lane-toast-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+
+.lane-toast-state-info {
+  background: rgba(43, 109, 138, 0.12);
+  color: #2b6d8a;
+}
+
+.lane-toast-state-success {
+  background: rgba(20, 134, 109, 0.12);
+  color: var(--accent-success);
+}
+
+.lane-toast-state-error {
+  background: rgba(195, 81, 70, 0.12);
+  color: var(--accent-danger);
+}
+
+.lane-toast-message {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(1rem, 1.04vw, 1.2rem);
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.lane-toast-fade-enter-active,
+.lane-toast-fade-leave-active {
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.lane-toast-fade-enter-from,
+.lane-toast-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
 }
 
 /* ========== Lane Head ========== */
@@ -2827,4 +3322,6 @@ applyInitialCameraSelections() {
   }
 }
 </style>
+
+
 

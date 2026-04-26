@@ -72,7 +72,7 @@ const routes = [
             { path: 'biometrics', name: 'Biometrics', component: Biometrics, meta: { allowedRoles: ['Admin'] } },
             { path: 'employees', name: 'Employees', component: Employees, meta: { allowedRoles: ['Admin'] } },
             { path: 'vehicles', name: 'Vehicles', component: Vehicles, meta: { allowedRoles: ['Admin'] } },
-            { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement, meta: { allowedRoles: ['Admin'], keepAlive: true } },
+            { path: 'device-management', name: 'DeviceManagement', component: DeviceManagement, meta: { allowedRoles: ['Admin', 'BaoVe'], keepAlive: true } },
             {
                 path: 'system-catalog',
                 name: 'SystemCatalog',
